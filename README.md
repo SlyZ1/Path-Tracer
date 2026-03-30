@@ -16,6 +16,11 @@
 ### Rough Diffuse with Energy-Preserving Oren-Nayar (EON)
 ![](outputs/orenNayar.png)
 
+### Quick Animations
+
+![](outputs/animation/output4.gif)
+![](outputs/animation/output3.gif)
+
 ### Other
 ![](outputs/bunny.png)
 ![](outputs/image.png)
