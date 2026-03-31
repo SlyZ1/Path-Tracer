@@ -6,17 +6,38 @@ void ShaderProgram::create(){
     shaderProgram = glCreateProgram();
 }
 
+fs::path ShaderProgram::extractPath(const string& line){
+    int start = line.find_first_of("\"") + 1;
+    int end = line.find_last_of("\"");
+    return fs::path(line.substr(start, end - start));
+}
+
 string ShaderProgram::getShaderSource(const char* path){
     ifstream file(path);
+    stringstream ss;
+    string line;
 
     if (!file.is_open()) {
         cerr << "Erreur: impossible d'ouvrir le fichier " << path << endl;
         return "";
     }
 
-    stringstream shaderText;
-    shaderText << file.rdbuf(); 
-    return shaderText.str();
+    bool isForwardDeclaration = false;
+
+    while (getline(file, line)) {
+        if (line.find("#pragma include") != std::string::npos) {
+            fs::path includePath = fs::path(path).parent_path() / extractPath(line);
+            ss << getShaderSource(includePath.string().c_str());
+        } else if (line == "#pragma FDECLARE") {
+            isForwardDeclaration = true;
+        } else if (line == "#pragma FEND") {
+            isForwardDeclaration = false;
+        } else {
+            if (!isForwardDeclaration) ss << line << "\n";
+        }
+    }
+
+    return ss.str();
 }
 
 void ShaderProgram::load(int type, const char *path){
