@@ -19,6 +19,20 @@ Key features include:
 
 ---
 
+## Gallery
+
+All renders are available in the [`outputs/`](outputs/) directory.
+
+| Diffuse (EON)        | Metals (GGX)         | Dielectrics                 |
+| -------------------- | -------------------- | --------------------------- |
+| ![](outputs/orenNayar.png) | ![](outputs/GGX3%20(1).png) | ![](outputs/dielectric%20(1).png) |
+
+| Glossy Materials        | BVH Visualization    |
+| ----------------------- | -------------------- |
+| ![](outputs/GGX1%20(1).png) | ![](outputs/bvh.png) |
+
+---
+
 ## Features
 
 ### Rendering
@@ -63,20 +77,6 @@ Key features include:
 * Keyframe-based animation system
 * Linear interpolation between frames
 * Offline animation rendering
-
----
-
-## Gallery
-
-All renders are available in the [`outputs/`](outputs/) directory.
-
-| Diffuse (EON)        | Metals (GGX)         | Dielectrics                 |
-| -------------------- | -------------------- | --------------------------- |
-| ![](outputs/orenNayar.png) | ![](outputs/GGX3%20(1).png) | ![](outputs/dielectric%20(1).png) |
-
-| Glossy Materials        | BVH Visualization    |
-| ----------------------- | -------------------- |
-| ![](outputs/GGX1%20(1).png) | ![](outputs/bvh.png) |
 
 ---
 
