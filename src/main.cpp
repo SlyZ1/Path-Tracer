@@ -184,6 +184,8 @@ void init(){
     genTexture(app.width(), app.height());
     
     glDisable(GL_FRAMEBUFFER_SRGB);
+
+    camera.resetMousePos(app.mouseX(), app.mouseY());
 }
 
 void handleCamera(){
