@@ -7,7 +7,7 @@ class Camera {
         float m_moveSensitivity = 0;
         float m_lookSensitivity = 0;
         vec3 m_pos = vec3(0, 2, 5);
-        vec2 m_angles = vec2(90, 0);
+        vec2 m_angles = vec2(0, 0);
         float m_lastMouseX = 0;
         float m_lastMouseY = 0;
         bool m_isMoving = false;
