@@ -121,19 +121,11 @@ This uses the provided `tasks.json`.
 
 ---
 
-### Notes
-
-* Make sure `glfw3.dll` is in the root directory (same folder as `myprogram.exe`)
-* If `make` is not recognized, ensure MinGW is added to your PATH
-* All dependencies (ImGui, lodepng, tinyobjloader) are included in the repository
-
----
-
 ## Controls (example)
 
 * Camera movement: `WASD`
 * Mouse: Look around
-* UI: Toggle with P
+* UI: Toggle with `P`
 
 ---
 
