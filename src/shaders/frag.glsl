@@ -374,7 +374,7 @@ void diffuse(World world, inout RaycastData data){
             float pbsdf = p_cosineHemisphere(hit.normal, newDir);
             float weight = wbsdf * pbsdf / (wbsdf * pbsdf + wdirect * pdirect);
 
-            ray.radiance += clamp(ray.throughput * weight, 0, 1.3) * Le;
+            ray.radiance += clamp(ray.throughput * weight, 0.0, 1.3) * Le;
             stop(hit, true);
         }
     } 
@@ -390,7 +390,7 @@ void diffuse(World world, inout RaycastData data){
             float pbsdf = p_cosineHemisphere(hit.normal, ray.dir);
             float weight = 1.0 / (wdirect * pdirect + wbsdf * pbsdf);
             vec3 Le = light.intensity * light.color;
-            ray.radiance += clamp(ray.throughput * weight, 0, 1.3) * Le;
+            ray.radiance += clamp(ray.throughput * weight, 0.0, 1.3) * Le;
             stop(hit, true);
         }
         else{
@@ -433,7 +433,7 @@ void metal(World world, inout RaycastData data){
     if (r < wGGX){
         vec3 viewDir = -ray.dir;
         vec3 h = randomGGXHemisphere(seed, hit.normal, alpha);
-        vec3 newDir = mix(reflect(-viewDir, h), hit.normal, 0);
+        vec3 newDir = mix(reflect(-viewDir, h), hit.normal, 0.0);
         
         float pGGX = p_GGX(hit.normal, newDir, viewDir, alpha, true);
         vec3 f_r = cookTorrance(hit, viewDir, newDir, alpha, true);
@@ -448,7 +448,7 @@ void metal(World world, inout RaycastData data){
                             * shadow_hit(light, world, ray);
             float weight = wGGX * pGGX / (wGGX * pGGX + wdirect * pdirect);
 
-            ray.radiance += clamp(ray.throughput * weight, 0, 1.5) * Le;
+            ray.radiance += clamp(ray.throughput * weight, 0.0, 1.5) * Le;
             stop(hit, true);
         }
     }
@@ -465,7 +465,7 @@ void metal(World world, inout RaycastData data){
             float pGGX = p_GGX(hit.normal, ray.dir, viewDir, alpha, false);
             float weight = 1.0 / (wdirect * pdirect + wGGX * pGGX);
             vec3 Le = light.color * light.intensity;
-            ray.radiance += clamp(ray.throughput * weight, 0, 1.5) * Le;
+            ray.radiance += clamp(ray.throughput * weight, 0.0, 1.5) * Le;
             stop(hit, true);
         }
         else{
@@ -559,7 +559,7 @@ void computeLighting(World world, in out Hit hit, in out Ray ray, in out uint se
 // RAY TRACING --------------------
 
 Ray fovRay(vec2 pos, Ray ray){
-    float fov = radians(mix(50, 90, 0 / 8.0));
+    float fov = radians(mix(50.0, 90.0, 0 / 8.0));
     vec3 forward = normalize(camera.lookDir);
 
     vec3 worldUp = abs(forward.y) < 0.999

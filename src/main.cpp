@@ -71,17 +71,9 @@ vector<KeyFrame> keyFrames = {};
 Camera camera(0.1, 0.3);
 App app;
 
-string getShaderSource(const char *filepath){
-    ifstream file(filepath);
-
-    if (!file.is_open()) {
-        cerr << "Erreur: impossible d'ouvrir le fichier " << filepath << endl;
-        return "";
-    }
-
-    stringstream shaderText;
-    shaderText << file.rdbuf(); 
-    return shaderText.str();
+extern "C" {
+    __declspec(dllexport) unsigned long NvOptimusEnablement = 1;
+    __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 }
 
 void resetFrame(){
