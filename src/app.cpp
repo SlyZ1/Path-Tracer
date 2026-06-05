@@ -1,16 +1,16 @@
 #include <iostream>
-#include <imgui/imgui.h>
-#include <imgui/imgui_impl_opengl3.h>
-#include <imgui/imgui_impl_glfw.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <vector>
-#include <lodepng/lodepng.h>
 #include "app.hpp"
 
 using namespace std;
 
-void App::init(int width, int height, const char *name, GLFWframebuffersizefun framebuffer_size_callback){
+void framebuffer_size_callback(GLFWwindow*, int width, int height)
+{
+    glViewport(0, 0, width, height);
+}
+
+void App::init(int width, int height, const char *name){
     if (!glfwInit())
     {
         cerr << "Failed to initialize GLFW" << endl;
@@ -52,8 +52,10 @@ void App::setClearColor(float r, float g, float b, float a){
     glClearColor(r, g, b, a);
 }
 
-void App::startFrame(int frame){
-    if(keyPressedOnce(GLFW_KEY_ESCAPE, frame))
+void App::startFrame(unsigned int frameCount){
+    bool altPressed = keyPressed(GLFW_KEY_LEFT_ALT);
+    bool qPressedOnce = keyPressedOnce(GLFW_KEY_A, frameCount);
+    if(altPressed && qPressedOnce)
         glfwSetWindowShouldClose(m_window, true);
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -70,48 +72,6 @@ void App::endFrame(){
     glfwPollEvents();
 }
 
-void App::toggleCursor(bool show){
-    m_cursorHidden = !show;
-    glfwSetInputMode(m_window, GLFW_CURSOR, !show ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
-}
-
-void App::exportImage(string additionalPath, string name){
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    std::vector<unsigned char> pixels(width() * height() * 3);
-    auto data = pixels.data();
-
-    glPixelStorei(GL_PACK_ALIGNMENT, 1);
-
-    glReadPixels(
-        0, 0,
-        width(), height(),
-        GL_RGB,
-        GL_UNSIGNED_BYTE,
-        data
-    );
-
-    //flip vertical
-    int stride = width() * 3;
-    std::vector<unsigned char> row(stride);
-
-    for (unsigned int y = 0; y < height() / 2; y++) {
-        unsigned char* row1 = data + y * stride;
-        unsigned char* row2 = data + (height() - y - 1) * stride;
-
-        memcpy(row.data(), row1, stride);
-        memcpy(row1, row2, stride);
-        memcpy(row2, row.data(), stride);
-    }
-
-    string path = "outputs/" + additionalPath + name;
-    lodepng::encode(path.c_str(), pixels, width(), height(), LCT_RGB);
-}
-
-bool App::cursorIsHidden(){
-    return m_cursorHidden;
-}
-
 bool App::shouldClose(){
     return glfwWindowShouldClose(m_window);
 }
@@ -120,8 +80,8 @@ bool App::keyPressed(int key){
     return glfwGetKey(m_window, key) == GLFW_PRESS;
 }
 
-bool App::keyPressedOnce(int key, int frame){
-    static int wasPressed[GLFW_KEY_LAST + 1] = {INT_MAX};
+bool App::keyPressedOnce(int key, unsigned int frame){
+    static unsigned int wasPressed[GLFW_KEY_LAST + 1] = {UINT_MAX};
 
     bool isPressed = glfwGetKey(m_window, key) == GLFW_PRESS;
 
@@ -131,22 +91,19 @@ bool App::keyPressedOnce(int key, int frame){
     }
 
     if (!isPressed) {
-        wasPressed[key] = INT_MAX;
+        wasPressed[key] = UINT_MAX;
     }
 
     return false;
 }
 
-bool App::UIInteract(){
-    return m_io->WantCaptureMouse || m_io->WantCaptureKeyboard;
+void App::toggleCursor(bool show){
+    m_cursorHidden = !show;
+    glfwSetInputMode(m_window, GLFW_CURSOR, !show ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
 }
 
-bool App::UIDrag(){
-    return ImGui::IsMouseDragging(0) && UIInteract();
-}
-
-ImGuiIO* App::getIo(){
-    return m_io;
+bool App::cursorIsHidden(){
+    return m_cursorHidden;
 }
 
 float App::mouseX(){
@@ -175,4 +132,37 @@ unsigned int App::height(){
     int height;
     glfwGetWindowSize(m_window, nullptr, &height);
     return height;
+}
+
+void App::exportImage(const string& additionalPath, const string& name){
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    vector<unsigned char> pixels(width() * height() * 3);
+    auto data = pixels.data();
+
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+
+    glReadPixels(
+        0, 0,
+        width(), height(),
+        GL_RGB,
+        GL_UNSIGNED_BYTE,
+        data
+    );
+
+    //flip vertical
+    int stride = width() * 3;
+    vector<unsigned char> row(stride);
+
+    for (unsigned int y = 0; y < height() / 2; y++) {
+        unsigned char* row1 = data + y * stride;
+        unsigned char* row2 = data + (height() - y - 1) * stride;
+
+        memcpy(row.data(), row1, stride);
+        memcpy(row1, row2, stride);
+        memcpy(row2, row.data(), stride);
+    }
+
+    string path = "outputs/" + additionalPath + name;
+    lodepng::encode(path.c_str(), pixels, width(), height(), LCT_RGB);
 }

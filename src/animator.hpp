@@ -1,0 +1,47 @@
+#ifndef ANIMATOR
+#define ANIMATOR
+
+#include "renderer.hpp"
+#include <functional>
+#include <glm/glm.hpp>
+
+struct KeyFrame {
+    glm::vec3 modelPos;
+    float keyPos;
+};
+
+class Animator {
+private:
+    bool m_is_running = false;
+    shared_ptr<Renderer> m_renderer;
+
+    int m_currentKeyFrame = -1;
+    int m_numKeyFrames = 0;
+    int m_animationFPS = 25;
+    int m_animationFrame = 0;
+    float m_animationDuration = 1;
+    float m_animationTime = 0;
+    float m_prevAnimationTime = 0;
+    vector<KeyFrame> m_keyFrames = {};
+
+    string m_export_folder = {};
+    int m_renderSamples;
+    function<void()> m_resetFrame;
+public: 
+    Animator() = default;
+    Animator(shared_ptr<Renderer> renderer, function<void()> resetFrame) : m_renderer(renderer), m_resetFrame(resetFrame) {}
+    vector<float> getKeyPoses() const;
+    bool running() const { return m_is_running; }
+    float getAnimationTime() const { return m_animationTime; }
+    void addKeyFrame(KeyFrame keyFrame);
+    void updateCurrentKeyFrame(float animationTime);
+    void previousKeyFrame();
+    bool canGoToPreviousKeyFrame() const;
+    void nextKeyFrame();
+    bool canGoToNextKeyFrame() const;
+    void start(int renderSamples, int animationFPS, float animationDuration, string export_folder = "");
+    void animationProcess();
+    void cancelAnimation();
+};
+
+#endif

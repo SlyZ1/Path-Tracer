@@ -1,6 +1,8 @@
 CXX = C:/ProgramData/mingw64/mingw64/bin/g++.exe
 AR  = C:/ProgramData/mingw64/mingw64/bin/ar.exe
 CXXFLAGS = -g -std=c++17 -Wall -Wextra
+CXXFLAGS += -MMD -MP
+-include $(OBJS:.o=.d)
 
 INCLUDES = -Iinclude \
            -Iinclude/imgui \
