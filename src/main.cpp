@@ -65,6 +65,7 @@ void genTexture(unsigned int width, unsigned int height){
 }
 
 void init(){
+    cout << "0" << endl;
     app = make_shared<App>();
     app->init(1600, 900, "Basic Raytracer");
     app->toggleCursor(false);
@@ -100,7 +101,7 @@ void init(){
     glUniform2f(winSizeLoc, app->width(), app->height());
 
     Mesh* mesh = new Mesh();
-    mesh->loadFromModel("models/bunny.obj");
+    mesh->loadFromModel("models/Cube.obj");
     vector<Triangle> triangles = mesh->getTriangles();
     cout << "Loaded model with " << triangles.size() << " triangles." << endl;
     GLuint trissbo;

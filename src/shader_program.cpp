@@ -1,4 +1,5 @@
 #include "shader_program.hpp"
+#include <cstring>
 
 ShaderProgram::ShaderProgram() : m_shaderProgram(0) { }
 
@@ -15,35 +16,51 @@ fs::path ShaderProgram::extractPath(const string& line){
     return fs::path(line.substr(start, end - start));
 }
 
-string ShaderProgram::getShaderSource(const char* path){
-    ifstream file(path);
-    stringstream ss;
-    string line;
-
+string ShaderProgram::getShaderSource(const char* path) {
+    ifstream file(path, std::ios::ate | std::ios::binary);
     if (!file.is_open()) {
         cerr << "Erreur: impossible d'ouvrir le fichier " << path << endl;
         return "";
     }
 
+    // Lire tout le fichier en une fois
+    std::size_t size = file.tellg();
+    string raw(size, '\0');
+    file.seekg(0);
+    file.read(raw.data(), size);
+
+    // Parser ligne par ligne sans getline ni copies supplémentaires
+    string result;
+    result.reserve(size);
     bool isForwardDeclaration = false;
 
-    while (getline(file, line)) {
-        // Includes
-        if (line.find("#pragma include") != std::string::npos) {
-            fs::path includePath = fs::path(path).parent_path() / extractPath(line);
-            ss << getShaderSource(includePath.string().c_str());
-        // Forward declarations
+    const char* cur = raw.data();
+    const char* end = cur + size;
+
+    while (cur < end) {
+        const char* lineEnd = static_cast<const char*>(memchr(cur, '\n', end - cur));
+        if (!lineEnd) lineEnd = end;
+
+        std::string_view line(cur, lineEnd - cur);
+        // Retirer le \r éventuel (fichiers Windows)
+        if (!line.empty() && line.back() == '\r') line.remove_suffix(1);
+
+        if (line.find("#pragma include") != string_view::npos) {
+            fs::path includePath = fs::path(path).parent_path() / extractPath(string(line));
+            result += getShaderSource(includePath.string().c_str());
         } else if (line == "#pragma FDECLARE") {
             isForwardDeclaration = true;
         } else if (line == "#pragma FEND") {
             isForwardDeclaration = false;
-        // Normal lines
-        } else {
-            if (!isForwardDeclaration) ss << line << "\n";
+        } else if (!isForwardDeclaration) {
+            result.append(line.data(), line.size());
+            result += '\n';
         }
+
+        cur = (lineEnd < end) ? lineEnd + 1 : end;
     }
 
-    return ss.str();
+    return result;
 }
 
 void ShaderProgram::load(int type, const char *path){
@@ -59,10 +76,13 @@ void ShaderProgram::load(int type, const char *path){
     m_shaders.push_back(shader);
     
     //Compile shader
+    cout << "2" << endl;
     string shaderSourceString = getShaderSource(path); 
+    cout << "3" << endl;
     const char *shaderSource = shaderSourceString.c_str();
     glShaderSource(shader, 1, &shaderSource, NULL);
     glCompileShader(shader);
+    cout << "4" << endl;
 
     //Check for errors
     int success;
@@ -77,6 +97,7 @@ void ShaderProgram::load(int type, const char *path){
 
     //Add to program
     glAttachShader(m_shaderProgram, shader);
+    cout << m_name << endl;
 }
 
 void ShaderProgram::reload(){
