@@ -144,15 +144,6 @@ void ShaderProgram::link(){
         cerr << "ShaderProgram linking failed : " << infoLog << endl;
         cerr << "at " << m_name << ".glsl" << endl;
     }
-
-    GLint status;
-    glValidateProgram(m_shaderProgram);
-    glGetProgramiv(m_shaderProgram, GL_VALIDATE_STATUS, &status);
-    if (status == GL_FALSE) {
-        char log[512];
-        glGetProgramInfoLog(m_shaderProgram, 512, nullptr, log);
-        std::cerr << "Program invalid: " << log << std::endl;
-    }
     
     //Delete shaders
     for(const int shader : m_shaders){

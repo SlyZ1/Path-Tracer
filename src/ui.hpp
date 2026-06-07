@@ -18,13 +18,6 @@ class UI {
         void BeginTwoColumnLayout() const;
         void EndTwoColumnLayout() const;
         void drawMarker(ImVec2 minRect, ImVec2 maxRect, float keyPos) const;
-        
-        // Materials
-        int m_bsdfType = 3;
-        float m_roughness = 0;
-        float m_metallic = 0;
-        float m_metalColor[3] = {1,1,1};
-        float m_refractionIndex = 1.33;
 
         // Technical GPU
         int m_resMultiplier = 3;

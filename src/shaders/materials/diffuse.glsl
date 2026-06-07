@@ -1,8 +1,3 @@
-#define LAMBERT 0
-#define QON 1
-#define FON 2
-#define EON 3
-
 #define CONSTANT1_FON (0.5 - 2 / (3 * PI))
 #define CONSTANT2_FON (2 / 3 - 28 / (15 * PI))
 
@@ -34,42 +29,28 @@ vec3 lambert(Hit hit){
 
 vec3 oren_nayar(Hit hit, vec3 normal, vec3 lightDir, vec3 viewDir, float roughness){
     vec3 lambert = lambert(hit);
-    if (bsdfType == LAMBERT || roughness < 1e-2) return lambert;
+    if (roughness < 1e-2) return lambert;
 
     float NdotL = max(dot(normal, lightDir), 0);
     float NdotV = max(dot(normal, viewDir), 0);
+    
+    float A = 1 / (1 + CONSTANT1_FON * roughness);
+    float B = roughness * A;
 
-    if (bsdfType == QON){
-        float sigma2 = pow(roughness * PI * 0.5, 2);
-        float A = 1 - 0.5 * sigma2 / (sigma2 + 0.33);
-        float B = 0.45 * sigma2 / (sigma2 + 0.09);
+    // FON
+    float cosPhi = max(0, cosPhiDiff(normal, lightDir, viewDir));
+    float s2 = cosPhi * cosPhi * (1 - NdotL * NdotL) * (1 - NdotV * NdotV);
+    float tq = cosPhi <= 0 ? 1 : max(NdotL, NdotV);
+    vec3 angleTerm = vec3(A + B * sqrt(s2) / tq);
 
-        float cosPhi = max(0, cosPhiDiff(normal, lightDir, viewDir));
-        float s2 = cosPhi * cosPhi * (1 - NdotL * NdotL) * (1 - NdotV * NdotV);
-        float oneOverTq = cosPhi <= 0 ? 0 : 1 / max(NdotL, NdotV);
-        float angleTerm = A + B * sqrt(s2) * oneOverTq;
-        return angleTerm * lambert;
-    }
-    else {
-        float A = 1 / (1 + CONSTANT1_FON * roughness);
-        float B = roughness * A;
+    // EON normalization
+    float EL = E_FON_approx(NdotL, roughness);
+    float EV = E_FON_approx(NdotV, roughness);
+    float avgE = A * (1 + CONSTANT2_FON * roughness);
+    vec3 F = hit.mat.color * avgE / (vec3(1) - hit.mat.color * (1 - avgE));
+    angleTerm += F * max(1 - EL, EPS) * max(1 - EV, EPS) / max(1 - avgE, EPS);
 
-        float cosPhi = max(0, cosPhiDiff(normal, lightDir, viewDir));
-        float s2 = cosPhi * cosPhi * (1 - NdotL * NdotL) * (1 - NdotV * NdotV);
-        float tq = cosPhi <= 0 ? 1 : max(NdotL, NdotV);
-        vec3 angleTerm = vec3(A + B * sqrt(s2) / tq);
-
-        if (bsdfType == EON){
-            float EL = E_FON_approx(NdotL, roughness);
-            float EV = E_FON_approx(NdotV, roughness);
-            float avgE = A * (1 + CONSTANT2_FON * roughness);
-            vec3 F = hit.mat.color * avgE / (vec3(1) - hit.mat.color * (1 - avgE));
-            angleTerm += F * max(1 - EL, EPS) * max(1 - EV, EPS) / max(1 - avgE, EPS);
-        }
-        return lambert * angleTerm;
-    }
-
-    return lambert;
+    return lambert * angleTerm;
 }
 
 void diffuse(inout RaycastData data){

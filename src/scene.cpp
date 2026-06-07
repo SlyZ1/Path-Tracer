@@ -90,6 +90,14 @@ void Scene::addObject(const Primitive& prim){
     m_sceneChanged = true;
 }
 
+void Scene::removeObject(int index){
+    Primitive prim = m_prims[index];
+    if (prim.mat.type == MatType::EMIT) 
+        std::remove(m_lightIndices.begin(), m_lightIndices.end(), index);
+    m_prims.erase(m_prims.begin() + index);
+    m_sceneChanged = true;
+}
+
 void Scene::updateGPU(){
     if (!m_sceneChanged) return;
 

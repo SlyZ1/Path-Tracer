@@ -80,16 +80,12 @@ struct RaycastData {
 };
 
 out vec4 FragColor;
-layout (location = 1) uniform vec4 metalProperties;
 layout (location = 2) uniform vec2 texSize;
 layout (location = 3) uniform sampler2D screenTex;
 layout (location = 4) uniform int frameCount;
-layout (location = 5) uniform int bsdfType;
-layout (location = 6) uniform float ballRoughness;
 layout (location = 7) uniform int samples;
 layout (location = 8) uniform vec2 winSize;
 layout (location = 9) uniform int maxBounces;
-layout (location = 10) uniform float refractionIndex;
 layout (location = 11) uniform bool useModel;
 uniform Camera camera;
 in vec4 vClipPos;

@@ -39,6 +39,10 @@ void UI::EndTwoColumnLayout() const
 void UI::render(function<void()> resetFrame) {
     if (!m_show) return;
 
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.5f, 0.2f, 1.0f, 0.3f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.5f, 0.2f, 1.0f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.5f, 0.2f, 1.0f, 0.8f));
+
     ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(300, m_app->getIo()->DisplaySize.y), ImGuiCond_Always);
     ImGui::Begin("Parameters", (bool*)NULL, ImGuiWindowFlags_MenuBar);
@@ -46,56 +50,43 @@ void UI::render(function<void()> resetFrame) {
     ImGui::BeginDisabled(m_renderer->isRendering() || m_disabled);
 
     ImGui::Spacing();
-    if (ImGui::CollapsingHeader("Technical Settings", ImGuiTreeNodeFlags_DefaultOpen)){
-        BeginTwoColumnLayout();
-        
-        Label("Max Bounces");
-        if (ImGui::InputInt("##Max Bounces", &m_maxBounces)) resetFrame();
-        
-        Label("Resolution Divider");
-        ImGui::InputInt("##Resolution Divider", &m_resMultiplier);
-        m_resMultiplier = std::max(m_resMultiplier, 1);
-        
-        EndTwoColumnLayout();
-    }
-
     ImGui::Spacing();
-    ImGui::Spacing();
-    if (ImGui::CollapsingHeader("Material Settings", ImGuiTreeNodeFlags_DefaultOpen)){
-        BeginTwoColumnLayout();
 
-        const char* items[] = { 
-            "Lambert", 
-            "(QON) Qualitative Oren-Nayar", 
-            "(FON) Fujii-Oren-Nayar", 
-            "(EON) Energy-Preserving Oren-Nayar"
-        };
-        Label("Diffuse Model");
-        if (ImGui::Combo("##Diffuse Model", &m_bsdfType, items, IM_ARRAYSIZE(items)))
-            resetFrame();
+    // ImGui::Spacing();
+    // ImGui::Spacing();
+    // if (ImGui::CollapsingHeader("Material Settings", ImGuiTreeNodeFlags_DefaultOpen)){
+    //     BeginTwoColumnLayout();
 
-        Label("Ball's Roughness");
-        if (ImGui::SliderFloat("##Ball's Roughness", &m_roughness, 0, 1))
-            resetFrame();
+    //     const char* items[] = { 
+    //         "Lambert", 
+    //         "(QON) Qualitative Oren-Nayar", 
+    //         "(FON) Fujii-Oren-Nayar", 
+    //         "(EON) Energy-Preserving Oren-Nayar"
+    //     };
+    //     Label("Diffuse Model");
+    //     if (ImGui::Combo("##Diffuse Model", &m_bsdfType, items, IM_ARRAYSIZE(items)))
+    //         resetFrame();
+
+    //     Label("Ball's Roughness");
+    //     if (ImGui::SliderFloat("##Ball's Roughness", &m_roughness, 0, 1))
+    //         resetFrame();
             
-        ImGui::Spacing();
-        Label("Metal Color");
-        if (ImGui::ColorEdit3("##Metal Color", m_metalColor))
-            resetFrame();
+    //     ImGui::Spacing();
+    //     Label("Metal Color");
+    //     if (ImGui::ColorEdit3("##Metal Color", m_metalColor))
+    //         resetFrame();
     
-        Label("Metallic");
-        if (ImGui::SliderFloat("##Metallic", &m_metallic, 0, 1))
-            resetFrame();
+    //     Label("Metallic");
+    //     if (ImGui::SliderFloat("##Metallic", &m_metallic, 0, 1))
+    //         resetFrame();
 
-        ImGui::Spacing();
-        Label("Refraction Index");
-        if (ImGui::SliderFloat("##Refraction Index", &m_refractionIndex, 1, 10))
-            resetFrame();
+    //     ImGui::Spacing();
+    //     Label("Refraction Index");
+    //     if (ImGui::SliderFloat("##Refraction Index", &m_refractionIndex, 1, 10))
+    //         resetFrame();
 
-        EndTwoColumnLayout();
-    }
-
-    ImGui::Spacing();
+    //     EndTwoColumnLayout();
+    // }
     if (ImGui::CollapsingHeader("Model Settings", ImGuiTreeNodeFlags_DefaultOpen)){
         BeginTwoColumnLayout();
 
@@ -114,6 +105,7 @@ void UI::render(function<void()> resetFrame) {
         EndTwoColumnLayout();
     }
 
+    ImGui::Spacing();
     ImGui::Spacing();
     ImGui::Spacing();
 
@@ -178,8 +170,16 @@ void UI::render(function<void()> resetFrame) {
 
     ImGui::Spacing();
     ImGui::Spacing();
+    ImGui::Spacing();
 
     if (ImGui::CollapsingHeader("Render Settings", ImGuiTreeNodeFlags_DefaultOpen)){
+    
+        BeginTwoColumnLayout();
+    
+        Label("Render Samples");
+        ImGui::InputInt("##Render Samples", &m_renderSamples);  
+    
+        EndTwoColumnLayout();
        
         if (ImGui::Button("Render Image", ImVec2(-FLT_MIN, 0))){
             m_renderer->startRendering(m_renderSamples);
@@ -190,13 +190,6 @@ void UI::render(function<void()> resetFrame) {
             m_animator->start(m_renderSamples, m_animationFPS, m_animationDuration);
             resetFrame();
         }
-       
-        BeginTwoColumnLayout();
-       
-        Label("Render Samples");
-        ImGui::InputInt("##Render Samples", &m_renderSamples);
-       
-        EndTwoColumnLayout();
        
         if (m_renderer->isRendering()) {
             int progress = m_renderer->getProgress();
@@ -210,16 +203,29 @@ void UI::render(function<void()> resetFrame) {
         }
     }
 
+    ImGui::Spacing();
+    ImGui::Spacing();
+    ImGui::Spacing();
+
+    if (ImGui::CollapsingHeader("Technical Settings", ImGuiTreeNodeFlags_DefaultOpen)){
+        BeginTwoColumnLayout();
+        
+        Label("Max Bounces");
+        if (ImGui::InputInt("##Max Bounces", &m_maxBounces)) resetFrame();
+        
+        Label("Resolution Divider");
+        ImGui::InputInt("##Resolution Divider", &m_resMultiplier);
+        m_resMultiplier = std::max(m_resMultiplier, 1);
+        
+        EndTwoColumnLayout();
+    }
+
+    ImGui::PopStyleColor(3);
     ImGui::EndDisabled();
     ImGui::End();
 }
 
 void UI::updateGPU() const {
-    glUniform1i(ShaderProgram::getVarLoc("bsdfType"), m_bsdfType);
-    glUniform1f(ShaderProgram::getVarLoc("ballRoughness"), m_roughness);
-    glUniform4f(ShaderProgram::getVarLoc("metalProperties"), m_metalColor[0], m_metalColor[1], m_metalColor[2], m_metallic);
-    glUniform1f(ShaderProgram::getVarLoc("refractionIndex"), m_refractionIndex);
-
     glUniform1i(ShaderProgram::getVarLoc("maxBounces"), m_bounces);
     glUniform1i(ShaderProgram::getVarLoc("useModel"), m_useModel);
 

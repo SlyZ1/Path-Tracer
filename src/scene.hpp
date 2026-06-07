@@ -54,6 +54,7 @@ public:
     static Scene defaultScene();
     void initGPU();
     void addObject(const Primitive& prim);
+    void removeObject(int index);
     void updateGPU();
 };
 #endif

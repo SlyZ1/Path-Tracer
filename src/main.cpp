@@ -208,6 +208,15 @@ void inputs(){
         app->toggleCursor(app->cursorIsHidden());
         camera.resetMousePos(app->mouseX(), app->mouseY());
     }
+
+    if (app->keyPressedOnce(GLFW_KEY_ENTER, frameCount)){
+        Primitive newprim;
+        newprim.type = PrimType::SPHERE;
+        newprim.pos = glm::vec3(rand() / (float)RAND_MAX * 10, 1, rand() / (float)RAND_MAX * 10);
+        newprim.scale = rand() / (float)RAND_MAX + 0.5;
+        newprim.mat = Scene::glassMaterial(glm::vec3(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX, rand() / (float)RAND_MAX), rand() / (float)RAND_MAX*2 + 1);
+        scene->addObject(newprim);
+    }
 }
 
 void dynamicResolution(){

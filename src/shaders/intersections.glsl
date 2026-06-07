@@ -77,7 +77,7 @@ Hit triangleIntersect(Triangle tri, Ray ray){
     vec3 normal = computeNormal(tri);
     bool isInside = dot(normal, ray.dir) > 0;
 
-    return Hit(t, normal, Mat(metalProperties.xyz, 1, mData(ballRoughness,metalProperties.w), vec2(0)), isInside);
+    return Hit(t, normal, Mat(vec3(1), 1, mData(0,0.2), vec2(0)), isInside);
 }
 
 Hit intersectAABB(Ray ray, AABB box, float tMin, float tMax)
