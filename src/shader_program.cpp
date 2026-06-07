@@ -76,13 +76,10 @@ void ShaderProgram::load(int type, const char *path){
     m_shaders.push_back(shader);
     
     //Compile shader
-    cout << "2" << endl;
-    string shaderSourceString = getShaderSource(path); 
-    cout << "3" << endl;
+    string shaderSourceString = getShaderSource(path);
     const char *shaderSource = shaderSourceString.c_str();
     glShaderSource(shader, 1, &shaderSource, NULL);
     glCompileShader(shader);
-    cout << "4" << endl;
 
     //Check for errors
     int success;

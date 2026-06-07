@@ -1,3 +1,11 @@
+#define LAMBERT 0
+#define QON 1
+#define FON 2
+#define EON 3
+
+#define CONSTANT1_FON (0.5 - 2 / (3 * PI))
+#define CONSTANT2_FON (2 / 3 - 28 / (15 * PI))
+
 float p_cosineHemisphere(vec3 normal, vec3 w){
     return max(0, dot(normal, w)) / PI;
 }
@@ -26,7 +34,7 @@ vec3 lambert(Hit hit){
 
 vec3 oren_nayar(Hit hit, vec3 normal, vec3 lightDir, vec3 viewDir, float roughness){
     vec3 lambert = lambert(hit);
-    if (bsdfType == LAMBERT || roughness < EPS) return lambert;
+    if (bsdfType == LAMBERT || roughness < 1e-2) return lambert;
 
     float NdotL = max(dot(normal, lightDir), 0);
     float NdotV = max(dot(normal, viewDir), 0);
@@ -64,7 +72,7 @@ vec3 oren_nayar(Hit hit, vec3 normal, vec3 lightDir, vec3 viewDir, float roughne
     return lambert;
 }
 
-void diffuse(World world, inout RaycastData data){
+void diffuse(inout RaycastData data){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
     ray.origin += hit.t * ray.dir + EPS * hit.normal;
@@ -82,7 +90,7 @@ void diffuse(World world, inout RaycastData data){
     float orenNayarRoughness = diffuseRoughness(hit.mat);   
     vec3 viewDir = -ray.dir;
 
-    if (r < wbsdf){
+    if (r <= wbsdf){
         // BSDF sampling
         vec3 newDir = randomCosineHemisphere(seed, hit.normal, 1);
         vec3 f_r = oren_nayar(hit, hit.normal, newDir, viewDir, orenNayarRoughness);
@@ -90,13 +98,13 @@ void diffuse(World world, inout RaycastData data){
         ray.dir = newDir;
 
         // Check if we hit a light with the BSDF sampling
-        Hit nextHit = rayIntersection(world, ray);
+        Hit nextHit = rayIntersection(ray);
         if (nextHit.t > 0 && nextHit.mat.type == MAT_EMIT){
             vec3 Le = nextHit.mat.color * emitIntensity(nextHit.mat);
             float LdotNl = max(dot(-newDir, nextHit.normal), 1);
 
             float pdirect = p_direct(light, nextHit.t, LdotNl)
-                            * shadow_hit(light, world, ray);
+                            * shadow_hit(light, ray);
             float pbsdf = p_cosineHemisphere(hit.normal, newDir);
             float weight = wbsdf * pbsdf / (wbsdf * pbsdf + wdirect * pdirect);
 
@@ -112,7 +120,7 @@ void diffuse(World world, inout RaycastData data){
         vec3 f_r = oren_nayar(hit, hit.normal, ray.dir, viewDir, orenNayarRoughness);
         ray.throughput *= f_r;
 
-        if (shadow_hit(light, world, ray) > 0){
+        if (shadow_hit(light, ray) > 0){
             float pbsdf = p_cosineHemisphere(hit.normal, ray.dir);
             float weight = 1.0 / (wdirect * pdirect + wbsdf * pbsdf);
             vec3 Le = light.color * light.intensity;

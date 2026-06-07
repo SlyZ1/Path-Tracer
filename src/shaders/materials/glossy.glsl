@@ -1,4 +1,4 @@
-void glossy(World world, inout RaycastData data){
+void glossy(inout RaycastData data){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
 
@@ -12,12 +12,13 @@ void glossy(World world, inout RaycastData data){
     bool totalReflection = n * n * (1 - cos1 * cos1) > 1;
 
     float reflectance = fresnel(cos1, cos2, n);
-    if (totalReflection || rand(seed) < reflectance){
+    if (totalReflection || rand(seed) <= reflectance){
+        data.hit.mat.data = mData(pbrFuzz(hit.mat), 0);
         data.hit.mat.color = vec3(1);
-        metal(world, data);
+        metal(data);
     }
     else{
         data.hit.mat.data = mData(0, 0);
-        diffuse(world, data);
+        diffuse(data);
     }
 }

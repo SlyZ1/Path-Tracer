@@ -11,7 +11,8 @@ uint initSeed(uvec2 pos, uint frame) {
 
 float rand(inout uint seed) {
     seed = pcg_hash(seed);
-    return float(seed) * (1.0 / 4294967296.0);
+    float val = float(seed) * (1.0 / 4294967296.0);
+    return clamp(val, 0.0, 1.0);
 }
 
 vec3 randomInSphere(inout uint seed) {

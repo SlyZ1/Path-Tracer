@@ -10,6 +10,7 @@
 #include "mesh.hpp"
 #include "ui.hpp"
 #include "animator.hpp"
+#include "scene.hpp"
 
 using namespace std;
 
@@ -34,6 +35,7 @@ shared_ptr<App> app;
 shared_ptr<Renderer> renderer;
 shared_ptr<Animator> animator;
 shared_ptr<UI> ui;
+shared_ptr<Scene> scene;
 
 extern "C" {
     __declspec(dllexport) unsigned long NvOptimusEnablement = 1;
@@ -65,7 +67,6 @@ void genTexture(unsigned int width, unsigned int height){
 }
 
 void init(){
-    cout << "0" << endl;
     app = make_shared<App>();
     app->init(1600, 900, "Basic Raytracer");
     app->toggleCursor(false);
@@ -77,7 +78,7 @@ void init(){
     rayTraceShader.load(GL_VERTEX_SHADER, "src/shaders/vertex.glsl");
     rayTraceShader.load(GL_FRAGMENT_SHADER, "src/shaders/frag.glsl");
     rayTraceShader.link();
-
+    
     accumulationShader.create();
     accumulationShader.load(GL_VERTEX_SHADER, "src/shaders/screenVertex.glsl");
     accumulationShader.load(GL_FRAGMENT_SHADER, "src/shaders/screenFrag.glsl");
@@ -95,11 +96,13 @@ void init(){
     };  
     tie(VBO, VAO, EBO) = ShaderProgram::addData(vertices, indices);
     ShaderProgram::linkData(3, sizeof(float), 0);
-
+    
     rayTraceShader.use();
     int winSizeLoc = ShaderProgram::getVarLoc("winSize");
     glUniform2f(winSizeLoc, app->width(), app->height());
 
+    scene = make_shared<Scene>(Scene::defaultScene());
+    
     Mesh* mesh = new Mesh();
     mesh->loadFromModel("models/Cube.obj");
     vector<Triangle> triangles = mesh->getTriangles();
@@ -128,9 +131,7 @@ void init(){
     glUniform1i(ShaderProgram::getVarLoc("numBVHNodes"), linNodes.size());
     
     glGenFramebuffers(1, &FBO);
-    
     genTexture(app->width(), app->height());
-    
     glDisable(GL_FRAMEBUFFER_SRGB);
 
     camera.resetMousePos(app->mouseX(), app->mouseY());
@@ -161,6 +162,7 @@ void render(){
     rayTraceShader.use();
     
     ui->updateGPU();
+    scene->updateGPU();
     
     glUniform2f(ShaderProgram::getVarLoc("texSize"), texWidth, texHeight);
 
@@ -237,7 +239,6 @@ int main(){
         handleCamera();
         
         ui->render(resetFrame);
-        // animation();
         render();
         inputs();
 

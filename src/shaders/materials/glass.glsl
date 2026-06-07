@@ -1,4 +1,4 @@
-void glass(World world, inout RaycastData data){
+void glass(inout RaycastData data){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
 

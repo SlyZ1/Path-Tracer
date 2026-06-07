@@ -6,15 +6,18 @@ struct Camera {
 };
 
 struct Mat {
-    int type;
     vec3 color;
+    int type;
     float[2] data;
+    vec2 pad;
 };
 
-struct Sphere {
+struct Primitive {
     vec3 pos;
-    float rad;
+    float scale;
     Mat mat;
+    vec3 pad;
+    int type;
 };
 
 struct Triangle {
@@ -42,12 +45,6 @@ struct Light {
     float intensity;
 };
 
-struct Plane {
-    vec3 origin;
-    vec3 normal;
-    Mat mat;
-};
-
 struct Ray {
     vec3 origin;
     vec3 dir;
@@ -62,11 +59,11 @@ struct Hit {
     bool inside;
 };
 
+
 layout(std430, binding = 0) buffer TrianglesBuffer {
     Triangle triangles[];
 };
 uniform int numTriangles;
-
 layout(std430, binding = 1) buffer BVHBuffer {
     BVHNode nodes[];
 };
@@ -74,17 +71,12 @@ uniform int numBVHNodes;
 uniform int debugBVH;
 uniform vec3 modelPos;
 
-#define NUM_SPHERE 3
-#define NUM_PLANE 1
-#define NUM_LIGHT 1
-
-struct World {
-    Sphere spheres[NUM_SPHERE];
-    Plane planes[NUM_PLANE];
-#if NUM_LIGHT > 0
-    Light lights[NUM_LIGHT];
-#endif
+layout(std430, binding = 2) buffer PrimitiveBuffer {
+    Primitive primitives[];
 };
+uniform int numPrimitives;
+
+#define NUM_LIGHT 0
 
 struct RaycastData {
     Hit hit;
@@ -112,14 +104,6 @@ in vec4 vClipPos;
 #define PROBA_EPS 1e-6
 #define MAX_NONEMIT_BOUNCE 10
 #define PI 3.14159265
-#define CONSTANT1_FON (0.5 - 2 / (3 * PI))
-#define CONSTANT2_FON (2 / 3 - 28 / (15 * PI))
-
-#define MAT_DIFF 0
-#define MAT_GLOSSY 1
-#define MAT_EMIT 2
-#define MAT_GLASS 3
-#define MAT_METAL 4
 
 #define updateData(data) data = RaycastData(hit, ray, seed)
 #define unwrapData(data) ray = data.ray; hit = data.hit; seed = data.seed
@@ -134,15 +118,6 @@ in vec4 vClipPos;
 #define pbrMetallic(m) m.data[1]
 #define emitIntensity(m) m.data[0]          
 #define glassIndex(m) m.data[1]
-
-#define BSDF_LAMBERT 0
-#define BSDF_LAMBERT_WRAP 1
-#define BSDF_OREN_NAYAR 2
-
-#define LAMBERT 0
-#define QON 1
-#define FON 2
-#define EON 3
 
 // -------------------- UTILS
 
@@ -168,7 +143,7 @@ void stop(inout Hit hit, bool touchedLight);
 float luminanceMean(vec3 c);
 
 // INTERSECTIONS.GLSL
-Hit rayIntersection(World world, inout Ray ray);
+Hit rayIntersection(inout Ray ray);
 #pragma FEND
 
 vec3 schlickFresnel(float VdotN, vec3 F0)
@@ -196,8 +171,8 @@ float p_direct(Light light, float distance, float cosLight){
     return distance * distance / (cosLight * 2 * PI * light.rad * light.rad * NUM_LIGHT);
 }
 
-float shadow_hit(Light light, World world, Ray ray){
-    Hit hit = rayIntersection(world, ray);
+float shadow_hit(Light light, Ray ray){
+    Hit hit = rayIntersection(ray);
     vec3 hitPos = ray.origin + ray.dir * hit.t;
     if (hit.t > 0 && length(hitPos - light.pos) > light.rad + sqrt(EPS)) return 0;
     return 1;
@@ -240,6 +215,12 @@ float sampleLight(inout RaycastData data, Light light){
 
 // -------------------- MATERIALS
 
+#define MAT_DIFF 0
+#define MAT_METAL 1
+#define MAT_GLASS 2
+#define MAT_GLOSSY 3
+#define MAT_EMIT 4
+
 #pragma include "./materials/diffuse.glsl"
 #pragma include "./materials/metal.glsl"
 #pragma include "./materials/glass.glsl"
@@ -247,29 +228,30 @@ float sampleLight(inout RaycastData data, Light light){
 #pragma include "./materials/emit.glsl"
 
 #pragma FDECLARE
-void diffuse(World world, inout RaycastData data);
-void metal(World world, inout RaycastData data);
-void glass(World world, inout RaycastData data);
-void glossy(World world, inout RaycastData data);
+void diffuse(inout RaycastData data);
+void metal(inout RaycastData data);
+void glass(inout RaycastData data);
+void glossy(inout RaycastData data);
 void emit(inout RaycastData data);
 #pragma FEND
 
-void computeLighting(World world, in out Hit hit, in out Ray ray, in out uint seed){
+
+void computeLighting(in out Hit hit, in out Ray ray, in out uint seed){
     if (hit.t < 0) return;
 
     RaycastData data = RaycastData(hit, ray, seed);
     switch (hit.mat.type){
         case MAT_DIFF:
-            diffuse(world, data);
+            diffuse(data);
             break;
         case MAT_GLOSSY:
-            glossy(world, data);
+            glossy(data);
             break;
         case MAT_METAL:
-            metal(world, data);
+            metal(data);
             break;
         case MAT_GLASS:
-            glass(world, data);
+            glass(data);
             break;
         case MAT_EMIT:
             emit(data);
@@ -312,24 +294,36 @@ vec3 sun(vec3 lookingAt)
     return vec3(sunIntensity) * sun;
 }
 
-vec3 horizon(vec3 lookingAt){
-    float a = (dot(normalize(lookingAt), vec3(0,1,0)) + 1) * 0.5;
+vec3 horizon(vec3 lookingAt)
+{
+    float a = (dot(normalize(lookingAt), vec3(0,1,0)) + 1.0) * 0.5;
+
     vec3 top = vec3(0.32, 0.55, 0.78);
-    vec3 bot = vec3(0.62, 0.72, 0.85);
-    return mix(bot, top, a) * 0.7;
+    vec3 middle = vec3(0.75, 0.78, 0.82);
+    vec3 sunset = vec3(1.00, 0.65, 0.30);
+
+    vec3 sky;
+    if (a < 0.35){
+        sky = mix(sunset, middle, a / 0.5);
+    }
+    else{
+        sky = mix(middle, top, (a - 0.5) / 0.5);
+    }
+
+    return sky * 0.7;
 }
 
 vec3 sky(vec3 lookingAt){
     return horizon(lookingAt);
 }
 
-vec4 rayColor(World world, in out uint seed, Ray ray){
+vec4 rayColor(in out uint seed, Ray ray){
     Ray tracedRay = ray;
     for (int i = 0; i < maxBounces; i++){
 
-        Hit hit = rayIntersection(world, tracedRay);
+        Hit hit = rayIntersection(tracedRay);
         //if (hit.t > 0) tracedRay.throughput *= exp(-hit.t * 0.015);
-        computeLighting(world, hit, tracedRay, seed);
+        computeLighting(hit, tracedRay, seed);
 
         if (hit.t < 0){
             if (hit.t > -2) tracedRay.radiance += tracedRay.throughput * sky(tracedRay.dir);
@@ -356,44 +350,9 @@ void main()
     );
     ray = fovRay(pos, ray);
 
-    Mat planeMat = Mat(MAT_GLOSSY, vec3(0.85), mData(0,0.4));
-    Mat sphereMat = Mat(MAT_DIFF, vec3(1, 0, 0), mData0(ballRoughness));
-    Mat glassMat = Mat(MAT_GLASS, vec3(1, 0.85, 0.85), mData0(refractionIndex));
-
-    float metallic = metalProperties.w;
-    vec3 metalColor = metalProperties.rgb;
-    Mat metalMat1 = Mat(MAT_GLOSSY, metalColor, mData(0 / 8.0, metallic));
-    Mat metalMat2 = Mat(MAT_GLOSSY, metalColor, mData(2 / 8.0, metallic));
-    Mat metalMat3 = Mat(MAT_GLOSSY, metalColor, mData(4 / 8.0, metallic));
-    Mat metalMat4 = Mat(MAT_GLOSSY, metalColor, mData(6 / 8.0, metallic));
-
-    Mat sphereMat1 = Mat(MAT_GLASS, metalColor, mData1(1.05));
-    Mat sphereMat2 = Mat(MAT_GLASS, metalColor, mData(ballRoughness, refractionIndex));
-    Mat sphereMat3 = Mat(MAT_GLASS, metalColor, mData1(4));
-
-    Sphere spheres[NUM_SPHERE];
-    spheres[0] = Sphere(vec3(3,3,-4), 1, metalMat1);
-    spheres[1] = Sphere(vec3(0,1,-4), 1, sphereMat2);
-    /*spheres[2] = Sphere(vec3(-3,1, -4), 1, sphereMat3);
-    spheres[3] = Sphere(vec3(10, EPS, -5), 2, metalMat3);
-    spheres[4] = Sphere(vec3(16, EPS, -5), 2, metalMat4);
-    spheres[5] = Sphere(vec3(-6, EPS, -5), 2, glassMat);*/
-    
-    Plane planes[NUM_PLANE];
-    planes[0] = Plane(vec3(0,0,-5), vec3(0,1,0), planeMat);
-
-#if NUM_LIGHT > 0
-    Light lights[NUM_LIGHT];
-    lights[0] = Light(modelPos, 1.5, vec3(1), 10);
-    //lights[1] = Light(vec3(6,5,10), 1.5, vec3(1), 10);
-    World world = World(spheres, planes, lights);
-#else
-    World world = World(spheres, planes);
-#endif
-
     vec4 radiance;
     for(int i = 0; i < samples; i++){
-        radiance += max(rayColor(world, seed, ray), 0);
+        radiance += max(rayColor(seed, ray), 0);
     }
 
     FragColor = radiance + max(frameCount, 0) * texture(screenTex, uv);

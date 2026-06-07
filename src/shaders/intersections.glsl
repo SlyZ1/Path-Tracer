@@ -1,11 +1,17 @@
-Hit sphereIntersect(Sphere sphere, Ray ray){
+#define PRIM_SPHERE 0
+#define PRIM_PLANE 1
+#define PRIM_CUBE 2
+
+Hit sphereIntersect(Primitive sphere, Ray ray){
     vec3 oc = ray.origin - sphere.pos;
     float b = dot(oc, ray.dir);
-    float c = dot(oc, oc) - sphere.rad * sphere.rad;
+    float c = dot(oc, oc) - sphere.scale * sphere.scale;
     float h = b*b - c;
+
     Hit hit;
     hit.t = -1;
     if (h < 0.) return hit;
+
     bool inside = false;
     float sqrtH = sqrt(h);
     float t = -b - sqrtH;
@@ -14,31 +20,18 @@ Hit sphereIntersect(Sphere sphere, Ray ray){
         inside = true;
         if (t <= 0) return hit;
     }
+
     vec3 pos = ray.origin + t * ray.dir;
     vec3 normal = normalize(pos - sphere.pos);
     return Hit(t, normal, sphere.mat, inside);
 }
 
-Hit lightIntersect(Light light, Ray ray){
-    vec3 oc = ray.origin - light.pos;
-    float b = dot(oc, ray.dir);
-    float c = dot(oc, oc) - light.rad * light.rad;
-    float h = b*b - c;
-    Hit hit;
-    hit.t = -1;
-    if (h < 0.) return hit;
-    float t = -b - sqrt(h);
-    if (t <= 0) return hit;
-    vec3 pos = ray.origin + t * ray.dir;
-    Mat mat = Mat(MAT_EMIT, light.color, mData0(light.intensity));
-    return Hit(t, normalize(pos - light.pos), mat, false);
-}
-
-Hit planeIntersect(Plane plane, Ray ray){
-    vec3 rp = plane.origin - ray.origin;
-    float t = dot(rp, plane.normal) / dot(ray.dir, plane.normal);
+Hit planeIntersect(Primitive plane, Ray ray){
+    vec3 rp = plane.pos - ray.origin;
+    vec3 normal = vec3(0,1,0);
+    float t = dot(rp, normal) / dot(ray.dir, normal);
     vec3 relativePoint = ray.origin + t * ray.dir;
-    vec3 difference = relativePoint - plane.origin;
+    vec3 difference = relativePoint - plane.pos;
     Hit hit;
     hit.t = -1;
     if (t <= 0 || dot(difference, difference) > 10000) 
@@ -47,8 +40,23 @@ Hit planeIntersect(Plane plane, Ray ray){
     /*if (int((abs(relativePoint.x + 1) * 0.5) + int(abs(relativePoint.z + 1) * 0.5 + 1)) % 2 == 0) 
         plane.mat = Mat(plane.mat.type, vec3(0.83), mNoData());*/
 
-    return Hit(t, plane.normal, plane.mat, false);
+    return Hit(t, normal, plane.mat, false);
 }
+
+// Hit lightIntersect(Light light, Ray ray){
+//     vec3 oc = ray.origin - light.pos;
+//     float b = dot(oc, ray.dir);
+//     float c = dot(oc, oc) - light.rad * light.rad;
+//     float h = b*b - c;
+//     Hit hit;
+//     hit.t = -1;
+//     if (h < 0.) return hit;
+//     float t = -b - sqrt(h);
+//     if (t <= 0) return hit;
+//     vec3 pos = ray.origin + t * ray.dir;
+//     Mat mat = Mat(MAT_EMIT, light.color, mData0(light.intensity));
+//     return Hit(t, normalize(pos - light.pos), mat, false);
+// }
 
 vec3 computeNormal(Triangle tri) {
     vec3 edge1 = tri.v1 - tri.v0;
@@ -84,7 +92,7 @@ Hit triangleIntersect(Triangle tri, Ray ray){
     vec3 normal = computeNormal(tri);
     bool isInside = dot(normal, ray.dir) > 0;
 
-    return Hit(t, normal, Mat(MAT_GLOSSY, metalProperties.xyz, mData(ballRoughness,metalProperties.w)), isInside);
+    return Hit(t, normal, Mat(metalProperties.xyz, 1, mData(ballRoughness,metalProperties.w), vec2(0)), isInside);
 }
 
 Hit intersectAABB(Ray ray, AABB box, float tMin, float tMax)
@@ -170,25 +178,22 @@ Hit bvhIntersect(inout Ray ray)
     return hit;
 }
 
-Hit rayIntersection(World world, inout Ray ray){
+Hit rayIntersection(inout Ray ray){
     Hit hit;
     hit.t = 100000;
-    for(int i = 0; i < NUM_SPHERE; i += 1){
-        if (dot(world.spheres[i].pos - ray.origin, ray.dir) < 0 && false) continue;
-        Hit sphereHit = sphereIntersect(world.spheres[i], ray);
-        if (sphereHit.t > 0 && sphereHit.t < hit.t) hit = sphereHit;
+    for(int i = 0; i < numPrimitives; i += 1){
+        Primitive prim = primitives[i];
+        Hit newHit;
+        switch (prim.type){
+            case PRIM_SPHERE:
+                newHit = sphereIntersect(prim, ray);
+                break;
+            case PRIM_PLANE:
+                newHit = planeIntersect(prim, ray);
+                break; 
+        }
+        if (newHit.t > 0 && newHit.t < hit.t) hit = newHit;
     }
-    for(int i = 0; i < NUM_PLANE; i += 1){
-        if (dot(world.planes[i].normal, ray.dir) >= 0) continue;
-        Hit planeHit = planeIntersect(world.planes[i], ray);
-        if (planeHit.t > 0 && planeHit.t < hit.t) hit = planeHit;
-    }
-#if NUM_LIGHT > 0
-    for(int i = 0; i < NUM_LIGHT; i += 1){
-        Hit lightHit = lightIntersect(world.lights[i], ray);
-        if (lightHit.t > 0 && lightHit.t < hit.t) hit = lightHit;
-    }
-#endif
     if (useModel){
         Hit bvhHit = bvhIntersect(ray);
         if (bvhHit.t > 0 && bvhHit.t < hit.t) hit = bvhHit;
