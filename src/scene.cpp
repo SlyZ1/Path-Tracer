@@ -3,6 +3,9 @@
 
 using namespace glm;
 
+glm::vec3 Scene::m_cameraDirection = glm::vec3(0, 0, -1);
+glm::vec3 Scene::m_cameraPosition  = glm::vec3(0, 0, 0);
+
 Material Scene::diffuseMaterial(vec3 color, float roughness){
     Material mat;
     mat.type = MatType::DIFFUSE;
@@ -43,16 +46,9 @@ Material Scene::emitMaterial(vec3 color, float intensity){
     return mat;
 }
 
-Scene Scene::defaultScene(function<void()> resetFrame){
-    Scene scene = Scene(resetFrame);
+Scene Scene::defaultScene(shared_ptr<App> app, function<void()> resetFrame){
+    Scene scene = Scene(app, resetFrame);
     scene.initGPU();
-
-    // Primitive sphere;
-    // sphere.type = PrimType::SPHERE;
-    // sphere.pos = vec3(0, 1, 0);
-    // sphere.scale = 1;
-    // sphere.mat = glassMaterial(vec3(1), 2);
-    // scene.addObject(sphere);
 
     Primitive sphere2;
     sphere2.type = PrimType::SPHERE;
@@ -81,22 +77,43 @@ Scene Scene::defaultScene(function<void()> resetFrame){
 Ray Scene::rayFromClick(glm::vec3 origin, glm::vec3 dir, glm::vec2 screenPos){
     Ray ray;
     ray.origin = origin;
+    m_cameraDirection = normalize(dir);
+    m_cameraPosition = origin;
 
     float fov = radians(50.0);
-    vec3 forward = normalize(dir);
+    vec3 forward = m_cameraDirection;
 
     vec3 worldUp = abs(forward.y) < 0.999
                  ? vec3(0,1,0)
                  : vec3(0,0,1);
 
     vec3 right = normalize(cross(forward, worldUp));
-    vec3 up    = cross(right, forward);
+    vec3 up = cross(right, forward);
 
     float tanHalfFov = tan(fov * 0.5);
 
     vec3 newDir = forward + (right * screenPos.x + up * screenPos.y) * tanHalfFov;
     ray.direction = normalize(newDir);
     return ray;
+}
+
+glm::vec2 Scene::worldToScreen(glm::vec3 worldPos){
+    vec3 forward = m_cameraDirection;
+
+    vec3 worldUp = abs(forward.y) < 0.999
+                 ? vec3(0,1,0)
+                 : vec3(0,0,1);
+
+    vec3 right = normalize(cross(forward, worldUp));
+    vec3 up = cross(right, forward);
+
+    vec3 dir = normalize(worldPos - m_cameraPosition);
+    float normFactor = 1 / dot(forward, dir);
+    dir *= normFactor;
+    float tanHalfFov = tan(radians(50.0) * 0.5);
+    float rightCompo = dot(right, dir) / tanHalfFov;
+    float upCompo = -dot(up, dir) / tanHalfFov;
+    return vec2(rightCompo * m_app->height() / 2.0f, upCompo * m_app->height() / 2.0f);
 }
 
 void Scene::initGPU(){
@@ -125,7 +142,10 @@ float Scene::intersectSphere(const Ray& ray, const Primitive& sphere){
 }
 
 float Scene::intersectPlane(const Ray& ray, const Primitive& plane){
-    return -1;
+    vec3 rp = plane.pos - ray.origin;
+    vec3 normal = vec3(0,1,0);
+    float t = dot(rp, normal) / dot(ray.direction, normal);
+    return t;
 }
 
 
@@ -160,7 +180,7 @@ void Scene::addObject(const Primitive& prim){
 }
 
 Primitive* Scene::getObject(int index){
-    if (index < 0 || index > m_prims.size()) return nullptr;
+    if (index < 0 || index > (int)m_prims.size()) return nullptr;
 
     return &m_prims[index];
 }

@@ -1,6 +1,3 @@
-#include <iostream>
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
 #include "app.hpp"
 
 using namespace std;
@@ -15,6 +12,10 @@ void App::init(int width, int height, const char *name){
     {
         cerr << "Failed to initialize GLFW" << endl;
         exit(1);
+    }
+    if (NFD_Init() != NFD_OKAY){
+        printf("NFD_Init failed: %s\n", NFD_GetError());
+        return;
     }
 
     glfwWindowHint(GLFW_SAMPLES, 4);
@@ -46,6 +47,56 @@ void App::init(int width, int height, const char *name){
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(m_window, true);
     ImGui_ImplOpenGL3_Init("#version 430");
+}
+
+string App::saveFileDialog(bool& cancel){
+    char* path;
+    nfdsavedialogu8args_t args = {0};
+    const nfdresult_t res = NFD_SaveDialogU8_With(&path, &args);
+    switch (res) {
+        case NFD_OKAY: {
+            printf("NFD_SaveDialogU8_With success: %s\n", path);
+            string result = path;
+            NFD_FreePathU8(path);
+            cancel = false;
+            return result;
+        }
+        case NFD_CANCEL:
+            printf("NFD_SaveDialogU8_With cancelled\n");
+            break;
+        case NFD_ERROR:
+            printf("NFD_SaveDialogU8_With error: %s\n", NFD_GetError());
+            break;
+        default:
+            break;
+        }
+    cancel = true;
+    return "";
+}
+
+string App::pickFolderDialog(bool& cancel){
+    char* path;
+    nfdpickfolderu8args_t args = {0};
+    const nfdresult_t res = NFD_PickFolderU8_With(&path, &args);
+    switch (res) {
+        case NFD_OKAY: {
+            printf("NFD_PickFolderU8_With success: %s\n", path);
+            string result = path;
+            NFD_FreePathU8(path);
+            cancel = false;
+            return result;
+        }
+        case NFD_CANCEL:
+            printf("NFD_PickFolderU8_With cancelled\n");
+            break;
+        case NFD_ERROR:
+            printf("NFD_PickFolderU8_With error: %s\n", NFD_GetError());
+            break;
+        default:
+            break;
+    }
+    cancel = true;
+    return "";
 }
 
 void App::setClearColor(float r, float g, float b, float a){
@@ -155,7 +206,7 @@ unsigned int App::height(){
     return height;
 }
 
-void App::exportImage(const string& additionalPath, const string& name){
+void App::exportImage(const string& path){
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     vector<unsigned char> pixels(width() * height() * 3);
@@ -184,6 +235,5 @@ void App::exportImage(const string& additionalPath, const string& name){
         memcpy(row2, row.data(), stride);
     }
 
-    string path = "outputs/" + additionalPath + name;
     lodepng::encode(path.c_str(), pixels, width(), height(), LCT_RGB);
 }

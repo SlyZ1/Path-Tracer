@@ -50,7 +50,7 @@ void UI::EndTwoColumnLayout() const
 void UI::renderPointer(){
     ImDrawList* draw = ImGui::GetBackgroundDrawList();
     ImVec2 pos = ImGui::GetIO().DisplaySize * 0.5;
-    draw->AddCircleFilled(pos, 3.0f, IM_COL32(255, 255, 255, 255));
+    draw->AddCircleFilled(pos, 4.0f, IM_COL32(255, 255, 255, 255));
     draw->AddCircleFilled(pos, 2.0f, IM_COL32(0, 0, 0, 255));
 }
 
@@ -94,6 +94,12 @@ void UI::renderPopupData(){
 
 void UI::renderPopup(){
     if (m_primitivePopup == nullptr) return;
+
+    ImDrawList* draw = ImGui::GetBackgroundDrawList();
+    glm::vec2 primitiveCenter = m_scene->worldToScreen(m_primitivePopup->pos);
+    ImVec2 pos = ImGui::GetIO().DisplaySize * 0.5 + ImVec2(primitiveCenter.x, primitiveCenter.y);
+    draw->AddCircleFilled(pos, 5.0f, IM_COL32(0, 0, 0, 255));
+    draw->AddCircleFilled(pos, 3.0f, IM_COL32(255, 150, 100, 255));
     
     ImGui::SetNextWindowSizeConstraints(ImVec2(300, 0), ImVec2(FLT_MAX, FLT_MAX));
     if (ImGui::Begin("Properties", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -244,7 +250,7 @@ void UI::render() {
         EndTwoColumnLayout();
        
         if (ImGui::Button("Render Image", ImVec2(-FLT_MIN, 0))){
-            m_renderer->startRendering(m_renderSamples);
+            m_renderer->startRendering(m_renderSamples, "image.png");
             m_resetFrame();
         }
 

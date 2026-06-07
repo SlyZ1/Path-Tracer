@@ -7,9 +7,10 @@ CXXFLAGS_SRC = $(CXXFLAGS) -MMD -MP
 INCLUDES = -Iinclude \
            -Iinclude/imgui \
            -Iinclude/lodepng \
-           -Iinclude/tinyobjloader
+           -Iinclude/tinyobjloader \
+           -Iinclude/nativefiledialog
 
-LIBS = -Llib -lglfw3dll
+LIBS = -Llib -lglfw3dll -lnfd -lole32 -luuid
 
 SRC = $(wildcard src/*.cpp) src/glad.c
 OBJ = $(patsubst src/%.cpp, build/src/%.o, $(filter %.cpp, $(SRC))) \
@@ -21,9 +22,9 @@ IMGUI_SRC   = $(wildcard include/imgui/*.cpp)
 LODEPNG_SRC = $(wildcard include/lodepng/*.cpp)
 TINYOBJ_SRC = $(wildcard include/tinyobjloader/*.cpp)
 
-IMGUI_OBJ   = $(patsubst include/imgui/%.cpp,          build/imgui/%.o,   $(IMGUI_SRC))
-LODEPNG_OBJ = $(patsubst include/lodepng/%.cpp,        build/lodepng/%.o, $(LODEPNG_SRC))
-TINYOBJ_OBJ = $(patsubst include/tinyobjloader/%.cpp,  build/tinyobj/%.o, $(TINYOBJ_SRC))
+IMGUI_OBJ   = $(patsubst include/imgui/%.cpp,          		build/imgui/%.o,   $(IMGUI_SRC))
+LODEPNG_OBJ = $(patsubst include/lodepng/%.cpp,        		build/lodepng/%.o, $(LODEPNG_SRC))
+TINYOBJ_OBJ = $(patsubst include/tinyobjloader/%.cpp,  		build/tinyobj/%.o, $(TINYOBJ_SRC))
 
 THIRD_PARTY_LIB = build/libthirdparty.a
 TARGET          = myprogram.exe

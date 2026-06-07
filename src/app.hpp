@@ -4,7 +4,10 @@
 #include <imgui/imgui_impl_opengl3.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <glad/glad.h>
+#define GLFW_NATIVE_INCLUDE_NONE
 #include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
+#include <nativefiledialog/nfd.h>
 #include <vector>
 
 #ifndef APP_HPP
@@ -20,6 +23,8 @@ class App {
 
     public:
         void init(int width, int height, const char *name);
+        string saveFileDialog(bool& cancel);
+        string pickFolderDialog(bool& cancel);
         void setClearColor(float r, float g, float b, float a);
         void startFrame(unsigned int frameCount);
         void endFrame();
@@ -35,7 +40,7 @@ class App {
         void terminate();
         unsigned int width();
         unsigned int height();
-        void exportImage(const string& additionalPath = "", const string& name = "image.png");
+        void exportImage(const string& path = "outputs/image.png");
         ImGuiIO* getIo() { return m_io; }
 };
 

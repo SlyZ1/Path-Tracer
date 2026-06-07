@@ -90,7 +90,7 @@ void Animator::animationProcess(){
         m_animationTime += step;
         updateCurrentKeyFrame(m_animationTime);
         
-        m_renderer->startRendering(m_renderSamples, m_export_folder, to_string(m_animationFrame + 1) + ".png");
+        m_renderer->startRendering(m_renderSamples, to_string(m_animationFrame + 1) + ".png", false);
         m_resetFrame();
     }
     // C:\ffmpeg\bin\ffmpeg.exe -framerate 20 -i %d.png -c:v libx264 -crf 18 -preset slow -pix_fmt yuv420p output.mp4
@@ -106,7 +106,8 @@ void Animator::start(int renderSamples, int animationFPS, float animationDuratio
     m_prevAnimationTime = -1;
     m_animationTime = 0;
     updateCurrentKeyFrame(m_animationTime);
-    m_renderer->startRendering(m_renderSamples, m_export_folder, "1.png");
+    m_renderer->startRendering(m_renderSamples, "1.png", true);
+    if (!m_renderer->isRendering()) cancelAnimation(); // Example: dialog canceled
 }
 
 void Animator::cancelAnimation(){
