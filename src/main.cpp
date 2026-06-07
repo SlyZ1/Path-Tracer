@@ -101,7 +101,7 @@ void init(){
     int winSizeLoc = ShaderProgram::getVarLoc("winSize");
     glUniform2f(winSizeLoc, app->width(), app->height());
 
-    scene = make_shared<Scene>(Scene::defaultScene());
+    scene = make_shared<Scene>(Scene::defaultScene(resetFrame));
     
     Mesh* mesh = new Mesh();
     mesh->loadFromModel("models/Cube.obj");
@@ -216,6 +216,18 @@ void inputs(){
         newprim.scale = rand() / (float)RAND_MAX + 0.5;
         newprim.mat = Scene::glassMaterial(glm::vec3(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX, rand() / (float)RAND_MAX), rand() / (float)RAND_MAX*2 + 1);
         scene->addObject(newprim);
+    }
+
+    if (app->mousePressedOnce(GLFW_MOUSE_BUTTON_LEFT, frameCount)){
+        glm::vec2 screenPos;
+        screenPos.x = app->mouseX() / app->width();
+        screenPos.y = app->mouseY() / app->height();
+        screenPos = 2.0f * screenPos - glm::vec2(1.0f);
+        screenPos.y *= -1;
+        screenPos.x *= texWidth / (float)texHeight;
+        Ray ray = Scene::rayFromClick(camera.position(), camera.lookDir(), screenPos);
+        int primIndex = scene->intersectObject(ray);
+        scene->removeObject(primIndex);
     }
 }
 

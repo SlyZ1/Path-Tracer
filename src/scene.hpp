@@ -3,6 +3,7 @@
 
 #include <glm/glm.hpp>
 #include <vector>
+#include <functional>
 #include "shader_program.hpp"
 
 using namespace std;
@@ -36,6 +37,11 @@ struct Primitive {
     PrimType type;
 };
 
+struct Ray {
+    glm::vec3 origin;
+    glm::vec3 direction;
+};
+
 class Scene {
 private:
     GLuint m_sceneBuffer = 0;
@@ -44,15 +50,23 @@ private:
     vector<Primitive> m_prims = {};
     vector<int> m_lightIndices = {};
 
+    function<void()> m_resetFrame;
+
+    float intersectSphere(const Ray& ray, const Primitive& sphere);
+    float intersectPlane(const Ray& ray, const Primitive& plane);
+
 public:
     Scene() = default;
+    Scene(function<void()> resetFrame) : m_resetFrame(resetFrame) {}
     static Material diffuseMaterial(glm::vec3 color, float roughness);
     static Material metalMaterial(glm::vec3 color, float fuzziness);
     static Material glassMaterial(glm::vec3 color, float refractionIndex);
     static Material glossyMaterial(glm::vec3 color, float fuzziness, float metallic);
     static Material emitMaterial(glm::vec3 color, float intensity);
-    static Scene defaultScene();
+    static Scene defaultScene(function<void()> resetFrame = nullptr);
+    static Ray rayFromClick(glm::vec3 origin, glm::vec3 dir, glm::vec2 screenPos);
     void initGPU();
+    int intersectObject(const Ray& ray);
     void addObject(const Primitive& prim);
     void removeObject(int index);
     void updateGPU();

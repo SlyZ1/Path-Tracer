@@ -97,6 +97,27 @@ bool App::keyPressedOnce(int key, unsigned int frame){
     return false;
 }
 
+bool App::mousePressed(int button){
+    return glfwGetMouseButton(m_window, button) == GLFW_PRESS;
+}
+
+bool App::mousePressedOnce(int button, unsigned int frame){
+    static unsigned int wasPressed[GLFW_MOUSE_BUTTON_LAST + 1] = {UINT_MAX};
+
+    bool isPressed = glfwGetMouseButton(m_window, button) == GLFW_PRESS;
+
+    if (isPressed && wasPressed[button] >= frame) {
+        wasPressed[button] = frame;
+        return true;
+    }
+
+    if (!isPressed) {
+        wasPressed[button] = UINT_MAX;
+    }
+
+    return false;
+}
+
 void App::toggleCursor(bool show){
     m_cursorHidden = !show;
     glfwSetInputMode(m_window, GLFW_CURSOR, !show ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);

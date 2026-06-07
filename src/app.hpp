@@ -26,6 +26,8 @@ class App {
         bool shouldClose();
         bool keyPressed(int key);
         bool keyPressedOnce(int key, unsigned int frame);
+        bool mousePressed(int button);
+        bool mousePressedOnce(int button, unsigned int frame);
         void toggleCursor(bool show);
         bool cursorIsHidden();
         float mouseX();

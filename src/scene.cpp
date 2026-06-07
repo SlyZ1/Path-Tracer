@@ -1,4 +1,5 @@
 #include "scene.hpp"
+#include <cfloat>
 
 using namespace glm;
 
@@ -42,8 +43,8 @@ Material Scene::emitMaterial(vec3 color, float intensity){
     return mat;
 }
 
-Scene Scene::defaultScene(){
-    Scene scene = Scene();
+Scene Scene::defaultScene(function<void()> resetFrame){
+    Scene scene = Scene(resetFrame);
     scene.initGPU();
 
     // Primitive sphere;
@@ -77,11 +78,79 @@ Scene Scene::defaultScene(){
     return scene;
 }
 
+Ray Scene::rayFromClick(glm::vec3 origin, glm::vec3 dir, glm::vec2 screenPos){
+    Ray ray;
+    ray.origin = origin;
+
+    float fov = radians(50.0);
+    vec3 forward = normalize(dir);
+
+    vec3 worldUp = abs(forward.y) < 0.999
+                 ? vec3(0,1,0)
+                 : vec3(0,0,1);
+
+    vec3 right = normalize(cross(forward, worldUp));
+    vec3 up    = cross(right, forward);
+
+    float tanHalfFov = tan(fov * 0.5);
+
+    vec3 newDir = forward + (right * screenPos.x + up * screenPos.y) * tanHalfFov;
+    ray.direction = normalize(newDir);
+    return ray;
+}
+
 void Scene::initGPU(){
     glDeleteBuffers(1, &m_sceneBuffer);
     glGenBuffers(1, &m_sceneBuffer);
     glDeleteBuffers(1, &m_lightIndicesBuffer);
     glGenBuffers(1, &m_lightIndicesBuffer);
+}
+
+float Scene::intersectSphere(const Ray& ray, const Primitive& sphere){
+    vec3 oc = ray.origin - sphere.pos;
+    float b = dot(oc, ray.direction);
+    float c = dot(oc, oc) - sphere.scale * sphere.scale;
+    float h = b*b - c;
+
+    float distance = -1;
+    if (h < 0) return distance;
+
+    float sqrtH = sqrt(h);
+    distance = -b - sqrtH;
+    if (distance <= 0){
+        distance = -b + sqrtH;
+    }
+
+    return distance;
+}
+
+float Scene::intersectPlane(const Ray& ray, const Primitive& plane){
+    return -1;
+}
+
+
+int Scene::intersectObject(const Ray& ray){
+    float distance = FLT_MAX;
+    int intersected = -1;
+    for(size_t i = 0; i < m_prims.size(); i++){
+        float dist = -1;
+        Primitive prim = m_prims[i];
+        switch(prim.type){
+            case PrimType::SPHERE:
+                dist = intersectSphere(ray, prim);
+                break;
+            case PrimType::PLANE:
+                dist = intersectPlane(ray, prim);
+                break;
+            default:
+                break;
+        }
+        if (dist >= 0 && dist < distance){
+            distance = dist;
+            intersected = i;
+        }
+    }
+    return intersected;
 }
 
 void Scene::addObject(const Primitive& prim){
@@ -91,15 +160,22 @@ void Scene::addObject(const Primitive& prim){
 }
 
 void Scene::removeObject(int index){
+    if (index < 0 || index >= (int)m_prims.size()) return;
+
     Primitive prim = m_prims[index];
     if (prim.mat.type == MatType::EMIT) 
-        std::remove(m_lightIndices.begin(), m_lightIndices.end(), index);
+        m_lightIndices.erase(
+            std::remove(m_lightIndices.begin(), m_lightIndices.end(), index),
+            m_lightIndices.end()
+        );
     m_prims.erase(m_prims.begin() + index);
     m_sceneChanged = true;
 }
 
 void Scene::updateGPU(){
     if (!m_sceneChanged) return;
+
+    m_resetFrame();
 
     glUniform1i(ShaderProgram::getVarLoc("numPrimitives"), m_prims.size());
     glUniform1i(ShaderProgram::getVarLoc("numLights"), m_lightIndices.size());
