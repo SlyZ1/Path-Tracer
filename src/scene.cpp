@@ -159,6 +159,12 @@ void Scene::addObject(const Primitive& prim){
     m_sceneChanged = true;
 }
 
+Primitive* Scene::getObject(int index){
+    if (index < 0 || index > m_prims.size()) return nullptr;
+
+    return &m_prims[index];
+}
+
 void Scene::removeObject(int index){
     if (index < 0 || index >= (int)m_prims.size()) return;
 
@@ -169,6 +175,10 @@ void Scene::removeObject(int index){
             m_lightIndices.end()
         );
     m_prims.erase(m_prims.begin() + index);
+    m_sceneChanged = true;
+}
+
+void Scene::updateScene(){
     m_sceneChanged = true;
 }
 

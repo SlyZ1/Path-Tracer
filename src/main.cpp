@@ -72,7 +72,6 @@ void init(){
     app->toggleCursor(false);
     renderer = make_shared<Renderer>(app);
     animator = make_shared<Animator>(renderer, resetFrame);
-    ui = make_shared<UI>(app, renderer, animator);
     
     rayTraceShader.create();
     rayTraceShader.load(GL_VERTEX_SHADER, "src/shaders/vertex.glsl");
@@ -100,7 +99,7 @@ void init(){
     rayTraceShader.use();
     int winSizeLoc = ShaderProgram::getVarLoc("winSize");
     glUniform2f(winSizeLoc, app->width(), app->height());
-
+    
     scene = make_shared<Scene>(Scene::defaultScene(resetFrame));
     
     Mesh* mesh = new Mesh();
@@ -133,8 +132,9 @@ void init(){
     glGenFramebuffers(1, &FBO);
     genTexture(app->width(), app->height());
     glDisable(GL_FRAMEBUFFER_SRGB);
-
+    
     camera.resetMousePos(app->mouseX(), app->mouseY());
+    ui = make_shared<UI>(app, renderer, animator, scene, resetFrame);
 }
 
 void handleCamera(){
@@ -218,7 +218,7 @@ void inputs(){
         scene->addObject(newprim);
     }
 
-    if (app->mousePressedOnce(GLFW_MOUSE_BUTTON_LEFT, frameCount)){
+    if (app->mousePressedOnce(GLFW_MOUSE_BUTTON_LEFT, frameCount) && ui->isShowing() && !ui->isHovered()){
         glm::vec2 screenPos;
         screenPos.x = app->mouseX() / app->width();
         screenPos.y = app->mouseY() / app->height();
@@ -227,7 +227,7 @@ void inputs(){
         screenPos.x *= texWidth / (float)texHeight;
         Ray ray = Scene::rayFromClick(camera.position(), camera.lookDir(), screenPos);
         int primIndex = scene->intersectObject(ray);
-        scene->removeObject(primIndex);
+        ui->selectPrimitive(primIndex);
     }
 }
 
@@ -259,7 +259,7 @@ int main(){
         app->startFrame(frameCount);
         handleCamera();
         
-        ui->render(resetFrame);
+        ui->render();
         render();
         inputs();
 

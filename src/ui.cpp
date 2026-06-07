@@ -1,7 +1,18 @@
 #include "ui.hpp"
 
+void UI::selectPrimitive(int index){
+    m_primitivePopupIndex = index;
+    m_primitivePopup = m_scene->getObject(index);
+}
+
+void UI::unselectPrimitives(){
+    m_primitivePopup = nullptr;
+    m_primitivePopupIndex = -1;
+}
+
 void UI::toggle(){
     m_show = !m_show;
+    if (!m_show) m_primitivePopup = nullptr;
 }
 
 void UI::drawMarker(ImVec2 minRect, ImVec2 maxRect, float keyPos) const {
@@ -36,12 +47,98 @@ void UI::EndTwoColumnLayout() const
     ImGui::EndTable();
 }
 
-void UI::render(function<void()> resetFrame) {
-    if (!m_show) return;
+void UI::renderPointer(){
+    ImDrawList* draw = ImGui::GetBackgroundDrawList();
+    ImVec2 pos = ImGui::GetIO().DisplaySize * 0.5;
+    draw->AddCircleFilled(pos, 3.0f, IM_COL32(255, 255, 255, 255));
+    draw->AddCircleFilled(pos, 2.0f, IM_COL32(0, 0, 0, 255));
+}
+
+void UI::renderPopupData(){
+    MatType matType = m_primitivePopup->mat.type;
+    switch(matType){
+        case MatType::DIFFUSE:
+            Label("Roughness");
+            if (ImGui::SliderFloat("##Roughness", &m_primitivePopup->mat.data.x, 0.0f, 1.0f))
+                m_scene->updateScene();
+            break;
+        case MatType::METAL:
+            Label("Fuzziness");
+            if (ImGui::SliderFloat("##Fuzziness", &m_primitivePopup->mat.data.x, 0.0f, 0.8f))
+                m_scene->updateScene();
+            break;
+        case MatType::GLASS:
+            Label("Refraction Index");
+            if (ImGui::SliderFloat("##Refraction Index", &m_primitivePopup->mat.data.y, 1.0f, 10.0f))
+                m_scene->updateScene();
+            break;
+        case MatType::GLOSSY:
+            Label("Fuzziness");
+            if (ImGui::SliderFloat("##Fuzziness", &m_primitivePopup->mat.data.x, 0.0f, 0.8f))
+                m_scene->updateScene();
+            Label("Metallic");
+            if (ImGui::SliderFloat("##Metallic", &m_primitivePopup->mat.data.y, 0.05f, 1.0f))
+                m_scene->updateScene();
+            break;
+        case MatType::EMIT:
+            Label("Intensity");
+            if (ImGui::InputFloat("##Intensity", &m_primitivePopup->mat.data.x)){
+                m_primitivePopup->mat.data.x = glm::max(m_primitivePopup->mat.data.x, 0.0f);
+                m_scene->updateScene();
+            }
+            break;
+        default:
+            break;
+    }
+}
+
+void UI::renderPopup(){
+    if (m_primitivePopup == nullptr) return;
+    
+    ImGui::SetNextWindowSizeConstraints(ImVec2(300, 0), ImVec2(FLT_MAX, FLT_MAX));
+    if (ImGui::Begin("Properties", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        BeginTwoColumnLayout();
+
+        Label("Color");
+        if (ImGui::ColorEdit3("##Color", &m_primitivePopup->mat.color.x))
+            m_scene->updateScene();
+
+        const char* items[] = { 
+            "Diffuse", 
+            "Metal", 
+            "Dielectric", 
+            "Glossy",
+            "Emit"
+        };
+        Label("Diffuse Model");
+        if (ImGui::Combo("##Diffuse Model", (int*)&m_primitivePopup->mat.type, items, IM_ARRAYSIZE(items)))
+            m_scene->updateScene();
+
+        renderPopupData();
+
+        EndTwoColumnLayout();
+        
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0, 0.3, 0.3, 1.0));
+        if (ImGui::Button("Remove", ImVec2(-1, 0))){
+            m_scene->removeObject(m_primitivePopupIndex);
+            unselectPrimitives();
+        }
+        ImGui::PopStyleColor(1);
+    }
+    ImGui::End();
+}
+
+void UI::render() {
+    if (!m_show){
+        renderPointer();
+        return;
+    }
 
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.5f, 0.2f, 1.0f, 0.3f));
     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.5f, 0.2f, 1.0f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.5f, 0.2f, 1.0f, 0.8f));
+    
+    renderPopup();
 
     ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(300, m_app->getIo()->DisplaySize.y), ImGuiCond_Always);
@@ -52,55 +149,20 @@ void UI::render(function<void()> resetFrame) {
     ImGui::Spacing();
     ImGui::Spacing();
 
-    // ImGui::Spacing();
-    // ImGui::Spacing();
-    // if (ImGui::CollapsingHeader("Material Settings", ImGuiTreeNodeFlags_DefaultOpen)){
-    //     BeginTwoColumnLayout();
-
-    //     const char* items[] = { 
-    //         "Lambert", 
-    //         "(QON) Qualitative Oren-Nayar", 
-    //         "(FON) Fujii-Oren-Nayar", 
-    //         "(EON) Energy-Preserving Oren-Nayar"
-    //     };
-    //     Label("Diffuse Model");
-    //     if (ImGui::Combo("##Diffuse Model", &m_bsdfType, items, IM_ARRAYSIZE(items)))
-    //         resetFrame();
-
-    //     Label("Ball's Roughness");
-    //     if (ImGui::SliderFloat("##Ball's Roughness", &m_roughness, 0, 1))
-    //         resetFrame();
-            
-    //     ImGui::Spacing();
-    //     Label("Metal Color");
-    //     if (ImGui::ColorEdit3("##Metal Color", m_metalColor))
-    //         resetFrame();
-    
-    //     Label("Metallic");
-    //     if (ImGui::SliderFloat("##Metallic", &m_metallic, 0, 1))
-    //         resetFrame();
-
-    //     ImGui::Spacing();
-    //     Label("Refraction Index");
-    //     if (ImGui::SliderFloat("##Refraction Index", &m_refractionIndex, 1, 10))
-    //         resetFrame();
-
-    //     EndTwoColumnLayout();
-    // }
     if (ImGui::CollapsingHeader("Model Settings", ImGuiTreeNodeFlags_DefaultOpen)){
         BeginTwoColumnLayout();
 
         Label("Use Model");
         if (ImGui::Checkbox("##Use Model", &m_useModel))
-            resetFrame();
+            m_resetFrame();
 
         Label("Debug BVH");
         if (ImGui::Checkbox("##Debug BVH", &m_debugBVH))
-            resetFrame();
+            m_resetFrame();
 
         Label("Model Position");
         if (ImGui::DragFloat3("##Model Position", &m_modelPos[0]))
-            resetFrame();
+            m_resetFrame();
 
         EndTwoColumnLayout();
     }
@@ -183,12 +245,12 @@ void UI::render(function<void()> resetFrame) {
        
         if (ImGui::Button("Render Image", ImVec2(-FLT_MIN, 0))){
             m_renderer->startRendering(m_renderSamples);
-            resetFrame();
+            m_resetFrame();
         }
 
         if (ImGui::Button("Render Animation", ImVec2(-FLT_MIN, 0))){
             m_animator->start(m_renderSamples, m_animationFPS, m_animationDuration);
-            resetFrame();
+            m_resetFrame();
         }
        
         if (m_renderer->isRendering()) {
@@ -211,7 +273,7 @@ void UI::render(function<void()> resetFrame) {
         BeginTwoColumnLayout();
         
         Label("Max Bounces");
-        if (ImGui::InputInt("##Max Bounces", &m_maxBounces)) resetFrame();
+        if (ImGui::InputInt("##Max Bounces", &m_maxBounces)) m_resetFrame();
         
         Label("Resolution Divider");
         ImGui::InputInt("##Resolution Divider", &m_resMultiplier);
@@ -239,4 +301,8 @@ bool UI::isInteracting(){
 
 bool UI::isDragging(){
     return ImGui::IsMouseDragging(0) && isInteracting();
+}
+
+bool UI::isHovered(){
+    return ImGui::GetIO().WantCaptureMouse;
 }

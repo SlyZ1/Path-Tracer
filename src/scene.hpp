@@ -68,7 +68,9 @@ public:
     void initGPU();
     int intersectObject(const Ray& ray);
     void addObject(const Primitive& prim);
+    Primitive* getObject(int index);
     void removeObject(int index);
+    void updateScene();
     void updateGPU();
 };
 #endif
