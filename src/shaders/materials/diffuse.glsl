@@ -76,15 +76,13 @@ void diffuse(inout RaycastData data){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
     ray.origin += hit.t * ray.dir + EPS * hit.normal;
-
-    Light light;
-#if NUM_LIGHT > 0
-    light = world.lights[int(rand(seed) * NUM_LIGHT)];
-#endif
-
+    
     // MIS
-    float wdirect = 0.2;
-    wdirect = NUM_LIGHT > 0 ? wdirect : 0;
+    float wdirect = 0;
+    Primitive light;
+    if (numLights > 0)
+        light = primitives[lightIndicies[int(rand(seed) * numLights)]];
+        wdirect = 0.2;
     float wbsdf = 1 - wdirect;
     float r = rand(seed);
     float orenNayarRoughness = diffuseRoughness(hit.mat);   
@@ -123,7 +121,7 @@ void diffuse(inout RaycastData data){
         if (shadow_hit(light, ray) > 0){
             float pbsdf = p_cosineHemisphere(hit.normal, ray.dir);
             float weight = 1.0 / (wdirect * pdirect + wbsdf * pbsdf);
-            vec3 Le = light.color * light.intensity;
+            vec3 Le = light.mat.color * emitIntensity(light.mat);
             ray.radiance += clamp(ray.throughput * weight, 0.0, 1.3) * Le;
             stop(hit, true);
         }

@@ -11,7 +11,8 @@ enum MatType : int {
     DIFFUSE = 0,
     METAL = 1,
     GLASS = 2,
-    GLOSSY = 3
+    GLOSSY = 3,
+    EMIT = 4
 };
 
 struct Material {
@@ -37,9 +38,11 @@ struct Primitive {
 
 class Scene {
 private:
-    GLuint sceneBuffer = 0;
+    GLuint m_sceneBuffer = 0;
+    GLuint m_lightIndicesBuffer = 0;
     bool m_sceneChanged = false;
     vector<Primitive> m_prims = {};
+    vector<int> m_lightIndices = {};
 
 public:
     Scene() = default;
@@ -47,6 +50,7 @@ public:
     static Material metalMaterial(glm::vec3 color, float fuzziness);
     static Material glassMaterial(glm::vec3 color, float refractionIndex);
     static Material glossyMaterial(glm::vec3 color, float fuzziness, float metallic);
+    static Material emitMaterial(glm::vec3 color, float intensity);
     static Scene defaultScene();
     void initGPU();
     void addObject(const Primitive& prim);

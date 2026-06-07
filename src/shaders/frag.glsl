@@ -38,13 +38,6 @@ struct BVHNode {
     int triangle;
 };
 
-struct Light {
-    vec3 pos;
-    float rad;
-    vec3 color;
-    float intensity;
-};
-
 struct Ray {
     vec3 origin;
     vec3 dir;
@@ -75,8 +68,10 @@ layout(std430, binding = 2) buffer PrimitiveBuffer {
     Primitive primitives[];
 };
 uniform int numPrimitives;
-
-#define NUM_LIGHT 0
+layout(std430, binding = 3) buffer LightIndicesBuffer {
+    int lightIndicies[];
+};
+uniform int numLights;
 
 struct RaycastData {
     Hit hit;
@@ -167,14 +162,14 @@ float fresnel(float cos1, float cos2, float n){
 
 // pdfs
 
-float p_direct(Light light, float distance, float cosLight){
-    return distance * distance / (cosLight * 2 * PI * light.rad * light.rad * NUM_LIGHT);
+float p_direct(Primitive light, float distance, float cosLight){
+    return distance * distance / (cosLight * 2 * PI * light.scale * light.scale * numLights);
 }
 
-float shadow_hit(Light light, Ray ray){
+float shadow_hit(Primitive light, Ray ray){
     Hit hit = rayIntersection(ray);
-    vec3 hitPos = ray.origin + ray.dir * hit.t;
-    if (hit.t > 0 && length(hitPos - light.pos) > light.rad + sqrt(EPS)) return 0;
+    vec3 hitPos = ray.origin + ray.dir * hit.t + hit.normal * EPS;
+    if (hit.t > 0 && length(hitPos - light.pos) > light.scale + sqrt(EPS)) return 0;
     return 1;
 }
 
@@ -193,12 +188,12 @@ void russianRoulette(inout RaycastData data){
     updateData(data);
 }
 
-float sampleLight(inout RaycastData data, Light light){
+float sampleLight(inout RaycastData data, Primitive light){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
 
     vec3 nLight = randomOnUnitHemiphere(seed, ray.origin - light.pos);
-    vec3 lightPoint = light.pos + nLight * light.rad;
+    vec3 lightPoint = light.pos + nLight * light.scale;
     vec3 newDir = normalize(lightPoint - ray.origin);
     ray.dir = newDir;
 

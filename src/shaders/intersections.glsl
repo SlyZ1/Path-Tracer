@@ -43,21 +43,6 @@ Hit planeIntersect(Primitive plane, Ray ray){
     return Hit(t, normal, plane.mat, false);
 }
 
-// Hit lightIntersect(Light light, Ray ray){
-//     vec3 oc = ray.origin - light.pos;
-//     float b = dot(oc, ray.dir);
-//     float c = dot(oc, oc) - light.rad * light.rad;
-//     float h = b*b - c;
-//     Hit hit;
-//     hit.t = -1;
-//     if (h < 0.) return hit;
-//     float t = -b - sqrt(h);
-//     if (t <= 0) return hit;
-//     vec3 pos = ray.origin + t * ray.dir;
-//     Mat mat = Mat(MAT_EMIT, light.color, mData0(light.intensity));
-//     return Hit(t, normalize(pos - light.pos), mat, false);
-// }
-
 vec3 computeNormal(Triangle tri) {
     vec3 edge1 = tri.v1 - tri.v0;
     vec3 edge2 = tri.v2 - tri.v0;

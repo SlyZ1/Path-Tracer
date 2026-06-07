@@ -1,4 +1,3 @@
-
 float DGTR(float a2, float NdotH){
     float denom = NdotH * NdotH * (a2 - 1) + 1;
     return a2 / (PI * denom * denom);
@@ -6,7 +5,7 @@ float DGTR(float a2, float NdotH){
 
 float p_GGX(vec3 normal, vec3 l, vec3 v, float alpha, bool simplify){
     vec3 h = normalize(l + v);
-    float NdotH = max(dot(normal, h), 0.0);
+    float NdotH = max(dot(normal, h), EPS);
     float VdotH = max(dot(v, h), 0.0);
     float D = 1;
     if (!simplify) D = DGTR(alpha * alpha, NdotH);
@@ -17,7 +16,7 @@ float G1GTR(float a2, float NdotW){
     if (NdotW <= 0.0) return 0.0;
 
     float NdotW2 = NdotW * NdotW;
-    float tan2 = (1.0 - NdotW2) / NdotW2;
+    float tan2 = (1.0 - NdotW2) / (NdotW2);
     return 2.0 / (1.0 + sqrt(1.0 + a2 * tan2));
 }
 
@@ -35,19 +34,15 @@ vec3 cookTorrance(Hit hit, vec3 viewDir, vec3 lightDir, float alpha, bool simpli
     float G = G1GTR(a2, NdotV) * G1GTR(a2, NdotL);
     vec3 F = schlickFresnel(VdotH, hit.mat.color);
 
-    return F * D * G / (4 * NdotV * (simplify ? 1 : NdotL));
+    return F * D * G / max(4 * NdotV * (simplify ? 1 : NdotL), PROBA_EPS);
 }
 
 void metal(inout RaycastData data){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
-    Light light;
-#if NUM_LIGHT > 0
-    light = world.lights[int(rand(seed) * NUM_LIGHT)];
-#endif
     ray.origin += hit.t * ray.dir + hit.normal * EPS;
     
-    if (pbrFuzz(hit.mat) < 1e-2){
+    if (pbrFuzz(hit.mat) < EPS){
         vec3 newDir = reflect(ray.dir, hit.normal);
         float VdotN = max(dot(-ray.dir, hit.normal), 0.0);
         vec3 f_r = schlickFresnel(VdotN, hit.mat.color);
@@ -60,14 +55,17 @@ void metal(inout RaycastData data){
     // MIS
     float fuzz = pbrFuzz(hit.mat);
     float alpha = fuzz * fuzz;
-    float wdirect = 0.3 * alpha;
-    wdirect = NUM_LIGHT > 0 ? wdirect : 0;
+    float wdirect = 0;
+    Primitive light;
+    if (numLights > 0)
+        light = primitives[lightIndicies[int(rand(seed) * numLights)]];
+        wdirect = 0.3 * alpha;
     float wGGX = 1 - wdirect;
     float r = rand(seed);
     if (r <= wGGX){
         vec3 viewDir = -ray.dir;
         vec3 h = randomGGXHemisphere(seed, hit.normal, alpha);
-        vec3 newDir = reflect(-viewDir, h);
+        vec3 newDir = mix(reflect(-viewDir, h), hit.normal, 0.0);
         
         float pGGX = p_GGX(hit.normal, newDir, viewDir, alpha, true);
         vec3 f_r = cookTorrance(hit, viewDir, newDir, alpha, true);
@@ -98,7 +96,7 @@ void metal(inout RaycastData data){
         if (shadow_hit(light, ray) > 0){
             float pGGX = p_GGX(hit.normal, ray.dir, viewDir, alpha, false);
             float weight = 1.0 / (wdirect * pdirect + wGGX * pGGX);
-            vec3 Le = light.color * light.intensity;
+            vec3 Le = light.mat.color * emitIntensity(light.mat);
             ray.radiance += clamp(ray.throughput * weight, 0.0, 1.5) * Le;
             stop(hit, true);
         }
