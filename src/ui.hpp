@@ -23,11 +23,11 @@ class UI {
         void EndTwoColumnLayout() const;
         void drawMarker(ImVec2 minRect, ImVec2 maxRect, float keyPos) const;
 
-        int m_primitivePopupIndex = -1;
-        Primitive* m_primitivePopup = nullptr;
+        void renderGizmos();
+
         bool m_popupOpened = false;
         void renderPopup();
-        void renderPopupData();
+        void renderPopupData(Primitive* selectedPrimitive);
 
         void renderPointer();
 
@@ -62,8 +62,6 @@ class UI {
         static bool isDragging();
         static bool isHovered();
         bool isShowing() const { return m_show; }
-        void selectPrimitive(int index);
-        void unselectPrimitives();
         void toggle();
         void setDisabled(bool disabled) { m_disabled = disabled; }
         void render();

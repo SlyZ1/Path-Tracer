@@ -339,11 +339,12 @@ void main()
         vec3(1),
         vec3(0)
     );
-    ray = fovRay(pos, ray);
 
     vec4 radiance;
-    for(int i = 0; i < samples; i++){
-        radiance += max(rayColor(seed, ray), 0);
+    for (int i = 0; i < samples; i++) {
+        vec2 jitter = vec2(rand(seed), rand(seed)) * 2 / winSize;
+        Ray r = fovRay(pos + jitter, ray);
+        radiance += max(rayColor(seed, r), vec4(0));
     }
 
     FragColor = radiance + max(frameCount, 0) * texture(screenTex, uv);

@@ -55,6 +55,9 @@ private:
     static glm::vec3 m_cameraDirection;
     static glm::vec3 m_cameraPosition;
 
+    int m_copiedPrimitive = -1;
+    int m_selectedPrimitive = -1;
+
     function<void()> m_resetFrame = {};
 
     float intersectSphere(const Ray& ray, const Primitive& sphere);
@@ -73,9 +76,13 @@ public:
     glm::vec2 worldToScreen(glm::vec3 worldPos);
     void initGPU();
     int intersectObject(const Ray& ray);
-    void addObject(const Primitive& prim);
+    int addObject(const Primitive& prim);
     Primitive* getObject(int index);
     void removeObject(int index);
+    void copyPrimitive(int index);
+    int pastePrimitive();
+    void selectPrimitive(int index) { m_selectedPrimitive = index; };
+    int getSelectedPrimitive() const {return m_selectedPrimitive; };
     void updateScene();
     void updateGPU();
 };

@@ -173,10 +173,12 @@ int Scene::intersectObject(const Ray& ray){
     return intersected;
 }
 
-void Scene::addObject(const Primitive& prim){
-    if (prim.mat.type == MatType::EMIT) m_lightIndices.push_back(m_prims.size());
+int Scene::addObject(const Primitive& prim){
+    int newIndex = m_prims.size();
+    if (prim.mat.type == MatType::EMIT) m_lightIndices.push_back(newIndex);
     m_prims.push_back(prim);
     m_sceneChanged = true;
+    return newIndex;
 }
 
 Primitive* Scene::getObject(int index){
@@ -196,6 +198,15 @@ void Scene::removeObject(int index){
         );
     m_prims.erase(m_prims.begin() + index);
     m_sceneChanged = true;
+}
+
+void Scene::copyPrimitive(int index){
+    m_copiedPrimitive = index;
+}
+
+int Scene::pastePrimitive(){
+    Primitive newPrim = *getObject(m_copiedPrimitive);
+    return addObject(newPrim);
 }
 
 void Scene::updateScene(){

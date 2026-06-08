@@ -99,27 +99,13 @@ Estimated using stochastic sampling (Monte Carlo).
 * Windows
 * MinGW (g++ with C++17 support)
 * OpenGL 4.3+
-* GLFW (provided in `lib/`)
 * Make (mingw32-make recommended)
 
 ### Build & Run (Makefile)
 
 ```bash
-make
-./myprogram.exe
+make run
 ```
-
-### Alternative: Build with VSCode
-
-If you're using VSCode, you can simply press:
-
-```text
-Ctrl + Shift + B
-```
-
-This uses the provided `tasks.json`.
-
----
 
 ## Controls (example)
 
@@ -136,8 +122,8 @@ Path-Tracer/
 ├── .vscode/
 ├── include/
 ├── lib/
-├── models/                 # 3D models
-├── outputs/                # Rendered images / animations
+├── models/          # 3D models
+├── outputs/         # Rendered images / animations
 ├── src/
 │   ├── shaders/
 │   ...
@@ -155,7 +141,6 @@ Path-Tracer/
 * Better BVH construction (SAH)
 * Improved caustics (photon mapping)
 * Physics-based animation
-* Scene loading system
 
 ---
 
