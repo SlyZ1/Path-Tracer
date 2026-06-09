@@ -30,7 +30,7 @@ int samples = 1;
 int frameAccumulator = 0;
 int frameCount = 0;
 
-Camera camera(0.1, 0.3);
+shared_ptr<Camera> camera = make_shared<Camera>(0.1, 0.3);
 shared_ptr<App> app;
 shared_ptr<Renderer> renderer;
 shared_ptr<Animator> animator;
@@ -100,7 +100,7 @@ void init(){
     int winSizeLoc = ShaderProgram::getVarLoc("winSize");
     glUniform2f(winSizeLoc, app->width(), app->height());
     
-    scene = make_shared<Scene>(Scene::defaultScene(app, resetFrame));
+    scene = make_shared<Scene>(Scene::defaultScene(app, camera, resetFrame));
     
     Mesh* mesh = new Mesh();
     mesh->loadFromModel("models/Cube.obj");
@@ -133,17 +133,17 @@ void init(){
     genTexture(app->width(), app->height());
     glDisable(GL_FRAMEBUFFER_SRGB);
     
-    camera.resetMousePos(app->mouseX(), app->mouseY());
-    ui = make_shared<UI>(app, renderer, animator, scene, resetFrame);
+    camera->resetMousePos(app->mouseX(), app->mouseY());
+    ui = make_shared<UI>(app, renderer, animator, scene, camera, resetFrame);
 }
 
 void handleCamera(){
     if (!app->cursorIsHidden()){
-        camera.hasStoppedMoving();
+        camera->hasStoppedMoving();
         return;
     }
 
-    camera.move(
+    camera->move(
         app->keyPressed(GLFW_KEY_W), 
         app->keyPressed(GLFW_KEY_S), 
         app->keyPressed(GLFW_KEY_D), 
@@ -152,7 +152,7 @@ void handleCamera(){
         app->keyPressed(GLFW_KEY_LEFT_CONTROL),
         app->keyPressed(GLFW_KEY_LEFT_SHIFT)
     );
-    camera.rotate(app->mouseX(), app->mouseY());
+    camera->rotate(app->mouseX(), app->mouseY());
 }
 
 void render(){
@@ -163,6 +163,7 @@ void render(){
     
     ui->updateGPU();
     scene->updateGPU();
+    camera->updateGPU();
     
     glUniform2f(ShaderProgram::getVarLoc("texSize"), texWidth, texHeight);
 
@@ -171,9 +172,6 @@ void render(){
     glUniform1i(ShaderProgram::getVarLoc("screenTex"), 0);
     glUniform1i(ShaderProgram::getVarLoc("frameCount"), frameAccumulator);
     glUniform1i(ShaderProgram::getVarLoc("samples"), samples);
-    
-    glUniform3f(ShaderProgram::getVarLoc("camera.pos"), camera.position().x, camera.position().y, camera.position().z);
-    glUniform3f(ShaderProgram::getVarLoc("camera.lookDir"), camera.lookDir().x, camera.lookDir().y, camera.lookDir().z);
     
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -206,7 +204,7 @@ void inputs(){
     if (app->keyPressedOnce(GLFW_KEY_ESCAPE, frameCount)){
         ui->toggle();
         app->toggleCursor(app->cursorIsHidden());
-        camera.resetMousePos(app->mouseX(), app->mouseY());
+        camera->resetMousePos(app->mouseX(), app->mouseY());
     }
 
     if (app->keyPressedOnce(GLFW_KEY_ENTER, frameCount) && !ui->isShowing()){
@@ -231,7 +229,7 @@ void inputs(){
         screenPos = 2.0f * screenPos - glm::vec2(1.0f);
         screenPos.y *= -1;
         screenPos.x *= texWidth / (float)texHeight;
-        Ray ray = Scene::rayFromClick(camera.position(), camera.lookDir(), screenPos);
+        Ray ray = Scene::rayFromClick(camera->position(), camera->lookDir(), screenPos);
         int primIndex = scene->intersectObject(ray);
         scene->selectPrimitive(primIndex);
     }
@@ -251,7 +249,7 @@ void inputs(){
 }
 
 void dynamicResolution(){
-    if (camera.getIsMoving(frameCount) || (UI::isInteracting() && !renderer->isRendering())){
+    if (camera->getIsMoving(frameCount) || (UI::isInteracting() && !renderer->isRendering())){
         resetFrame();
         int resolutionMultiplier = ui->getResolutionMultiplier();
         if (texWidth != app->width() / resolutionMultiplier) 

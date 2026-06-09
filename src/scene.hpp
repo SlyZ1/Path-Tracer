@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include <functional>
+#include "camera.hpp"
 #include "app.hpp"
 #include "shader_program.hpp"
 
@@ -46,6 +47,7 @@ struct Ray {
 class Scene {
 private:
     shared_ptr<App> m_app = {};
+    shared_ptr<Camera> m_camera = {};
 
     GLuint m_sceneBuffer = 0;
     GLuint m_lightIndicesBuffer = 0;
@@ -57,21 +59,22 @@ private:
 
     int m_copiedPrimitive = -1;
     int m_selectedPrimitive = -1;
-
+    
     function<void()> m_resetFrame = {};
-
+    
     float intersectSphere(const Ray& ray, const Primitive& sphere);
     float intersectPlane(const Ray& ray, const Primitive& plane);
 
 public:
     Scene() = default;
-    Scene(shared_ptr<App> app, function<void()> resetFrame) : m_app(app), m_resetFrame(resetFrame) {}
+    Scene(shared_ptr<App> app, shared_ptr<Camera> camera, function<void()> resetFrame) 
+    : m_app(app), m_camera(camera), m_resetFrame(resetFrame) {}
+    static Scene defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, function<void()> resetFrame = nullptr);
     static Material diffuseMaterial(glm::vec3 color, float roughness);
     static Material metalMaterial(glm::vec3 color, float fuzziness);
     static Material glassMaterial(glm::vec3 color, float refractionIndex);
     static Material glossyMaterial(glm::vec3 color, float fuzziness, float metallic);
     static Material emitMaterial(glm::vec3 color, float intensity);
-    static Scene defaultScene(shared_ptr<App> app, function<void()> resetFrame = nullptr);
     static Ray rayFromClick(glm::vec3 origin, glm::vec3 dir, glm::vec2 screenPos);
     glm::vec2 worldToScreen(glm::vec3 worldPos);
     void initGPU();

@@ -5,6 +5,7 @@
 #include <functional>
 #include "animator.hpp"
 #include "scene.hpp"
+#include "camera.hpp"
 
 using namespace glm;
 
@@ -16,6 +17,7 @@ class UI {
         shared_ptr<Renderer> m_renderer;
         shared_ptr<Animator> m_animator;
         shared_ptr<Scene> m_scene;
+        shared_ptr<Camera> m_camera;
         function<void()> m_resetFrame;
 
         void Label(const char* label) const;
@@ -36,6 +38,9 @@ class UI {
         int m_maxBounces = 6;
         int m_bounces = m_maxBounces;
 
+        // Camera
+        float m_fov = 50.0f;
+
         // Model
         glm::vec3 m_modelPos = glm::vec3(2,-1,-1.5);
         bool m_debugBVH = false;
@@ -52,8 +57,9 @@ class UI {
     public:
         UI() = default;
         UI(shared_ptr<App> app, shared_ptr<Renderer> renderer, shared_ptr<Animator> animator, shared_ptr<Scene> scene, 
-            function<void()> resetFrame) 
-                : m_app(app), m_renderer(renderer), m_animator(animator), m_scene(scene), m_resetFrame(resetFrame) { 
+            shared_ptr<Camera> camera, function<void()> resetFrame)
+                : m_app(app), m_renderer(renderer), m_animator(animator), m_scene(scene), m_camera(camera), 
+                m_resetFrame(resetFrame) { 
             ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
             ImGui::SetNextWindowSize(ImVec2(300, m_app->getIo()->DisplaySize.y));
         };

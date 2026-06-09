@@ -43,3 +43,9 @@ bool Camera::getIsMoving(int frame){
     if (result) m_lastMovingFrame = frame;
     return frame - m_lastMovingFrame < 10;
 }
+
+void Camera::updateGPU(){
+    glUniform3f(ShaderProgram::getVarLoc("camera.pos"), m_pos.x, m_pos.y, m_pos.z);
+    glUniform3f(ShaderProgram::getVarLoc("camera.lookDir"), lookDir().x, lookDir().y, lookDir().z);
+    glUniform1f(ShaderProgram::getVarLoc("cameraFov"), m_camProps.fov);
+}

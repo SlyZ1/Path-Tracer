@@ -73,26 +73,37 @@ void UI::renderPopupData(Primitive* selectedPrimitive){
     switch(matType){
         case MatType::DIFFUSE:
             Label("Roughness");
-            if (ImGui::SliderFloat("##Roughness", &selectedPrimitive->mat.data.x, 0.0f, 1.0f))
+            if (ImGui::SliderFloat("##Roughness", &selectedPrimitive->mat.data.x, 0.0f, 1.0f)){
+                selectedPrimitive->mat.data.x = glm::clamp(selectedPrimitive->mat.data.x, 0.0f, 1.0f);
                 m_scene->updateScene();
+            }
             break;
         case MatType::METAL:
             Label("Fuzziness");
-            if (ImGui::SliderFloat("##Fuzziness", &selectedPrimitive->mat.data.x, 0.0f, 0.8f))
+            if (ImGui::SliderFloat("##Fuzziness", &selectedPrimitive->mat.data.x, 0.0f, 0.8f)){
+                selectedPrimitive->mat.data.x = glm::clamp(selectedPrimitive->mat.data.x, 0.0f, 0.8f);
                 m_scene->updateScene();
+            }
             break;
         case MatType::GLASS:
             Label("Refraction Index");
-            if (ImGui::SliderFloat("##Refraction Index", &selectedPrimitive->mat.data.y, 1.0f, 4.0f))
+            if (ImGui::SliderFloat("##Refraction Index", &selectedPrimitive->mat.data.y, 1.0f, 4.0f)){
+                selectedPrimitive->mat.data.y = glm::clamp(selectedPrimitive->mat.data.y, 1.0f, 4.0f);
                 m_scene->updateScene();
+            }
             break;
         case MatType::GLOSSY:
             Label("Fuzziness");
-            if (ImGui::SliderFloat("##Fuzziness", &selectedPrimitive->mat.data.x, 0.0f, 0.8f))
+            if (ImGui::SliderFloat("##Fuzziness", &selectedPrimitive->mat.data.x, 0.0f, 0.8f)){
+                selectedPrimitive->mat.data.x = glm::clamp(selectedPrimitive->mat.data.x, 0.0f, 0.8f);
                 m_scene->updateScene();
+            }
+
             Label("Metallic");
-            if (ImGui::SliderFloat("##Metallic", &selectedPrimitive->mat.data.y, 0.05f, 1.0f))
+            if (ImGui::SliderFloat("##Metallic", &selectedPrimitive->mat.data.y, 0.05f, 1.0f)){
+                selectedPrimitive->mat.data.y = glm::clamp(selectedPrimitive->mat.data.y, 0.05f, 1.0f);
                 m_scene->updateScene();
+            }
             break;
         case MatType::EMIT:
             Label("Intensity");
@@ -178,6 +189,21 @@ void UI::render() {
     ImGui::Begin("Parameters", (bool*)NULL, 0);
 
     ImGui::BeginDisabled(m_renderer->isRendering() || m_disabled);
+
+    if (ImGui::CollapsingHeader("Camera Settings", ImGuiTreeNodeFlags_DefaultOpen)){
+        BeginTwoColumnLayout();
+
+        CameraProperties* camProps = m_camera->getCameraProperties();
+        Label("Fov");
+        if (ImGui::SliderFloat("##Fov", &camProps->fov, 50.0f, 90.0f))
+            m_resetFrame();
+
+        EndTwoColumnLayout();
+    }
+
+    ImGui::Spacing();
+    ImGui::Spacing();
+    ImGui::Spacing();
 
     if (ImGui::CollapsingHeader("Model Settings", ImGuiTreeNodeFlags_DefaultOpen)){
         BeginTwoColumnLayout();

@@ -1,6 +1,13 @@
+#ifndef CAMERA
+#define CAMERA
 #include <glm/glm.hpp>
+#include "shader_program.hpp"
 
 using namespace glm;
+
+struct CameraProperties {
+    float fov;
+};
 
 class Camera {
     private:
@@ -14,6 +21,8 @@ class Camera {
         bool m_isLooking = false;
         int m_lastMovingFrame = 0;
 
+        CameraProperties m_camProps = { 50.0f };
+
     public:
         Camera(float moveSensitivity, float lookSensitivity) 
             : m_moveSensitivity(moveSensitivity), m_lookSensitivity(lookSensitivity) {}
@@ -21,7 +30,11 @@ class Camera {
         void rotate(float mouseX, float mouseY);
         void resetMousePos(float mouseX, float mouseY);
         vec3 lookDir();
-        vec3 position() {return m_pos;};
+        vec3 position() { return m_pos; }
         bool getIsMoving(int frame);
-        void hasStoppedMoving() {m_isMoving = false; m_isLooking = false;};
+        void hasStoppedMoving() { m_isMoving = false; m_isLooking = false; }
+        void updateGPU();
+        CameraProperties* getCameraProperties() { return &m_camProps; }
 };
+
+#endif

@@ -79,6 +79,9 @@ struct RaycastData {
     uint seed;
 };
 
+uniform Camera camera;
+uniform float cameraFov;
+
 out vec4 FragColor;
 layout (location = 2) uniform vec2 texSize;
 layout (location = 3) uniform sampler2D screenTex;
@@ -87,7 +90,6 @@ layout (location = 7) uniform int samples;
 layout (location = 8) uniform vec2 winSize;
 layout (location = 9) uniform int maxBounces;
 layout (location = 11) uniform bool useModel;
-uniform Camera camera;
 in vec4 vClipPos;
 
 //#define SAMPLES 1
@@ -254,7 +256,7 @@ void computeLighting(in out Hit hit, in out Ray ray, in out uint seed){
 // RAY TRACING --------------------
 
 Ray fovRay(vec2 pos, Ray ray){
-    float fov = radians(mix(50.0, 90.0, 0 / 8.0));
+    float fov = radians(cameraFov);
     vec3 forward = normalize(camera.lookDir);
 
     vec3 worldUp = abs(forward.y) < 0.999

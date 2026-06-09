@@ -46,8 +46,8 @@ Material Scene::emitMaterial(vec3 color, float intensity){
     return mat;
 }
 
-Scene Scene::defaultScene(shared_ptr<App> app, function<void()> resetFrame){
-    Scene scene = Scene(app, resetFrame);
+Scene Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, function<void()> resetFrame){
+    Scene scene = Scene(app, camera, resetFrame);
     scene.initGPU();
 
     Primitive sphere2;
@@ -110,7 +110,8 @@ glm::vec2 Scene::worldToScreen(glm::vec3 worldPos){
     vec3 dir = normalize(worldPos - m_cameraPosition);
     float normFactor = 1 / dot(forward, dir);
     dir *= normFactor;
-    float tanHalfFov = tan(radians(50.0) * 0.5);
+    float fov = m_camera->getCameraProperties()->fov;
+    float tanHalfFov = tan(radians(fov) * 0.5);
     float rightCompo = dot(right, dir) / tanHalfFov;
     float upCompo = -dot(up, dir) / tanHalfFov;
     return vec2(rightCompo * m_app->height() / 2.0f, upCompo * m_app->height() / 2.0f);
