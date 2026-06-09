@@ -97,8 +97,7 @@ void init(){
     ShaderProgram::linkData(3, sizeof(float), 0);
     
     rayTraceShader.use();
-    int winSizeLoc = ShaderProgram::getVarLoc("winSize");
-    glUniform2f(winSizeLoc, app->width(), app->height());
+    glUniform2f(ShaderProgram::getVarLoc("winSize"), app->width(), app->height());
     
     scene = make_shared<Scene>(Scene::defaultScene(app, camera, resetFrame));
     

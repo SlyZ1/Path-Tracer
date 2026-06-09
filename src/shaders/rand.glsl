@@ -21,14 +21,27 @@ vec3 randomInSphere(inout uint seed) {
     float w = rand(seed);
 
     float theta = 2.0 * PI * u;
-    float phi   = acos(2.0 * v - 1.0);
-    float r     = pow(w, 1.0/3.0);
+    float phi = acos(2.0 * v - 1.0);
+    float r = pow(w, 1.0/3.0);
 
     float x = r * sin(phi) * cos(theta);
     float y = r * sin(phi) * sin(theta);
     float z = r * cos(phi);
 
     return vec3(x, y, z);
+}
+
+vec2 randomInDisk(inout uint seed) {
+    float u = rand(seed);
+    float v = rand(seed);
+
+    float theta = 2.0 * PI * u;
+    float r = pow(v, 1.0/2.0);
+
+    float x = r * cos(theta);
+    float y = r * sin(theta);
+
+    return vec2(x, y);
 }
 
 vec3 randomOnUnitSphere(inout uint seed) {

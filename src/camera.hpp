@@ -7,6 +7,8 @@ using namespace glm;
 
 struct CameraProperties {
     float fov;
+    float aperture;
+    float focalLength;
 };
 
 class Camera {
@@ -21,7 +23,7 @@ class Camera {
         bool m_isLooking = false;
         int m_lastMovingFrame = 0;
 
-        CameraProperties m_camProps = { 50.0f };
+        CameraProperties m_camProps = { 50.0f, 0.0f, 1.0f };
 
     public:
         Camera(float moveSensitivity, float lookSensitivity) 

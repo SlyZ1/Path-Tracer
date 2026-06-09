@@ -205,10 +205,18 @@ void UI::render() {
 
     if (ImGui::CollapsingHeader("Camera Settings", ImGuiTreeNodeFlags_DefaultOpen)){
         BeginTwoColumnLayout();
-
         CameraProperties* camProps = m_camera->getCameraProperties();
+
         Label("Fov");
-        if (ImGui::SliderFloat("##Fov", &camProps->fov, 50.0f, 90.0f))
+        if (ImGui::SliderFloat("##Fov", &camProps->fov, 20.0f, 90.0f))
+            m_resetFrame();
+        
+        Label("Aperture");
+        if (ImGui::SliderFloat("##Aperture", &camProps->aperture, 0.0f, 3.0f))
+            m_resetFrame();
+        
+        Label("Focal Length");
+        if (ImGui::DragFloat("##Focal Length", &camProps->focalLength, 0.1f, -1.0f, FLT_MAX))
             m_resetFrame();
 
         EndTwoColumnLayout();

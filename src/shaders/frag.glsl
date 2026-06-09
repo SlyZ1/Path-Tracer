@@ -81,15 +81,17 @@ struct RaycastData {
 
 uniform Camera camera;
 uniform float cameraFov;
+uniform float cameraAperture;
+uniform float cameraFocalLength;
 
 out vec4 FragColor;
-layout (location = 2) uniform vec2 texSize;
-layout (location = 3) uniform sampler2D screenTex;
-layout (location = 4) uniform int frameCount;
-layout (location = 7) uniform int samples;
-layout (location = 8) uniform vec2 winSize;
-layout (location = 9) uniform int maxBounces;
-layout (location = 11) uniform bool useModel;
+uniform vec2 texSize;
+uniform sampler2D screenTex;
+uniform int frameCount;
+uniform int samples;
+uniform vec2 winSize;
+uniform int maxBounces;
+uniform bool useModel;
 in vec4 vClipPos;
 
 //#define SAMPLES 1
@@ -123,6 +125,7 @@ in vec4 vClipPos;
 uint initSeed(uvec2 pos, uint frame);
 float rand(inout uint seed);
 vec3 randomInSphere(inout uint seed);
+vec2 randomInDisk(inout uint seed);
 vec3 randomOnUnitSphere(inout uint seed);
 vec3 randomOnUnitHemiphere(inout uint seed, vec3 normal);
 vec3 randomCosineHemisphere(inout uint seed, vec3 normal, float randomizationFactor);
@@ -255,21 +258,23 @@ void computeLighting(in out Hit hit, in out Ray ray, in out uint seed){
 
 // RAY TRACING --------------------
 
-Ray fovRay(vec2 pos, Ray ray){
-    float fov = radians(cameraFov);
+Ray fovRay(vec2 pos, Ray ray, inout uint seed){
     vec3 forward = normalize(camera.lookDir);
-
     vec3 worldUp = abs(forward.y) < 0.999
                  ? vec3(0,1,0)
                  : vec3(0,0,1);
-
     vec3 right = normalize(cross(forward, worldUp));
     vec3 up    = cross(right, forward);
 
+    vec2 lensJitter = randomInDisk(seed) * cameraAperture;
+    ray.origin += lensJitter.x * right + lensJitter.y * up;
+
+    float fov = radians(cameraFov);
     float tanHalfFov = tan(fov * 0.5);
 
-    vec3 dir = forward + (right * pos.x + up * pos.y) * tanHalfFov;
-    ray.dir = normalize(dir);
+    vec3 focusPoint = camera.pos + (forward + (right * pos.x + up * pos.y) * tanHalfFov) * cameraFocalLength;
+
+    ray.dir = normalize(focusPoint - ray.origin);
     return ray;
 }
 
@@ -344,8 +349,8 @@ void main()
 
     vec4 radiance;
     for (int i = 0; i < samples; i++) {
-        vec2 jitter = vec2(rand(seed), rand(seed)) * 2 / winSize;
-        Ray r = fovRay(pos + jitter, ray);
+        vec2 AAjitter = vec2(rand(seed), rand(seed)) * 2 / winSize;
+        Ray r = fovRay(pos + AAjitter, ray, seed);
         radiance += max(rayColor(seed, r), vec4(0));
     }
 
