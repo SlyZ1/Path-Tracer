@@ -67,11 +67,11 @@ class Mesh {
 public:
     Mesh();
     void loadFromModel(const char* path);
-    vector<Triangle> getTriangles() const;
+    const vector<Triangle>& getTriangles() const;
     BVHNode* computeBVH(vector<Triangle>& triangles, vector<int>& indices, int begin, int end);
-    static vector<linBVHNode> lineariseBVH(BVHNode* node, const vector<Triangle>& triangles);
+    static vector<linBVHNode> lineariseBVH(BVHNode* node);
     BVHNode* getBVHNodes() const { return m_nodes; }
-    vector<linBVHNode> getLinNodes() const { return m_linNodes; }
+    const vector<linBVHNode>& getLinNodes() const { return m_linNodes; }
     
 private:
     vector<Triangle> m_triangles = {};

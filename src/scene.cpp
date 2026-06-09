@@ -31,6 +31,20 @@ Scene Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, functi
     plane.mat = Material::glossyMaterial(vec3(1), 0, 0.2);
     scene.addObject(plane);
 
+    Object meshObject;
+    meshObject.type = PrimType::MESH_;
+    Mesh* mesh = new Mesh();
+    mesh->loadFromModel("models/Cube.obj");
+    meshObject.mesh = mesh;
+    scene.addObject(meshObject);
+
+    Object cubeObject;
+    cubeObject.type = PrimType::MESH_;
+    Mesh* cubeMesh = new Mesh();
+    cubeMesh->loadFromModel("models/bunny.obj");
+    cubeObject.mesh = cubeMesh;
+    scene.addObject(cubeObject);
+
     return scene;
 }
 
@@ -86,6 +100,12 @@ void Scene::initGPU(){
     glGenBuffers(1, &m_sceneBuffer);
     glDeleteBuffers(1, &m_lightIndicesBuffer);
     glGenBuffers(1, &m_lightIndicesBuffer);
+    glDeleteBuffers(1, &m_meshInfosBuffer);
+    glGenBuffers(1, &m_meshInfosBuffer);
+    glDeleteBuffers(1, &m_trianglesBuffer);
+    glGenBuffers(1, &m_trianglesBuffer);
+    glDeleteBuffers(1, &m_nodesBuffer);
+    glGenBuffers(1, &m_nodesBuffer);
 }
 
 float Scene::intersectSphere(const Ray& ray, const Object& sphere){
@@ -159,8 +179,8 @@ float Scene::intersectMesh(const Ray& ray, const Mesh& mesh){
     int stack[STACK_SIZE];
     int stackPtr = 0;
 
-    vector<linBVHNode> nodes = mesh.getLinNodes();
-    vector<Triangle> triangles = mesh.getTriangles();
+    const vector<linBVHNode>& nodes = mesh.getLinNodes();
+    const vector<Triangle>& triangles = mesh.getTriangles();
     stack[stackPtr++] = nodes.size() - 1;
 
     float hitT = 1e6;
@@ -235,24 +255,11 @@ int Scene::intersectObject(const Ray& ray){
     return intersected;
 }
 
-vector<PrimitiveObject> Scene::filterPrimitives(){
-    vector<PrimitiveObject> primitives = {};
-    for(Object obj : m_objects){
-        if (obj.type == PrimType::MESH_) continue;
-        PrimitiveObject prim;
-        prim.pos = obj.pos;
-        prim.scale = obj.scale;
-        prim.mat = obj.mat;
-        prim.type = obj.type;
-        primitives.push_back(prim);
-    }
-    return primitives;
-}
-
-int Scene::addObject(const Object& prim){
+int Scene::addObject(const Object& obj){
     int newIndex = m_objects.size();
-    if (prim.mat.type == MatType::EMIT) m_lightIndices.push_back(newIndex);
-    m_objects.push_back(prim);
+    if (obj.type == PrimType::MESH_) m_numMeshesChanged = true;
+    else if (obj.mat.type == MatType::EMIT) m_lightIndices.push_back(newIndex);
+    m_objects.push_back(obj);
     m_sceneChanged = true;
     m_selectedObject = newIndex;
     return newIndex;
@@ -268,7 +275,8 @@ void Scene::removeObject(int index){
     if (index < 0 || index >= (int)m_objects.size()) return;
 
     Object obj = m_objects[index];
-    if (obj.mat.type == MatType::EMIT) 
+    if (obj.type == PrimType::MESH_) m_numMeshesChanged = true;
+    else if (obj.mat.type == MatType::EMIT) 
         m_lightIndices.erase(
             std::remove(m_lightIndices.begin(), m_lightIndices.end(), index),
             m_lightIndices.end()
@@ -292,10 +300,37 @@ void Scene::updateScene(){
 
 void Scene::updateGPU(){
     if (!m_sceneChanged) return;
-
+    m_sceneChanged = false;
     m_resetFrame();
 
-    vector<PrimitiveObject> primitives = filterPrimitives();
+    vector<PrimitiveObject> primitives = {};
+    vector<MeshInfos> meshInfos = {};
+    vector<Triangle> triangles = {};
+    vector<linBVHNode> nodes = {};
+    for(Object obj : m_objects){
+        if (obj.type == PrimType::MESH_){
+            MeshInfos meshInfo;
+            meshInfo.triangleOffset = triangles.size();
+            meshInfo.nodeOffset = nodes.size();
+            //meshInfo.pos = obj.pos;
+            meshInfos.push_back(meshInfo);
+            if (obj.mat.type == MatType::EMIT) obj.mat.type = MatType::DIFFUSE;
+            
+            const vector<Triangle>& meshTriangles = obj.mesh->getTriangles();
+            const vector<linBVHNode>& meshNodes = obj.mesh->getLinNodes();
+            cout << triangles.size() << " " << nodes.size() << endl;
+            triangles.insert(triangles.end(), meshTriangles.begin(), meshTriangles.end());
+            nodes.insert(nodes.end(), meshNodes.begin(), meshNodes.end());
+        }
+        else{
+            PrimitiveObject prim;
+            prim.pos = obj.pos;
+            prim.scale = obj.scale;
+            prim.mat = obj.mat;
+            prim.type = obj.type;
+            primitives.push_back(prim);
+        }
+    }
 
     glUniform1i(ShaderProgram::getVarLoc("numPrimitives"), primitives.size());
     glUniform1i(ShaderProgram::getVarLoc("numLights"), m_lightIndices.size());
@@ -308,5 +343,22 @@ void Scene::updateGPU(){
     glBufferData(GL_SHADER_STORAGE_BUFFER, m_lightIndices.size() * sizeof(int), m_lightIndices.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_lightIndicesBuffer);
 
-    m_sceneChanged = false;
+    if (m_numMeshesChanged){
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_trianglesBuffer);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, triangles.size() * sizeof(Triangle), triangles.data(), GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_trianglesBuffer);
+        glUniform1i(ShaderProgram::getVarLoc("numTriangles"), triangles.size());
+    
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_nodesBuffer);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, nodes.size() * sizeof(linBVHNode), nodes.data(), GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_nodesBuffer);
+        glUniform1i(ShaderProgram::getVarLoc("numBVHNodes"), nodes.size());
+    }
+
+    cout << meshInfos[1].nodeOffset << " " << meshInfos.size() << endl;
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshInfosBuffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, meshInfos.size() * sizeof(MeshInfos), meshInfos.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_meshInfosBuffer);
+    glUniform1i(ShaderProgram::getVarLoc("numMeshes"), meshInfos.size());
+    
 }

@@ -95,7 +95,7 @@ Hit intersectAABB(Ray invRay, AABB box, float tMin, float tMax)
     return hit;
 }
 
-Hit bvhIntersect(inout Ray ray)
+Hit bvhIntersect(inout Ray ray, int triangleOffset, int nodeOffset, int lastNodeIndex)
 {
     //ray.origin -= modelPos;
     const int STACK_SIZE = 32;
@@ -103,13 +103,13 @@ Hit bvhIntersect(inout Ray ray)
     int stack[STACK_SIZE];
     int stackPtr = 0;
 
-    stack[stackPtr++] = numBVHNodes - 1;
+    stack[stackPtr++] = lastNodeIndex;
 
     float hitT = 1e6;
-    float hitTri = -1;
     Hit hit;
     hit.t = -2;
     Ray invRay = ray;
+    invRay.dir = 1 / invRay.dir;
 
     while (stackPtr > 0) {
         int nodeIndex = stack[--stackPtr];
@@ -120,11 +120,10 @@ Hit bvhIntersect(inout Ray ray)
         if (debugBVH > 0) ray.throughput *= 0.95;
 
         if (node.triangle >= 0) {
-            Hit triHit = triangleIntersect(triangles[node.triangle], ray);
+            Hit triHit = triangleIntersect(triangles[node.triangle + triangleOffset], ray);
             if (triHit.t >= 0) {
                 if (triHit.t < hitT) {
                     hitT = triHit.t;
-                    hitTri = node.triangle;
                     hit = triHit;
                 }
             }
@@ -133,20 +132,20 @@ Hit bvhIntersect(inout Ray ray)
             Hit leftHit; leftHit.t = -1;
             Hit rightHit; rightHit.t = -1;
             if (node.left >= 0)
-                leftHit = intersectAABB(invRay, nodes[node.left].aabb, 0.001, hitT);
+                leftHit = intersectAABB(invRay, nodes[node.left + nodeOffset].aabb, 0.001, hitT);
             if (node.right >= 0)
-                rightHit = intersectAABB(invRay, nodes[node.right].aabb, 0.001, hitT);
+                rightHit = intersectAABB(invRay, nodes[node.right + nodeOffset].aabb, 0.001, hitT);
 
             if (leftHit.t >= 0 && rightHit.t >= 0){
                 if (leftHit.t < rightHit.t) {
-                    stack[stackPtr++] = node.right;
-                    stack[stackPtr++] = node.left;
+                    stack[stackPtr++] = node.right + nodeOffset;
+                    stack[stackPtr++] = node.left + nodeOffset;
                 } else {
-                    stack[stackPtr++] = node.left;
-                    stack[stackPtr++] = node.right;
+                    stack[stackPtr++] = node.left + nodeOffset;
+                    stack[stackPtr++] = node.right + nodeOffset;
                 }
-            } else if (leftHit.t >= 0) stack[stackPtr++] = node.left;
-            else if (rightHit.t >= 0) stack[stackPtr++] = node.right;
+            } else if (leftHit.t >= 0) stack[stackPtr++] = node.left + nodeOffset;
+            else if (rightHit.t >= 0) stack[stackPtr++] = node.right + nodeOffset;
         }
     }
 
@@ -170,8 +169,11 @@ Hit rayIntersection(inout Ray ray){
         }
         if (newHit.t > 0 && newHit.t < hit.t) hit = newHit;
     }
-    if (useModel){
-        Hit bvhHit = bvhIntersect(ray);
+    for (int j = 0; j < numMeshes; j += 1){
+        MeshInfos info = meshInfos[j];
+        int lastNodeIndex = numBVHNodes - 1;
+        if (j == 0) lastNodeIndex = meshInfos[j + 1].nodeOffset - 1;
+        Hit bvhHit = bvhIntersect(ray, info.triangleOffset, info.nodeOffset, lastNodeIndex);
         if (bvhHit.t > 0 && bvhHit.t < hit.t) hit = bvhHit;
     }
 

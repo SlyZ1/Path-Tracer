@@ -41,6 +41,11 @@ struct BVHNode {
     int triangle;
 };
 
+struct MeshInfos {
+    int triangleOffset;
+    int nodeOffset;
+};
+
 struct Ray {
     vec3 origin;
     vec3 dir;
@@ -65,7 +70,10 @@ layout(std430, binding = 1) buffer BVHBuffer {
 };
 uniform int numBVHNodes;
 uniform int debugBVH;
-uniform vec3 modelPos;
+layout(std430, binding = 4) buffer MeshBuffer {
+    MeshInfos meshInfos[];
+};
+uniform int numMeshes;
 
 layout(std430, binding = 2) buffer PrimitiveBuffer {
     Primitive primitives[];

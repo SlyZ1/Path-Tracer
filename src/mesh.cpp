@@ -89,10 +89,10 @@ void Mesh::loadFromModel(const char* path){
         triIndices[i] = i;
     }
     computeBVH(m_triangles, triIndices, 0, size);
-    m_linNodes = lineariseBVH(m_nodes, m_triangles);
+    m_linNodes = lineariseBVH(m_nodes);
 }
 
-vector<Triangle> Mesh::getTriangles() const {
+const vector<Triangle>& Mesh::getTriangles() const {
     return m_triangles;
 }
 
@@ -167,13 +167,13 @@ int indexOfTriangle(const vector<Triangle>& triangles, const Triangle& triangle)
     return -1;
 }
 
-int lineariseRec(BVHNode* node, vector<linBVHNode>& nodes, const vector<Triangle>& triangles){
+int lineariseRec(BVHNode* node, vector<linBVHNode>& nodes){
     if (node == nullptr){
         return -1;
     }
 
-    int left = lineariseRec(node->left, nodes, triangles);
-    int right = lineariseRec(node->right, nodes, triangles);
+    int left = lineariseRec(node->left, nodes);
+    int right = lineariseRec(node->right, nodes);
     int triangle = node->triangle;
 
     linBVHNode linNode = {
@@ -187,8 +187,8 @@ int lineariseRec(BVHNode* node, vector<linBVHNode>& nodes, const vector<Triangle
     return i;
 }
 
-vector<linBVHNode> Mesh::lineariseBVH(BVHNode* node, const vector<Triangle>& triangles){
+vector<linBVHNode> Mesh::lineariseBVH(BVHNode* node){
     vector<linBVHNode> nodes = {};
-    lineariseRec(node, nodes, triangles);
+    lineariseRec(node, nodes);
     return nodes;
 }

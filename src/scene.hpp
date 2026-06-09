@@ -27,12 +27,9 @@ struct PrimitiveObject {
     PrimType type;
 };
 
-struct MeshObject {
-    glm::vec3 pos;
-    float scale;
-    Material mat;
-    glm::vec3 pad;
-    Mesh* mesh = nullptr;
+struct MeshInfos {
+    int triangleOffset;
+    int nodeOffset;
 };
 
 struct Object {
@@ -56,7 +53,11 @@ private:
 
     GLuint m_sceneBuffer = 0;
     GLuint m_lightIndicesBuffer = 0;
+    GLuint m_meshInfosBuffer = 0;
+    GLuint m_trianglesBuffer = 0;
+    GLuint m_nodesBuffer = 0;
     bool m_sceneChanged = false;
+    bool m_numMeshesChanged = false;
     vector<Object> m_objects = {};
     vector<int> m_lightIndices = {};
     static glm::vec3 m_cameraDirection;
@@ -72,7 +73,6 @@ private:
     float intersectAABB(const Ray& ray, const AABB& aabb, float tMin, float tMax);
     float intersectTriangle(const Ray& ray, const Triangle& triangle);
     float intersectMesh(const Ray& ray, const Mesh& mesh);
-    vector<PrimitiveObject> filterPrimitives();
 
 public:
     Scene() = default;
