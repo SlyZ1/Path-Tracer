@@ -43,6 +43,17 @@ void Mesh::loadFromModel(const char* path){
             attrib.vertices[3 * i.vertex_index + 2]
         );
     };
+
+    auto getNormal = [&](tinyobj::index_t i){
+        if (i.normal_index >= 0) {
+            return glm::vec3(
+                attrib.normals[3 * i.normal_index + 0],
+                attrib.normals[3 * i.normal_index + 1],
+                attrib.normals[3 * i.normal_index + 2]
+            );
+        }
+        return glm::vec3(0.0f); // pas de normale dans le fichier
+    };
     
     for(const auto &shape : shapes){
         const auto &mesh = shape.mesh;
@@ -61,6 +72,9 @@ void Mesh::loadFromModel(const char* path){
                 newTriangle.v1 = getPos(i0);
                 newTriangle.v2 = getPos(i1);
                 newTriangle.v3 = getPos(i2);
+                newTriangle.n1 = getNormal(i0);
+                newTriangle.n2 = getNormal(i1);
+                newTriangle.n3 = getNormal(i2);
                 
                 m_triangles.push_back(newTriangle);   
             }
@@ -68,6 +82,14 @@ void Mesh::loadFromModel(const char* path){
             index_offset += fv;
         }
     }
+
+    int size = m_triangles.size();
+    vector<int> triIndices(size);
+    for (int i = 0; i < size; i++) {
+        triIndices[i] = i;
+    }
+    computeBVH(m_triangles, triIndices, 0, size);
+    m_linNodes = lineariseBVH(m_nodes, m_triangles);
 }
 
 vector<Triangle> Mesh::getTriangles() const {
@@ -128,6 +150,8 @@ BVHNode* Mesh::computeBVH(vector<Triangle>& triangles,
 
     node->left = computeBVH(triangles, indices, begin, mid);
     node->right = computeBVH(triangles, indices, mid, end);
+
+    m_nodes = node;
 
     return node;
 }

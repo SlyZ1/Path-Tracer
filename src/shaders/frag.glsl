@@ -24,6 +24,9 @@ struct Triangle {
     vec3 v0;
     vec3 v1;
     vec3 v2;
+    vec3 n0;
+    vec3 n1;
+    vec3 n2;
 };
 
 struct AABB {

@@ -17,11 +17,11 @@ void glass(inout RaycastData data){
     float reflectance = fresnel(cos1, cos2, n);
     if (totalReflection || rand(seed) < reflectance){
         data.hit.mat.color = vec3(1);
-        ray.origin += hit.t * ray.dir + EPS * normal;
-        ray.dir = reflect(ray.dir, hit.normal);
+        ray.origin += hit.t * ray.dir + 0.001 * normal;
+        ray.dir = reflect(ray.dir, normal);
     }
     else{
-        ray.origin += hit.t * ray.dir - EPS * normal;
+        ray.origin += hit.t * ray.dir - 0.001 * normal;
         ray.dir = refractedRay;
     }
 

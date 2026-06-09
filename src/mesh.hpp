@@ -7,12 +7,18 @@
 using namespace std;
 
 struct Triangle {
-    glm::vec3 v1; 
-    float pad0;
-    glm::vec3 v2;
+    glm::vec3 v1;
     float pad1;
-    glm::vec3 v3;
+    glm::vec3 v2;
     float pad2;
+    glm::vec3 v3;
+    float pad3;
+    glm::vec3 n1;
+    float pad4;
+    glm::vec3 n2;
+    float pad5;
+    glm::vec3 n3;
+    float pad6;
 
     glm::vec3 centroid() const {
         return {(v1.x + v3.x + v2.x) / 3.0f,
@@ -62,11 +68,15 @@ public:
     Mesh();
     void loadFromModel(const char* path);
     vector<Triangle> getTriangles() const;
-    static BVHNode* computeBVH(vector<Triangle>& triangles, vector<int>& indices, int begin, int end);
+    BVHNode* computeBVH(vector<Triangle>& triangles, vector<int>& indices, int begin, int end);
     static vector<linBVHNode> lineariseBVH(BVHNode* node, const vector<Triangle>& triangles);
-
+    BVHNode* getBVHNodes() const { return m_nodes; }
+    vector<linBVHNode> getLinNodes() const { return m_linNodes; }
+    
 private:
     vector<Triangle> m_triangles = {};
+    BVHNode* m_nodes = nullptr;
+    vector<linBVHNode> m_linNodes = {};
     static AABB triangleBounds(const Triangle& tri);
     static AABB computeBounds(const vector<Triangle>& triangles, int start, int end);
 };

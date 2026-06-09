@@ -169,6 +169,10 @@ bool App::mousePressedOnce(int button, unsigned int frame){
     return false;
 }
 
+void App::setMousePos(float x, float y){
+    glfwSetCursorPos(m_window, (double)x, (double)y);
+}
+
 void App::toggleCursor(bool show){
     m_cursorHidden = !show;
     glfwSetInputMode(m_window, GLFW_CURSOR, !show ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);

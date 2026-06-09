@@ -30,14 +30,13 @@ class UI {
         bool m_popupOpened = false;
         void renderToolTip(const string& tip) const;
         void renderPopup();
-        void renderPopupData(Primitive* selectedPrimitive);
+        void renderPopupData(Object* selectedObject);
 
         void renderPointer();
 
         // Technical GPU
         int m_resMultiplier = 3;
         int m_maxBounces = 6;
-        int m_bounces = m_maxBounces;
 
         // Camera
         float m_fov = 50.0f;

@@ -43,12 +43,6 @@ Hit planeIntersect(Primitive plane, Ray ray){
     return Hit(t, normal, plane.mat, false);
 }
 
-vec3 computeNormal(Triangle tri) {
-    vec3 edge1 = tri.v1 - tri.v0;
-    vec3 edge2 = tri.v2 - tri.v0;
-    return normalize(cross(edge1, edge2));
-}
-
 Hit triangleIntersect(Triangle tri, Ray ray){
     Hit hit; hit.t = -2;
 
@@ -73,46 +67,31 @@ Hit triangleIntersect(Triangle tri, Ray ray){
         return hit;
 
     float t = dot(edge2, qvec) * invDet;
+    if (t < 0.001) return hit;
 
-    vec3 normal = computeNormal(tri);
+    vec3 normal = normalize(tri.n0 * (1-u-v) + tri.n1 * u + tri.n2 * v);
     bool isInside = dot(normal, ray.dir) > 0;
 
-    return Hit(t, normal, Mat(vec3(1), 1, mData(0,0.2), vec2(0)), isInside);
+    return Hit(t, normal, Mat(vec3(1), 2, mData(0,1.3), vec2(0)), isInside);
 }
 
-Hit intersectAABB(Ray ray, AABB box, float tMin, float tMax)
+Hit intersectAABB(Ray invRay, AABB box, float tMin, float tMax)
 {
     Hit hit;
     hit.t = -1.0f;
     
-    float tmin = tMin;
-    float tmax = tMax;
-    
-    for (int i = 0; i < 3; i++) {
-        if (abs(ray.dir[i]) < 1e-8f) {
-            continue;
-        }
-        
-        float invD = 1 / ray.dir[i];
-        float t0 = (box.min[i] - ray.origin[i]) * invD;
-        float t1 = (box.max[i] - ray.origin[i]) * invD;
-        
-        if (invD < 0.0f) {
-            float temp = t1;
-            t1 = t0;
-            t0 = temp;
-        }
-        
-        tmin = max(tmin, t0);
-        tmax = min(tmax, t1);
-        
-        if (tmax < tmin) {
-            return hit;
-        }
-    }
-    
+    vec3 t0 = (box.min - invRay.origin) * invRay.dir;
+    vec3 t1 = (box.max - invRay.origin) * invRay.dir;
+
+    vec3 tNear = min(t0, t1);
+    vec3 tFar  = max(t0, t1);
+
+    float tmin = max(max(tNear.x, tNear.y), max(tNear.z, tMin));
+    float tmax = min(min(tFar.x,  tFar.y),  min(tFar.z,  tMax));
+
+    if (tmax < tmin) return hit;
+
     hit.t = tmin;
-    hit.normal = -ray.dir;
     return hit;
 }
 
@@ -126,18 +105,18 @@ Hit bvhIntersect(inout Ray ray)
 
     stack[stackPtr++] = numBVHNodes - 1;
 
-    float hitT = 100000;
+    float hitT = 1e6;
     float hitTri = -1;
     Hit hit;
     hit.t = -2;
+    Ray invRay = ray;
 
     while (stackPtr > 0) {
-
         int nodeIndex = stack[--stackPtr];
         BVHNode node = nodes[nodeIndex];
 
-        Hit boxHit = intersectAABB(ray, node.aabb, 0.001, hitT);
-        if (boxHit.t < 0) continue;
+        Hit boxHit = intersectAABB(invRay, node.aabb, 0.001, hitT);
+        if (boxHit.t < 0 || boxHit.t > hitT) continue;
         if (debugBVH > 0) ray.throughput *= 0.95;
 
         if (node.triangle >= 0) {
@@ -151,11 +130,23 @@ Hit bvhIntersect(inout Ray ray)
             }
         }
         else {
+            Hit leftHit; leftHit.t = -1;
+            Hit rightHit; rightHit.t = -1;
             if (node.left >= 0)
-                stack[stackPtr++] = node.left;
-
+                leftHit = intersectAABB(invRay, nodes[node.left].aabb, 0.001, hitT);
             if (node.right >= 0)
-                stack[stackPtr++] = node.right;
+                rightHit = intersectAABB(invRay, nodes[node.right].aabb, 0.001, hitT);
+
+            if (leftHit.t >= 0 && rightHit.t >= 0){
+                if (leftHit.t < rightHit.t) {
+                    stack[stackPtr++] = node.right;
+                    stack[stackPtr++] = node.left;
+                } else {
+                    stack[stackPtr++] = node.left;
+                    stack[stackPtr++] = node.right;
+                }
+            } else if (leftHit.t >= 0) stack[stackPtr++] = node.left;
+            else if (rightHit.t >= 0) stack[stackPtr++] = node.right;
         }
     }
 

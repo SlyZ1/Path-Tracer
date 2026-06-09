@@ -69,6 +69,7 @@ void genTexture(unsigned int width, unsigned int height){
 void init(){
     app = make_shared<App>();
     app->init(1600, 900, "Basic Raytracer");
+    app->setMousePos(app->width() / 2.0f, app->height() / 2.0f);
     app->toggleCursor(false);
     renderer = make_shared<Renderer>(app);
     animator = make_shared<Animator>(renderer, resetFrame);
@@ -101,32 +102,26 @@ void init(){
     
     scene = make_shared<Scene>(Scene::defaultScene(app, camera, resetFrame));
     
-    Mesh* mesh = new Mesh();
-    mesh->loadFromModel("models/Cube.obj");
-    vector<Triangle> triangles = mesh->getTriangles();
-    cout << "Loaded model with " << triangles.size() << " triangles." << endl;
-    GLuint trissbo;
-    glGenBuffers(1, &trissbo);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, trissbo);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, triangles.size() * sizeof(Triangle), triangles.data(), GL_STATIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, trissbo); // binding 0
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-    glUniform1i(ShaderProgram::getVarLoc("numTriangles"), triangles.size());
+    // Mesh* mesh = new Mesh();
+    // mesh->loadFromModel("models/bunny.obj");
+    // vector<Triangle> triangles = mesh->getTriangles();
+    // cout << "Loaded model with " << triangles.size() << " triangles." << endl;
+    // GLuint trissbo;
+    // glGenBuffers(1, &trissbo);
+    // glBindBuffer(GL_SHADER_STORAGE_BUFFER, trissbo);
+    // glBufferData(GL_SHADER_STORAGE_BUFFER, triangles.size() * sizeof(Triangle), triangles.data(), GL_STATIC_DRAW);
+    // glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, trissbo); // binding 0
+    // glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    // glUniform1i(ShaderProgram::getVarLoc("numTriangles"), triangles.size());
     
-    vector<int> triIndices(triangles.size());
-    int size = triangles.size();
-    for (int i = 0; i < size; i++) {
-        triIndices[i] = i;
-    }
-    BVHNode* bvh = Mesh::computeBVH(triangles, triIndices, 0, triangles.size());
-    vector<linBVHNode> linNodes = Mesh::lineariseBVH(bvh, triangles);
-    GLuint bvhssbo;
-    glGenBuffers(1, &bvhssbo);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, bvhssbo);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, linNodes.size() * sizeof(linBVHNode), linNodes.data(), GL_STATIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, bvhssbo); // binding 1
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-    glUniform1i(ShaderProgram::getVarLoc("numBVHNodes"), linNodes.size());
+    // vector<linBVHNode> linNodes = Mesh::lineariseBVH(mesh->getBVHNodes(), triangles);
+    // GLuint bvhssbo;
+    // glGenBuffers(1, &bvhssbo);
+    // glBindBuffer(GL_SHADER_STORAGE_BUFFER, bvhssbo);
+    // glBufferData(GL_SHADER_STORAGE_BUFFER, linNodes.size() * sizeof(linBVHNode), linNodes.data(), GL_STATIC_DRAW);
+    // glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, bvhssbo); // binding 1
+    // glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    // glUniform1i(ShaderProgram::getVarLoc("numBVHNodes"), linNodes.size());
     
     glGenFramebuffers(1, &FBO);
     genTexture(app->width(), app->height());
@@ -201,18 +196,19 @@ void inputs(){
         cout << "Frame Time: " << glfwGetTime() << "s with " << frameAccumulator << " samples." << endl;
     
     if (app->keyPressedOnce(GLFW_KEY_ESCAPE, frameCount)){
+        app->setMousePos(app->width() / 2.0f, app->height() / 2.0f);
         ui->toggle();
         app->toggleCursor(app->cursorIsHidden());
         camera->resetMousePos(app->mouseX(), app->mouseY());
     }
 
     if (app->keyPressedOnce(GLFW_KEY_ENTER, frameCount) && !ui->isShowing()){
-        Primitive newprim;
-        newprim.type = PrimType::SPHERE;
-        newprim.pos = glm::vec3(rand() / (float)RAND_MAX * 10, 1, rand() / (float)RAND_MAX * 10);
-        newprim.scale = rand() / (float)RAND_MAX + 0.5;
-        newprim.mat = Scene::glassMaterial(glm::vec3(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX, rand() / (float)RAND_MAX), rand() / (float)RAND_MAX*2 + 1);
-        scene->addObject(newprim);
+        Object newObj;
+        newObj.type = PrimType::SPHERE;
+        newObj.pos = glm::vec3(rand() / (float)RAND_MAX * 10, 1, rand() / (float)RAND_MAX * 10);
+        newObj.scale = rand() / (float)RAND_MAX + 0.5;
+        newObj.mat = Material::glassMaterial(glm::vec3(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX, rand() / (float)RAND_MAX), rand() / (float)RAND_MAX*2 + 1);
+        scene->addObject(newObj);
     }
 
     if (app->keyPressed(GLFW_KEY_LEFT_ALT) && app->keyPressedOnce(GLFW_KEY_S, frameCount)){
@@ -228,23 +224,22 @@ void inputs(){
         screenPos = 2.0f * screenPos - glm::vec2(1.0f);
         screenPos.y *= -1;
         screenPos.x *= texWidth / (float)texHeight;
-        float fov = camera->getCameraProperties()->fov;
-        Ray ray = Scene::rayFromClick(camera->position(), camera->lookDir(), screenPos, fov);
+        Ray ray = Scene::rayFromClick(camera, screenPos);
         int primIndex = scene->intersectObject(ray);
-        scene->selectPrimitive(primIndex);
+        scene->selectObject(primIndex);
     }
 
     if (app->keyPressedOnce(GLFW_KEY_DELETE, frameCount)){
-        scene->removeObject(scene->getSelectedPrimitive());
+        scene->removeObject(scene->getSelectedObject());
     }
 
     if (app->keyPressed(GLFW_KEY_LEFT_CONTROL) && app->keyPressedOnce(GLFW_KEY_C, frameCount)){
-        scene->copyPrimitive(scene->getSelectedPrimitive());
+        scene->copyObject(scene->getSelectedObject());
     }
 
     if (app->keyPressed(GLFW_KEY_LEFT_CONTROL) && app->keyPressedOnce(GLFW_KEY_V, frameCount)){
-        int newIndex = scene->pastePrimitive();
-        scene->selectPrimitive(newIndex);
+        int newIndex = scene->pasteObject();
+        scene->selectObject(newIndex);
     }
 }
 

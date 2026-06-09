@@ -33,6 +33,7 @@ class App {
         bool keyPressedOnce(int key, unsigned int frame);
         bool mousePressed(int button);
         bool mousePressedOnce(int button, unsigned int frame);
+        void setMousePos(float x, float y);
         void toggleCursor(bool show);
         bool cursorIsHidden();
         float mouseX();

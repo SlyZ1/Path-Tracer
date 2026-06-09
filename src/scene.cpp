@@ -6,75 +6,39 @@ using namespace glm;
 glm::vec3 Scene::m_cameraDirection = glm::vec3(0, 0, -1);
 glm::vec3 Scene::m_cameraPosition  = glm::vec3(0, 0, 0);
 
-Material Scene::diffuseMaterial(vec3 color, float roughness){
-    Material mat;
-    mat.type = MatType::DIFFUSE;
-    mat.color = color;
-    mat.data = vec2(glm::clamp(roughness, 0.0f, 1.0f), 0);
-    return mat;
-}
-
-Material Scene::metalMaterial(vec3 color, float fuzziness){
-    Material mat;
-    mat.type = MatType::METAL;
-    mat.color = color;
-    mat.data = vec2(glm::clamp(fuzziness, 0.0f, 1.0f), 0);
-    return mat;
-}
-
-Material Scene::glassMaterial(vec3 color, float refractionIndex){
-    Material mat;
-    mat.type = MatType::GLASS;
-    mat.color = color;
-    mat.data = vec2(0, glm::max(refractionIndex, 0.0f));
-    return mat;
-}
-
-Material Scene::glossyMaterial(vec3 color, float fuzziness, float metallic){
-    Material mat;
-    mat.type = MatType::GLOSSY;
-    mat.color = color;
-    mat.data = vec2(glm::clamp(fuzziness, 0.0f, 1.0f), glm::clamp(metallic, 0.0f, 1.0f));
-    return mat;
-}
-
-Material Scene::emitMaterial(vec3 color, float intensity){
-    Material mat;
-    mat.type = MatType::EMIT;
-    mat.color = color;
-    mat.data = vec2(glm::max(intensity, 0.0f), 0);
-    return mat;
-}
-
 Scene Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, function<void()> resetFrame){
     Scene scene = Scene(app, camera, resetFrame);
     scene.initGPU();
 
-    Primitive sphere2;
+    Object sphere2;
     sphere2.type = PrimType::SPHERE;
     sphere2.pos = vec3(-2, 1, 0);
     sphere2.scale = 1;
-    sphere2.mat = metalMaterial(vec3(1), 0.3);
+    sphere2.mat = Material::metalMaterial(vec3(1), 0.3);
     scene.addObject(sphere2);
 
-    Primitive light;
+    Object light;
     light.type = PrimType::SPHERE;
     light.pos = vec3(-2, 3, -5);
     light.scale = 1;
-    light.mat = emitMaterial(vec3(1), 10);
+    light.mat = Material::emitMaterial(vec3(1), 10);
     scene.addObject(light);
 
-    Primitive plane;
+    Object plane;
     plane.type = PrimType::PLANE;
     plane.pos = vec3(0);
     plane.scale = 1;
-    plane.mat = glossyMaterial(vec3(1), 0, 0.2);
+    plane.mat = Material::glossyMaterial(vec3(1), 0, 0.2);
     scene.addObject(plane);
 
     return scene;
 }
 
-Ray Scene::rayFromClick(glm::vec3 origin, glm::vec3 dir, glm::vec2 screenPos, float fovDegrees){
+Ray Scene::rayFromClick(shared_ptr<Camera> camera, glm::vec2 screenPos){
+    vec3 origin = camera->position();
+    vec3 dir = camera->lookDir();
+    float fovDegrees = camera->getCameraProperties()->fov;
+
     Ray ray;
     ray.origin = origin;
     m_cameraDirection = normalize(dir);
@@ -124,7 +88,7 @@ void Scene::initGPU(){
     glGenBuffers(1, &m_lightIndicesBuffer);
 }
 
-float Scene::intersectSphere(const Ray& ray, const Primitive& sphere){
+float Scene::intersectSphere(const Ray& ray, const Object& sphere){
     vec3 oc = ray.origin - sphere.pos;
     float b = dot(oc, ray.direction);
     float c = dot(oc, oc) - sphere.scale * sphere.scale;
@@ -142,26 +106,123 @@ float Scene::intersectSphere(const Ray& ray, const Primitive& sphere){
     return distance;
 }
 
-float Scene::intersectPlane(const Ray& ray, const Primitive& plane){
+float Scene::intersectPlane(const Ray& ray, const Object& plane){
     vec3 rp = plane.pos - ray.origin;
     vec3 normal = vec3(0,1,0);
     float t = dot(rp, normal) / dot(ray.direction, normal);
     return t;
 }
 
+float Scene::intersectAABB(const Ray& invRay, const AABB& aabb, float tMin, float tMax){
+    vec3 t0 = (aabb.min - invRay.origin) * invRay.direction;
+    vec3 t1 = (aabb.max - invRay.origin) * invRay.direction;
+
+    vec3 tNear = min(t0, t1);
+    vec3 tFar  = max(t0, t1);
+
+    float tmin = glm::max(glm::max(tNear.x, tNear.y), glm::max(tNear.z, tMin));
+    float tmax = glm::min(glm::min(tFar.x,  tFar.y),  glm::min(tFar.z,  tMax));
+
+    if (tmax < tmin) return -1;
+    return tmin;
+}
+
+float Scene::intersectTriangle(const Ray& ray, const Triangle& triangle){
+    vec3 edge1 = triangle.v2 - triangle.v1;
+    vec3 edge2 = triangle.v3 - triangle.v1;
+
+    vec3 pvec = cross(ray.direction, edge2);
+    float det = dot(edge1, pvec);
+
+    if (abs(det) < 1e-5)
+        return -1; // rayon parallèle
+
+    float invDet = 1.0 / det;
+    vec3 tvec = ray.origin - triangle.v1;
+    float u = dot(tvec, pvec) * invDet;
+    if (u < 0.0 || u > 1.0)
+        return -1;
+
+    vec3 qvec = cross(tvec, edge1);
+    float v = dot(ray.direction, qvec) * invDet;
+    if (v < 0.0 || u + v > 1.0)
+        return -1;
+
+    float t = dot(edge2, qvec) * invDet;
+    if (t < 0.001) return -1;
+    return t;
+}
+
+float Scene::intersectMesh(const Ray& ray, const Mesh& mesh){
+    const int STACK_SIZE = 32;
+
+    int stack[STACK_SIZE];
+    int stackPtr = 0;
+
+    vector<linBVHNode> nodes = mesh.getLinNodes();
+    vector<Triangle> triangles = mesh.getTriangles();
+    stack[stackPtr++] = nodes.size() - 1;
+
+    float hitT = 1e6;
+    Ray invRay = ray;
+    invRay.direction = 1.0f / invRay.direction;
+
+    while (stackPtr > 0) {
+        int nodeIndex = stack[--stackPtr];
+        linBVHNode node = nodes[nodeIndex];
+
+        float boxDist = intersectAABB(invRay, node.bounds, 0.001f, hitT);
+        if (boxDist < 0 || boxDist > hitT) continue;
+
+        if (node.triangle >= 0) {
+            float triDist = intersectTriangle(ray, triangles[node.triangle]);
+            if (triDist >= 0) {
+                if (triDist < hitT) {
+                    hitT = triDist;
+                }
+            }
+        }
+        else {
+            float leftDist = -1;
+            float rightDist = -1;
+            if (node.left >= 0)
+                leftDist = intersectAABB(invRay, nodes[node.left].bounds, 0.001f, hitT);
+            if (node.right >= 0)
+                rightDist = intersectAABB(invRay, nodes[node.right].bounds, 0.001f, hitT);
+
+            if (leftDist >= 0 && rightDist >= 0){
+                if (leftDist < rightDist) {
+                    stack[stackPtr++] = node.right;
+                    stack[stackPtr++] = node.left;
+                } else {
+                    stack[stackPtr++] = node.left;
+                    stack[stackPtr++] = node.right;
+                }
+            } else if (leftDist >= 0) stack[stackPtr++] = node.left;
+            else if (rightDist >= 0) stack[stackPtr++] = node.right;
+        }
+    }
+
+    //ray.origin += modelPos;
+    return hitT;
+}
+
 
 int Scene::intersectObject(const Ray& ray){
     float distance = FLT_MAX;
     int intersected = -1;
-    for(size_t i = 0; i < m_prims.size(); i++){
+    for(size_t i = 0; i < m_objects.size(); i++){
         float dist = -1;
-        Primitive prim = m_prims[i];
-        switch(prim.type){
+        Object obj = m_objects[i];
+        switch(obj.type){
             case PrimType::SPHERE:
-                dist = intersectSphere(ray, prim);
+                dist = intersectSphere(ray, obj);
                 break;
             case PrimType::PLANE:
-                dist = intersectPlane(ray, prim);
+                dist = intersectPlane(ray, obj);
+                break;
+            case PrimType::MESH_:
+                dist = intersectMesh(ray, *obj.mesh);
                 break;
             default:
                 break;
@@ -174,40 +235,55 @@ int Scene::intersectObject(const Ray& ray){
     return intersected;
 }
 
-int Scene::addObject(const Primitive& prim){
-    int newIndex = m_prims.size();
+vector<PrimitiveObject> Scene::filterPrimitives(){
+    vector<PrimitiveObject> primitives = {};
+    for(Object obj : m_objects){
+        if (obj.type == PrimType::MESH_) continue;
+        PrimitiveObject prim;
+        prim.pos = obj.pos;
+        prim.scale = obj.scale;
+        prim.mat = obj.mat;
+        prim.type = obj.type;
+        primitives.push_back(prim);
+    }
+    return primitives;
+}
+
+int Scene::addObject(const Object& prim){
+    int newIndex = m_objects.size();
     if (prim.mat.type == MatType::EMIT) m_lightIndices.push_back(newIndex);
-    m_prims.push_back(prim);
+    m_objects.push_back(prim);
     m_sceneChanged = true;
+    m_selectedObject = newIndex;
     return newIndex;
 }
 
-Primitive* Scene::getObject(int index){
-    if (index < 0 || index > (int)m_prims.size()) return nullptr;
+Object* Scene::getObject(int index){
+    if (index < 0 || index > (int)m_objects.size()) return nullptr;
 
-    return &m_prims[index];
+    return &m_objects[index];
 }
 
 void Scene::removeObject(int index){
-    if (index < 0 || index >= (int)m_prims.size()) return;
+    if (index < 0 || index >= (int)m_objects.size()) return;
 
-    Primitive prim = m_prims[index];
-    if (prim.mat.type == MatType::EMIT) 
+    Object obj = m_objects[index];
+    if (obj.mat.type == MatType::EMIT) 
         m_lightIndices.erase(
             std::remove(m_lightIndices.begin(), m_lightIndices.end(), index),
             m_lightIndices.end()
         );
-    m_prims.erase(m_prims.begin() + index);
+    m_objects.erase(m_objects.begin() + index);
     m_sceneChanged = true;
 }
 
-void Scene::copyPrimitive(int index){
-    m_copiedPrimitive = index;
+void Scene::copyObject(int index){
+    m_copiedObject = index;
 }
 
-int Scene::pastePrimitive(){
-    Primitive newPrim = *getObject(m_copiedPrimitive);
-    return addObject(newPrim);
+int Scene::pasteObject(){
+    Object newObj = *getObject(m_copiedObject);
+    return addObject(newObj);
 }
 
 void Scene::updateScene(){
@@ -219,11 +295,13 @@ void Scene::updateGPU(){
 
     m_resetFrame();
 
-    glUniform1i(ShaderProgram::getVarLoc("numPrimitives"), m_prims.size());
+    vector<PrimitiveObject> primitives = filterPrimitives();
+
+    glUniform1i(ShaderProgram::getVarLoc("numPrimitives"), primitives.size());
     glUniform1i(ShaderProgram::getVarLoc("numLights"), m_lightIndices.size());
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_sceneBuffer);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, m_prims.size() * sizeof(Primitive), m_prims.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, primitives.size() * sizeof(PrimitiveObject), primitives.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_sceneBuffer);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_lightIndicesBuffer);

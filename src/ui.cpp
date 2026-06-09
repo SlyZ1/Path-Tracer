@@ -2,7 +2,7 @@
 
 void UI::toggle(){
     m_show = !m_show;
-    if (!m_show) m_scene->selectPrimitive(-1);
+    if (!m_show) m_scene->selectObject(-1);
 }
 
 void UI::drawMarker(ImVec2 minRect, ImVec2 maxRect, float keyPos) const {
@@ -58,15 +58,15 @@ void UI::renderPointer(){
 }
 
 void UI::renderGizmos(){
-    if (m_scene->getSelectedPrimitive() < 0) return;
-    Primitive* selectedPrimitive = m_scene->getObject(m_scene->getSelectedPrimitive());
+    if (m_scene->getSelectedObject() < 0) return;
+    Object* selectedObject = m_scene->getObject(m_scene->getSelectedObject());
 
     ImDrawList* draw = ImGui::GetBackgroundDrawList();
     ImU32 orange = IM_COL32(255, 150, 100, 255);
 
     // Center point
-    glm::vec2 primitiveCenter = m_scene->worldToScreen(selectedPrimitive->pos);
-    ImVec2 pos = ImGui::GetIO().DisplaySize * 0.5 + ImVec2(primitiveCenter.x, primitiveCenter.y);
+    glm::vec2 objectCenter = m_scene->worldToScreen(selectedObject->pos);
+    ImVec2 pos = ImGui::GetIO().DisplaySize * 0.5 + ImVec2(objectCenter.x, objectCenter.y);
     draw->AddCircleFilled(pos, 5, IM_COL32(0, 0, 0, 255));
     draw->AddCircleFilled(pos, 3, orange);
 
@@ -81,47 +81,47 @@ void UI::renderGizmos(){
     // draw->AddTriangleFilled(pos + ImVec2(0, -60), pos + ImVec2(-7, -50), pos + ImVec2(7, -50), orange);
 }
 
-void UI::renderPopupData(Primitive* selectedPrimitive){
-    MatType matType = selectedPrimitive->mat.type;
+void UI::renderPopupData(Object* selectedObject){
+    MatType matType = selectedObject->mat.type;
     switch(matType){
         case MatType::DIFFUSE:
             Label("Roughness", "Oren-Nayar's roughness for diffuse materials.\nUsed in the Energy-Preserving Oren-Nayar's model (EON).");
-            if (ImGui::SliderFloat("##Roughness", &selectedPrimitive->mat.data.x, 0.0f, 1.0f)){
-                selectedPrimitive->mat.data.x = glm::clamp(selectedPrimitive->mat.data.x, 0.0f, 1.0f);
+            if (ImGui::SliderFloat("##Roughness", &selectedObject->mat.data.x, 0.0f, 1.0f)){
+                selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 1.0f);
                 m_scene->updateScene();
             }
             break;
         case MatType::METAL:
             Label("Fuzziness", "Controls how unpolished the metal will be.\nUsed in the Cook-Torrance model with the GGX microfacets distribution.");
-            if (ImGui::SliderFloat("##Fuzziness", &selectedPrimitive->mat.data.x, 0.0f, 0.8f)){
-                selectedPrimitive->mat.data.x = glm::clamp(selectedPrimitive->mat.data.x, 0.0f, 0.8f);
+            if (ImGui::SliderFloat("##Fuzziness", &selectedObject->mat.data.x, 0.0f, 0.8f)){
+                selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.8f);
                 m_scene->updateScene();
             }
             break;
         case MatType::GLASS:
             Label("Refraction Index", "Refraction index of the dielectric. If 1.3 <= n <= 2.3, Schlick-Fresnel's approximation is used.");
-            if (ImGui::SliderFloat("##Refraction Index", &selectedPrimitive->mat.data.y, 1.0f, 4.0f)){
-                selectedPrimitive->mat.data.y = glm::clamp(selectedPrimitive->mat.data.y, 1.0f, 4.0f);
+            if (ImGui::SliderFloat("##Refraction Index", &selectedObject->mat.data.y, 1.0f, 4.0f)){
+                selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 1.0f, 4.0f);
                 m_scene->updateScene();
             }
             break;
         case MatType::GLOSSY:
             Label("Fuzziness", "Controls how unpolished the object will be.\nUsed in the Cook-Torrance model with the GGX microfacets distribution.");
-            if (ImGui::SliderFloat("##Fuzziness", &selectedPrimitive->mat.data.x, 0.0f, 0.8f)){
-                selectedPrimitive->mat.data.x = glm::clamp(selectedPrimitive->mat.data.x, 0.0f, 0.8f);
+            if (ImGui::SliderFloat("##Fuzziness", &selectedObject->mat.data.x, 0.0f, 0.8f)){
+                selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.8f);
                 m_scene->updateScene();
             }
 
             Label("Metallic");
-            if (ImGui::SliderFloat("##Metallic", &selectedPrimitive->mat.data.y, 0.05f, 1.0f)){
-                selectedPrimitive->mat.data.y = glm::clamp(selectedPrimitive->mat.data.y, 0.05f, 1.0f);
+            if (ImGui::SliderFloat("##Metallic", &selectedObject->mat.data.y, 0.05f, 1.0f)){
+                selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 0.05f, 1.0f);
                 m_scene->updateScene();
             }
             break;
         case MatType::EMIT:
             Label("Intensity");
-            if (ImGui::InputFloat("##Intensity", &selectedPrimitive->mat.data.x)){
-                selectedPrimitive->mat.data.x = glm::max(selectedPrimitive->mat.data.x, 0.0f);
+            if (ImGui::InputFloat("##Intensity", &selectedObject->mat.data.x)){
+                selectedObject->mat.data.x = glm::max(selectedObject->mat.data.x, 0.0f);
                 m_scene->updateScene();
             }
             break;
@@ -131,19 +131,19 @@ void UI::renderPopupData(Primitive* selectedPrimitive){
 }
 
 void UI::renderPopup(){
-    if (m_scene->getSelectedPrimitive() < 0) return;
-    Primitive* selectedPrimitive = m_scene->getObject(m_scene->getSelectedPrimitive());
+    if (m_scene->getSelectedObject() < 0) return;
+    Object* selectedObject = m_scene->getObject(m_scene->getSelectedObject());
     
     ImGui::SetNextWindowSizeConstraints(ImVec2(300, 0), ImVec2(FLT_MAX, FLT_MAX));
     if (ImGui::Begin("Properties", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::SeparatorText("Object");
         BeginTwoColumnLayout();
         Label("Position");
-        if (ImGui::DragFloat3("##Position", &selectedPrimitive->pos.x, 0.01f))
+        if (ImGui::DragFloat3("##Position", &selectedObject->pos.x, 0.01f))
             m_scene->updateScene();
         
         Label("Scale");
-        if (ImGui::DragFloat("##Scale", &selectedPrimitive->scale, 0.001f))
+        if (ImGui::DragFloat("##Scale", &selectedObject->scale, 0.001f))
             m_scene->updateScene();
         EndTwoColumnLayout();
         
@@ -153,7 +153,7 @@ void UI::renderPopup(){
         ImGui::SeparatorText("Material");
         BeginTwoColumnLayout();
         Label("Color");
-        if (ImGui::ColorEdit3("##Color", &selectedPrimitive->mat.color.x))
+        if (ImGui::ColorEdit3("##Color", &selectedObject->mat.color.x))
             m_scene->updateScene();
 
         const char* items[] = { 
@@ -164,10 +164,10 @@ void UI::renderPopup(){
             "Emit"
         };
         Label("Material type");
-        if (ImGui::Combo("##Material type", (int*)&selectedPrimitive->mat.type, items, IM_ARRAYSIZE(items)))
+        if (ImGui::Combo("##Material type", (int*)&selectedObject->mat.type, items, IM_ARRAYSIZE(items)))
             m_scene->updateScene();
 
-        renderPopupData(selectedPrimitive);
+        renderPopupData(selectedObject);
         EndTwoColumnLayout();
         
         ImGui::Spacing();
@@ -176,8 +176,8 @@ void UI::renderPopup(){
         ImGui::NewLine();
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0, 0.3, 0.3, 1.0));
         if (ImGui::Button("Remove", ImVec2(-1, 0))){
-            m_scene->removeObject(m_scene->getSelectedPrimitive());
-            m_scene->selectPrimitive(-1);
+            m_scene->removeObject(m_scene->getSelectedObject());
+            m_scene->selectObject(-1);
         }
         ImGui::PopStyleColor(1);
     }
@@ -212,7 +212,7 @@ void UI::render() {
             m_resetFrame();
         
         Label("Aperture");
-        if (ImGui::SliderFloat("##Aperture", &camProps->aperture, 0.0f, 3.0f))
+        if (ImGui::SliderFloat("##Aperture", &camProps->aperture, 0.0f, 1.0f))
             m_resetFrame();
         
         Label("Focal Length");
@@ -365,7 +365,7 @@ void UI::render() {
 }
 
 void UI::updateGPU() const {
-    glUniform1i(ShaderProgram::getVarLoc("maxBounces"), m_bounces);
+    glUniform1i(ShaderProgram::getVarLoc("maxBounces"), m_maxBounces);
     glUniform1i(ShaderProgram::getVarLoc("useModel"), m_useModel);
 
     glUniform1i(ShaderProgram::getVarLoc("debugBVH"), m_debugBVH ? 1 : 0);

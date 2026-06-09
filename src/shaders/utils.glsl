@@ -8,7 +8,9 @@ vec3 reflect(vec3 I, vec3 N) {
 
 vec3 refract(vec3 I, vec3 N, float n) {
     vec3 r_perp = n * (I - N * dot(N, I));
-    vec3 r_para = - sqrt(abs(1 - dot(r_perp, r_perp))) * N;
+    float k = 1 - dot(r_perp, r_perp);
+    if (k < 0.0) return vec3(0.0);
+    vec3 r_para = - sqrt(k) * N;
     return normalize(r_perp + r_para);
 }
 
