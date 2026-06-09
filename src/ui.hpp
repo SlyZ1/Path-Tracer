@@ -20,14 +20,15 @@ class UI {
         shared_ptr<Camera> m_camera;
         function<void()> m_resetFrame;
 
-        void Label(const char* label) const;
+        void Label(const char* label, const string& desc = "") const;
         void BeginTwoColumnLayout() const;
         void EndTwoColumnLayout() const;
         void drawMarker(ImVec2 minRect, ImVec2 maxRect, float keyPos) const;
-
+        
         void renderGizmos();
-
+        
         bool m_popupOpened = false;
+        void renderToolTip(const string& tip) const;
         void renderPopup();
         void renderPopupData(Primitive* selectedPrimitive);
 

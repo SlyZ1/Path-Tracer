@@ -16,11 +16,24 @@ void UI::drawMarker(ImVec2 minRect, ImVec2 maxRect, float keyPos) const {
     );
 }
 
-void UI::Label(const char* label) const
+void UI::renderToolTip(const string& tip) const {
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(300.0f);
+        ImGui::TextUnformatted(tip.c_str());
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+}
+
+void UI::Label(const char* label, const string& desc) const
 {
     ImGui::TableNextRow();
     ImGui::TableSetColumnIndex(0);
     ImGui::Text("%s", label);
+    if (!desc.empty())
+        renderToolTip(desc);
     ImGui::TableSetColumnIndex(1);
     ImGui::SetNextItemWidth(-FLT_MIN);
 }
@@ -72,28 +85,28 @@ void UI::renderPopupData(Primitive* selectedPrimitive){
     MatType matType = selectedPrimitive->mat.type;
     switch(matType){
         case MatType::DIFFUSE:
-            Label("Roughness");
+            Label("Roughness", "Oren-Nayar's roughness for diffuse materials.\nUsed in the Energy-Preserving Oren-Nayar's model (EON).");
             if (ImGui::SliderFloat("##Roughness", &selectedPrimitive->mat.data.x, 0.0f, 1.0f)){
                 selectedPrimitive->mat.data.x = glm::clamp(selectedPrimitive->mat.data.x, 0.0f, 1.0f);
                 m_scene->updateScene();
             }
             break;
         case MatType::METAL:
-            Label("Fuzziness");
+            Label("Fuzziness", "Controls how unpolished the metal will be.\nUsed in the Cook-Torrance model with the GGX microfacets distribution.");
             if (ImGui::SliderFloat("##Fuzziness", &selectedPrimitive->mat.data.x, 0.0f, 0.8f)){
                 selectedPrimitive->mat.data.x = glm::clamp(selectedPrimitive->mat.data.x, 0.0f, 0.8f);
                 m_scene->updateScene();
             }
             break;
         case MatType::GLASS:
-            Label("Refraction Index");
+            Label("Refraction Index", "Refraction index of the dielectric. If 1.3 <= n <= 2.3, Schlick-Fresnel's approximation is used.");
             if (ImGui::SliderFloat("##Refraction Index", &selectedPrimitive->mat.data.y, 1.0f, 4.0f)){
                 selectedPrimitive->mat.data.y = glm::clamp(selectedPrimitive->mat.data.y, 1.0f, 4.0f);
                 m_scene->updateScene();
             }
             break;
         case MatType::GLOSSY:
-            Label("Fuzziness");
+            Label("Fuzziness", "Controls how unpolished the object will be.\nUsed in the Cook-Torrance model with the GGX microfacets distribution.");
             if (ImGui::SliderFloat("##Fuzziness", &selectedPrimitive->mat.data.x, 0.0f, 0.8f)){
                 selectedPrimitive->mat.data.x = glm::clamp(selectedPrimitive->mat.data.x, 0.0f, 0.8f);
                 m_scene->updateScene();
@@ -150,8 +163,8 @@ void UI::renderPopup(){
             "Glossy",
             "Emit"
         };
-        Label("Diffuse Model");
-        if (ImGui::Combo("##Diffuse Model", (int*)&selectedPrimitive->mat.type, items, IM_ARRAYSIZE(items)))
+        Label("Material type");
+        if (ImGui::Combo("##Material type", (int*)&selectedPrimitive->mat.type, items, IM_ARRAYSIZE(items)))
             m_scene->updateScene();
 
         renderPopupData(selectedPrimitive);
