@@ -74,13 +74,13 @@ Scene Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, functi
     return scene;
 }
 
-Ray Scene::rayFromClick(glm::vec3 origin, glm::vec3 dir, glm::vec2 screenPos){
+Ray Scene::rayFromClick(glm::vec3 origin, glm::vec3 dir, glm::vec2 screenPos, float fovDegrees){
     Ray ray;
     ray.origin = origin;
     m_cameraDirection = normalize(dir);
     m_cameraPosition = origin;
 
-    float fov = radians(50.0);
+    float fov = radians(fovDegrees);
     vec3 forward = m_cameraDirection;
 
     vec3 worldUp = abs(forward.y) < 0.999

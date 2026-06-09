@@ -75,7 +75,7 @@ public:
     static Material glassMaterial(glm::vec3 color, float refractionIndex);
     static Material glossyMaterial(glm::vec3 color, float fuzziness, float metallic);
     static Material emitMaterial(glm::vec3 color, float intensity);
-    static Ray rayFromClick(glm::vec3 origin, glm::vec3 dir, glm::vec2 screenPos);
+    static Ray rayFromClick(glm::vec3 origin, glm::vec3 dir, glm::vec2 screenPos, float fovDegrees);
     glm::vec2 worldToScreen(glm::vec3 worldPos);
     void initGPU();
     int intersectObject(const Ray& ray);

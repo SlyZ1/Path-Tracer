@@ -228,7 +228,8 @@ void inputs(){
         screenPos = 2.0f * screenPos - glm::vec2(1.0f);
         screenPos.y *= -1;
         screenPos.x *= texWidth / (float)texHeight;
-        Ray ray = Scene::rayFromClick(camera->position(), camera->lookDir(), screenPos);
+        float fov = camera->getCameraProperties()->fov;
+        Ray ray = Scene::rayFromClick(camera->position(), camera->lookDir(), screenPos, fov);
         int primIndex = scene->intersectObject(ray);
         scene->selectPrimitive(primIndex);
     }
