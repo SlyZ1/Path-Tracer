@@ -32,18 +32,22 @@ Scene Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, functi
     scene.addObject(plane);
 
     Object meshObject;
+    meshObject.pos = vec3(1.0f);
+    meshObject.scale = 1;
     meshObject.type = PrimType::MESH_;
-    Mesh* mesh = new Mesh();
-    mesh->loadFromModel("models/Cube.obj");
-    meshObject.mesh = mesh;
+    meshObject.mat = Material::glassMaterial(vec3(1), 1.3);
+    meshObject.mesh = new Mesh();
+    meshObject.mesh->loadFromModel("models/bunny.obj");
     scene.addObject(meshObject);
 
-    Object cubeObject;
-    cubeObject.type = PrimType::MESH_;
-    Mesh* cubeMesh = new Mesh();
-    cubeMesh->loadFromModel("models/bunny.obj");
-    cubeObject.mesh = cubeMesh;
-    scene.addObject(cubeObject);
+    Object meshObject2;
+    meshObject2.pos = vec3(1.0f);
+    meshObject2.scale = 1;
+    meshObject2.type = PrimType::MESH_;
+    meshObject2.mat = Material::glassMaterial(vec3(1), 1.3);
+    meshObject2.mesh = new Mesh();
+    meshObject2.mesh->loadFromModel("models/Cube.obj");
+    scene.addObject(meshObject2);
 
     return scene;
 }
@@ -173,29 +177,35 @@ float Scene::intersectTriangle(const Ray& ray, const Triangle& triangle){
     return t;
 }
 
-float Scene::intersectMesh(const Ray& ray, const Mesh& mesh){
+float Scene::intersectMesh(const Ray& ray, const Object& obj){
     const int STACK_SIZE = 32;
 
     int stack[STACK_SIZE];
     int stackPtr = 0;
 
+    Mesh mesh = *obj.mesh;
     const vector<linBVHNode>& nodes = mesh.getLinNodes();
     const vector<Triangle>& triangles = mesh.getTriangles();
     stack[stackPtr++] = nodes.size() - 1;
 
+    vec3 pos = obj.pos;
+    float scale = obj.scale;
+
     float hitT = 1e6;
-    Ray invRay = ray;
+    Ray newRay = ray;
+    newRay.origin -= pos;
+    Ray invRay = newRay;
     invRay.direction = 1.0f / invRay.direction;
 
     while (stackPtr > 0) {
         int nodeIndex = stack[--stackPtr];
         linBVHNode node = nodes[nodeIndex];
 
-        float boxDist = intersectAABB(invRay, node.bounds, 0.001f, hitT);
+        float boxDist = intersectAABB(invRay, Mesh::scaleAABB(node.bounds, scale), 0.001f, hitT);
         if (boxDist < 0 || boxDist > hitT) continue;
 
         if (node.triangle >= 0) {
-            float triDist = intersectTriangle(ray, triangles[node.triangle]);
+            float triDist = intersectTriangle(newRay, Mesh::scaleTri(triangles[node.triangle], scale));
             if (triDist >= 0) {
                 if (triDist < hitT) {
                     hitT = triDist;
@@ -206,9 +216,9 @@ float Scene::intersectMesh(const Ray& ray, const Mesh& mesh){
             float leftDist = -1;
             float rightDist = -1;
             if (node.left >= 0)
-                leftDist = intersectAABB(invRay, nodes[node.left].bounds, 0.001f, hitT);
+                leftDist = intersectAABB(invRay, Mesh::scaleAABB(nodes[node.left].bounds, scale), 0.001f, hitT);
             if (node.right >= 0)
-                rightDist = intersectAABB(invRay, nodes[node.right].bounds, 0.001f, hitT);
+                rightDist = intersectAABB(invRay, Mesh::scaleAABB(nodes[node.right].bounds, scale), 0.001f, hitT);
 
             if (leftDist >= 0 && rightDist >= 0){
                 if (leftDist < rightDist) {
@@ -242,7 +252,7 @@ int Scene::intersectObject(const Ray& ray){
                 dist = intersectPlane(ray, obj);
                 break;
             case PrimType::MESH_:
-                dist = intersectMesh(ray, *obj.mesh);
+                dist = intersectMesh(ray, obj);
                 break;
             default:
                 break;
@@ -303,22 +313,23 @@ void Scene::updateGPU(){
     m_sceneChanged = false;
     m_resetFrame();
 
-    vector<PrimitiveObject> primitives = {};
-    vector<MeshInfos> meshInfos = {};
-    vector<Triangle> triangles = {};
-    vector<linBVHNode> nodes = {};
+    vector<PrimitiveObject> primitives;
+    vector<MeshInfos> meshInfos;
+    vector<Triangle> triangles;
+    vector<linBVHNode> nodes;
     for(Object obj : m_objects){
         if (obj.type == PrimType::MESH_){
             MeshInfos meshInfo;
             meshInfo.triangleOffset = triangles.size();
             meshInfo.nodeOffset = nodes.size();
-            //meshInfo.pos = obj.pos;
+            meshInfo.pos = obj.pos;
+            meshInfo.scale = obj.scale;
+            meshInfo.mat = obj.mat;
             meshInfos.push_back(meshInfo);
             if (obj.mat.type == MatType::EMIT) obj.mat.type = MatType::DIFFUSE;
             
             const vector<Triangle>& meshTriangles = obj.mesh->getTriangles();
             const vector<linBVHNode>& meshNodes = obj.mesh->getLinNodes();
-            cout << triangles.size() << " " << nodes.size() << endl;
             triangles.insert(triangles.end(), meshTriangles.begin(), meshTriangles.end());
             nodes.insert(nodes.end(), meshNodes.begin(), meshNodes.end());
         }
@@ -355,8 +366,8 @@ void Scene::updateGPU(){
         glUniform1i(ShaderProgram::getVarLoc("numBVHNodes"), nodes.size());
     }
 
-    cout << meshInfos[1].nodeOffset << " " << meshInfos.size() << endl;
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshInfosBuffer);
+    cout << meshInfos.size() << endl;
     glBufferData(GL_SHADER_STORAGE_BUFFER, meshInfos.size() * sizeof(MeshInfos), meshInfos.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_meshInfosBuffer);
     glUniform1i(ShaderProgram::getVarLoc("numMeshes"), meshInfos.size());

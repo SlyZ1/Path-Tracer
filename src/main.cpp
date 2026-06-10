@@ -100,34 +100,12 @@ void init(){
     rayTraceShader.use();
     glUniform2f(ShaderProgram::getVarLoc("winSize"), app->width(), app->height());
     
-    scene = make_shared<Scene>(Scene::defaultScene(app, camera, resetFrame));
-    
-    // Mesh* mesh = new Mesh();
-    // mesh->loadFromModel("models/bunny.obj");
-    // vector<Triangle> triangles = mesh->getTriangles();
-    // cout << "Loaded model with " << triangles.size() << " triangles." << endl;
-    // GLuint trissbo;
-    // glGenBuffers(1, &trissbo);
-    // glBindBuffer(GL_SHADER_STORAGE_BUFFER, trissbo);
-    // glBufferData(GL_SHADER_STORAGE_BUFFER, triangles.size() * sizeof(Triangle), triangles.data(), GL_STATIC_DRAW);
-    // glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, trissbo); // binding 0
-    // glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-    // glUniform1i(ShaderProgram::getVarLoc("numTriangles"), triangles.size());
-    
-    // vector<linBVHNode> linNodes = Mesh::lineariseBVH(mesh->getBVHNodes(), triangles);
-    // GLuint bvhssbo;
-    // glGenBuffers(1, &bvhssbo);
-    // glBindBuffer(GL_SHADER_STORAGE_BUFFER, bvhssbo);
-    // glBufferData(GL_SHADER_STORAGE_BUFFER, linNodes.size() * sizeof(linBVHNode), linNodes.data(), GL_STATIC_DRAW);
-    // glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, bvhssbo); // binding 1
-    // glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-    // glUniform1i(ShaderProgram::getVarLoc("numBVHNodes"), linNodes.size());
-    
     glGenFramebuffers(1, &FBO);
     genTexture(app->width(), app->height());
     glDisable(GL_FRAMEBUFFER_SRGB);
     
     camera->resetMousePos(app->mouseX(), app->mouseY());
+    scene = make_shared<Scene>(Scene::defaultScene(app, camera, resetFrame));
     ui = make_shared<UI>(app, renderer, animator, scene, camera, resetFrame);
 }
 

@@ -8,6 +8,19 @@ using namespace std;
 
 Mesh::Mesh() {}
 
+AABB Mesh::scaleAABB(AABB box, float scale){
+    box.min *= scale;
+    box.max *= scale;
+    return box;
+}
+
+Triangle Mesh::scaleTri(Triangle tri, float scale){
+    tri.v1 *= scale;
+    tri.v2 *= scale;
+    tri.v3 *= scale;
+    return tri;
+}
+
 void Mesh::loadFromModel(const char* path){
     ifstream ifs(path);
     if (!ifs) {

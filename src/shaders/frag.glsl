@@ -42,8 +42,12 @@ struct BVHNode {
 };
 
 struct MeshInfos {
+    vec3 pos;
+    float scale;
     int triangleOffset;
     int nodeOffset;
+    int pad0; int pad1;
+    Mat mat;
 };
 
 struct Ray {

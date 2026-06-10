@@ -66,6 +66,8 @@ struct linBVHNode {
 class Mesh {
 public:
     Mesh();
+    static AABB scaleAABB(AABB box, float scale);
+    static Triangle scaleTri(Triangle tri, float scale);
     void loadFromModel(const char* path);
     const vector<Triangle>& getTriangles() const;
     BVHNode* computeBVH(vector<Triangle>& triangles, vector<int>& indices, int begin, int end);

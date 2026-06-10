@@ -322,7 +322,6 @@ void UI::render() {
        
         if (ImGui::Button("Render Image", ImVec2(-FLT_MIN, 0))){
             m_renderer->startRendering(m_renderSamples, "image.png");
-            m_resetFrame();
         }
 
         if (ImGui::Button("Render Animation", ImVec2(-FLT_MIN, 0))){

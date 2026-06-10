@@ -43,7 +43,7 @@ Hit planeIntersect(Primitive plane, Ray ray){
     return Hit(t, normal, plane.mat, false);
 }
 
-Hit triangleIntersect(Triangle tri, Ray ray){
+Hit triangleIntersect(Triangle tri, Ray ray, Mat mat){
     Hit hit; hit.t = -2;
 
     vec3 edge1 = tri.v1 - tri.v0;
@@ -72,7 +72,7 @@ Hit triangleIntersect(Triangle tri, Ray ray){
     vec3 normal = normalize(tri.n0 * (1-u-v) + tri.n1 * u + tri.n2 * v);
     bool isInside = dot(normal, ray.dir) > 0;
 
-    return Hit(t, normal, Mat(vec3(1), 2, mData(0,1.3), vec2(0)), isInside);
+    return Hit(t, normal, mat, isInside);
 }
 
 Hit intersectAABB(Ray invRay, AABB box, float tMin, float tMax)
@@ -95,7 +95,20 @@ Hit intersectAABB(Ray invRay, AABB box, float tMin, float tMax)
     return hit;
 }
 
-Hit bvhIntersect(inout Ray ray, int triangleOffset, int nodeOffset, int lastNodeIndex)
+AABB scaleAABB(AABB box, float scale){
+    box.min *= scale;
+    box.max *= scale;
+    return box;
+}
+
+Triangle scaleTri(Triangle tri, float scale){
+    tri.v0 *= scale;
+    tri.v1 *= scale;
+    tri.v2 *= scale;
+    return tri;
+}
+
+Hit bvhIntersect(inout Ray ray, MeshInfos info, int lastNodeIndex)
 {
     //ray.origin -= modelPos;
     const int STACK_SIZE = 32;
@@ -103,24 +116,31 @@ Hit bvhIntersect(inout Ray ray, int triangleOffset, int nodeOffset, int lastNode
     int stack[STACK_SIZE];
     int stackPtr = 0;
 
+    int triangleOffset = info.triangleOffset;
+    int nodeOffset = info.nodeOffset;
     stack[stackPtr++] = lastNodeIndex;
+    
+    vec3 pos = info.pos;
+    float scale = info.scale;
 
     float hitT = 1e6;
     Hit hit;
     hit.t = -2;
-    Ray invRay = ray;
+    Ray newRay = ray;
+    newRay.origin -= pos;
+    Ray invRay = newRay;
     invRay.dir = 1 / invRay.dir;
 
     while (stackPtr > 0) {
         int nodeIndex = stack[--stackPtr];
         BVHNode node = nodes[nodeIndex];
 
-        Hit boxHit = intersectAABB(invRay, node.aabb, 0.001, hitT);
+        Hit boxHit = intersectAABB(invRay, scaleAABB(node.aabb, scale), 0.001, hitT);
         if (boxHit.t < 0 || boxHit.t > hitT) continue;
         if (debugBVH > 0) ray.throughput *= 0.95;
 
         if (node.triangle >= 0) {
-            Hit triHit = triangleIntersect(triangles[node.triangle + triangleOffset], ray);
+            Hit triHit = triangleIntersect(scaleTri(triangles[node.triangle + triangleOffset], scale), newRay, info.mat);
             if (triHit.t >= 0) {
                 if (triHit.t < hitT) {
                     hitT = triHit.t;
@@ -132,9 +152,9 @@ Hit bvhIntersect(inout Ray ray, int triangleOffset, int nodeOffset, int lastNode
             Hit leftHit; leftHit.t = -1;
             Hit rightHit; rightHit.t = -1;
             if (node.left >= 0)
-                leftHit = intersectAABB(invRay, nodes[node.left + nodeOffset].aabb, 0.001, hitT);
+                leftHit = intersectAABB(invRay, scaleAABB(nodes[node.left + nodeOffset].aabb, scale), 0.001, hitT);
             if (node.right >= 0)
-                rightHit = intersectAABB(invRay, nodes[node.right + nodeOffset].aabb, 0.001, hitT);
+                rightHit = intersectAABB(invRay, scaleAABB(nodes[node.right + nodeOffset].aabb, scale), 0.001, hitT);
 
             if (leftHit.t >= 0 && rightHit.t >= 0){
                 if (leftHit.t < rightHit.t) {
@@ -172,8 +192,8 @@ Hit rayIntersection(inout Ray ray){
     for (int j = 0; j < numMeshes; j += 1){
         MeshInfos info = meshInfos[j];
         int lastNodeIndex = numBVHNodes - 1;
-        if (j == 0) lastNodeIndex = meshInfos[j + 1].nodeOffset - 1;
-        Hit bvhHit = bvhIntersect(ray, info.triangleOffset, info.nodeOffset, lastNodeIndex);
+        if (j < numMeshes - 1) lastNodeIndex = meshInfos[j + 1].nodeOffset - 1;
+        Hit bvhHit = bvhIntersect(ray, info, lastNodeIndex);
         if (bvhHit.t > 0 && bvhHit.t < hit.t) hit = bvhHit;
     }
 

@@ -28,8 +28,12 @@ struct PrimitiveObject {
 };
 
 struct MeshInfos {
+    glm::vec3 pos;
+    float scale;
     int triangleOffset;
     int nodeOffset;
+    int pad0; int pad1;
+    Material mat;
 };
 
 struct Object {
@@ -72,7 +76,7 @@ private:
     float intersectPlane(const Ray& ray, const Object& plane);
     float intersectAABB(const Ray& ray, const AABB& aabb, float tMin, float tMax);
     float intersectTriangle(const Ray& ray, const Triangle& triangle);
-    float intersectMesh(const Ray& ray, const Mesh& mesh);
+    float intersectMesh(const Ray& ray, const Object& obj);
 
 public:
     Scene() = default;
