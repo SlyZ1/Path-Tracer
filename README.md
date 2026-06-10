@@ -10,16 +10,9 @@ Interactive GPU path tracer implemented with OpenGL and GLSL, exploring modern p
 
 ## Overview
 
-This project is a fully GPU-based path tracing engine designed to simulate realistic light transport using **Monte Carlo integration**.
+GPU path tracer built with OpenGL 4.3 / GLSL, progressively accumulating radiance estimates via Monte Carlo integration. The renderer supports full indirect illumination with MIS-weighted NEE, Russian Roulette termination, and a BVH for accelerated traversal.
 
-It progressively converges toward the solution of the rendering equation by accumulating samples over time, allowing interactive exploration of physically-based materials and lighting.
-
-Key features include:
-
-* Physically-based shading models
-* Advanced sampling techniques
-* Acceleration structures for complex scenes
-* Basic animation system
+Materials cover the standard physically-based spectrum: Lambert and EON for diffuse, Cook-Torrance/GGX for conductors, and Fresnel dielectrics with Beer-Lambert absorption. A keyframe animation system allows dynamic scene updates between accumulated frames.
 
 ---
 
@@ -43,57 +36,28 @@ All renders are available in the [`outputs/`](outputs/) directory.
 
 * **Monte Carlo Path Tracing**
 
-  * Progressive rendering with temporal accumulation
-  * Russian Roulette termination
+* **Russian Roulette termination**
 
-* **Multi-Importance Sampling (MIS)**
-
-  * Combines direct light sampling and global illumination
-  * Faster convergence, reduced noise
+* **Multi-Importance Sampling**
 
 * **Physically-Based Materials**
 
   * Diffuse (Lambert, Oren-Nayar / EON)
   * Metals (Cook-Torrance + GGX)
-  * Dielectrics (refraction, Fresnel)
+  * Dielectrics (refraction, Fresnel, Beer-Lambert absorption)
   * Glossy materials (hybrid models)
 
-* **Volumetric Effects**
-
-  * Beer-Lambert absorption for colored dielectrics
-
-* **Stability Improvements**
-
-  * Firefly reduction via throughput clamping
-
----
+* **Depth of Field**
 
 ### Geometry
 
-* Triangle mesh rendering
 * GPU-friendly **Bounding Volume Hierarchy (BVH)**
-* Support for complex 3D models
-
----
 
 ### Animation
 
 * Keyframe-based animation system
 * Linear interpolation between frames
-* Offline animation rendering
 ![render](outputs/animation/output4.gif)
-
----
-
-## Technical Highlights
-
-### Rendering Equation
-
-The engine is based on the classical rendering equation:
-
-$L_o = L_e + \int_{\Omega} f_r L_i (\omega_i \cdot n)\, d\omega_i$
-
-Estimated using stochastic sampling (Monte Carlo).
 
 ---
 
@@ -111,12 +75,6 @@ Estimated using stochastic sampling (Monte Carlo).
 ```bash
 make run
 ```
-
-## Controls (example)
-
-* Camera movement: `WASD`
-* Mouse: Look around
-* UI: Toggle with `P`
 
 ---
 
