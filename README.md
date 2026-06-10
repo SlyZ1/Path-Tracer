@@ -28,38 +28,7 @@ All renders are available in the [`outputs/`](outputs/) directory.
 | ----------------------- | -------------------- |
 | ![](outputs/GGX1%20(1).png) | ![](outputs/bvh.png) |
 
----
-
-## Features
-
-### Rendering
-
-* **Monte Carlo Path Tracing**
-
-* **Russian Roulette termination**
-
-* **Multi-Importance Sampling**
-
-* **Physically-Based Materials**
-
-  * Diffuse (Lambert, Oren-Nayar / EON)
-  * Metals (Cook-Torrance + GGX)
-  * Dielectrics (refraction, Fresnel, Beer-Lambert absorption)
-  * Glossy materials (hybrid models)
-
-* **Depth of Field**
-
-### Geometry
-
-* GPU-friendly **Bounding Volume Hierarchy (BVH)**
-
-### Animation
-
-* Keyframe-based animation system
-* Linear interpolation between frames
 ![render](outputs/animation/output4.gif)
-
----
 
 ## Build & Run
 
