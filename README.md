@@ -1,8 +1,11 @@
+[!WARNING] This README is not up to date
+
 # Path Tracer – Physically Based Rendering Engine
 
 Interactive GPU path tracer implemented with OpenGL and GLSL, exploring modern physically-based rendering techniques.
 
-![render](outputs/animation/output4.gif)
+![](./outputs/double_dragons_dof.png)
+![](./outputs/triple_dragon.png)
 
 ## Overview
 
@@ -77,6 +80,7 @@ All renders are available in the [`outputs/`](outputs/) directory.
 * Keyframe-based animation system
 * Linear interpolation between frames
 * Offline animation rendering
+![render](outputs/animation/output4.gif)
 
 ---
 
@@ -136,7 +140,6 @@ Path-Tracer/
 
 ## Future Improvements
 
-* Depth of field
 * Adaptive sampling (variance-based)
 * Better BVH construction (SAH)
 * Improved caustics (photon mapping)
