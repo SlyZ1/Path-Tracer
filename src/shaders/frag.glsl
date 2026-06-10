@@ -46,7 +46,8 @@ struct MeshInfos {
     float scale;
     int triangleOffset;
     int nodeOffset;
-    int pad0; int pad1;
+    int isSmooth; 
+    int pad;
     Mat mat;
 };
 
@@ -55,6 +56,7 @@ struct Ray {
     vec3 dir;
     vec3 throughput;
     vec3 radiance;
+    float pbsdf;
 };
 
 struct Hit {
@@ -99,6 +101,11 @@ uniform float cameraFov;
 uniform float cameraAperture;
 uniform float cameraFocalLength;
 
+uniform float skyIntensity;
+uniform vec3 skyBottomColor;
+uniform vec3 skyMiddleColor;
+uniform vec3 skyTopColor;
+
 out vec4 FragColor;
 uniform vec2 texSize;
 uniform sampler2D screenTex;
@@ -106,7 +113,6 @@ uniform int frameCount;
 uniform int samples;
 uniform vec2 winSize;
 uniform int maxBounces;
-uniform bool useModel;
 in vec4 vClipPos;
 
 //#define SAMPLES 1
@@ -154,7 +160,7 @@ void stop(inout Hit hit, bool touchedLight);
 float luminanceMean(vec3 c);
 
 // INTERSECTIONS.GLSL
-Hit rayIntersection(inout Ray ray);
+Hit rayIntersection(inout Ray ray, bool isShadow);
 #pragma FEND
 
 vec3 schlickFresnel(float VdotN, vec3 F0)
@@ -178,12 +184,18 @@ float fresnel(float cos1, float cos2, float n){
 
 // pdfs
 
+float computeWeight(float p1, float p2){
+    float n1 = p1 * p1;
+    float n2 = p2 * p2;
+    return n1 / (n1 + n2);
+}
+
 float p_direct(Primitive light, float distance, float cosLight){
-    return distance * distance / (cosLight * 2 * PI * light.scale * light.scale * numLights);
+    return distance * distance / (cosLight * 2 * PI * light.scale * light.scale * numLights + 1e-4);
 }
 
 float shadow_hit(Primitive light, Ray ray){
-    Hit hit = rayIntersection(ray);
+    Hit hit = rayIntersection(ray, true);
     vec3 hitPos = ray.origin + ray.dir * hit.t + hit.normal * EPS;
     if (hit.t > 0 && length(hitPos - light.pos) > light.scale + sqrt(EPS)) return 0;
     return 1;
@@ -204,24 +216,20 @@ void russianRoulette(inout RaycastData data){
     updateData(data);
 }
 
-float sampleLight(inout RaycastData data, Primitive light){
+vec4 sampleLight(inout RaycastData data, Primitive light){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
 
     vec3 nLight = randomOnUnitHemiphere(seed, ray.origin - light.pos);
     vec3 lightPoint = light.pos + nLight * light.scale;
-    vec3 newDir = normalize(lightPoint - ray.origin);
-    ray.dir = newDir;
-
-    float NdotL = max(dot(hit.normal, newDir), 0);
-    float LdotNl = max(dot(-newDir, nLight), 0);
+    vec3 lightDir = normalize(lightPoint - ray.origin);
+    float LdotNl = max(dot(-lightDir, nLight), 0);
     
     float distance = length(lightPoint - ray.origin);
     float pdirect = p_direct(light, distance, LdotNl);
-    ray.throughput *= NdotL;
 
     updateData(data);
-    return pdirect;
+    return vec4(lightDir, pdirect);
 }
 
 // -------------------- MATERIALS
@@ -311,9 +319,9 @@ vec3 horizon(vec3 lookingAt)
 {
     float a = (dot(normalize(lookingAt), vec3(0,1,0)) + 1.0) * 0.5;
 
-    vec3 top = vec3(0.32, 0.55, 0.78);
-    vec3 middle = vec3(0.75, 0.78, 0.82);
-    vec3 sunset = vec3(1.00, 0.65, 0.30);
+    vec3 top = skyTopColor;
+    vec3 middle = skyMiddleColor;
+    vec3 sunset = skyBottomColor;
 
     vec3 sky;
     if (a < 0.35){
@@ -323,7 +331,7 @@ vec3 horizon(vec3 lookingAt)
         sky = mix(middle, top, (a - 0.5) / 0.5);
     }
 
-    return sky * 0.7;
+    return sky * skyIntensity;
 }
 
 vec3 sky(vec3 lookingAt){
@@ -334,7 +342,7 @@ vec4 rayColor(in out uint seed, Ray ray){
     Ray tracedRay = ray;
     for (int i = 0; i < maxBounces; i++){
 
-        Hit hit = rayIntersection(tracedRay);
+        Hit hit = rayIntersection(tracedRay, false);
         //if (hit.t > 0) tracedRay.throughput *= exp(-hit.t * 0.015);
         computeLighting(hit, tracedRay, seed);
 
@@ -359,7 +367,8 @@ void main()
         camera.pos, 
         camera.lookDir, 
         vec3(1),
-        vec3(0)
+        vec3(0),
+        -1
     );
 
     vec4 radiance;

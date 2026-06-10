@@ -59,58 +59,40 @@ void diffuse(inout RaycastData data){
     ray.origin += hit.t * ray.dir + EPS * hit.normal;
     
     // MIS
-    float wdirect = 0;
     Primitive light;
     if (numLights > 0)
         light = primitives[lightIndicies[int(rand(seed) * numLights)]];
-        wdirect = 0.2;
-    float wbsdf = 1 - wdirect;
-    float r = rand(seed);
     float orenNayarRoughness = diffuseRoughness(hit.mat);   
     vec3 viewDir = -ray.dir;
 
-    if (r <= wbsdf){
-        // BSDF sampling
-        vec3 newDir = randomCosineHemisphere(seed, hit.normal, 1);
-        vec3 f_r = oren_nayar(hit, hit.normal, newDir, viewDir, orenNayarRoughness);
-        ray.throughput *= f_r * PI / wbsdf;
-        ray.dir = newDir;
+    // Direct lighting
+    updateData(data);
+    vec4 lightInfos = sampleLight(data, light);
+    unwrapData(data);
+    vec3 lightDir = lightInfos.xyz;
+    float pdirect = lightInfos.w;
 
-        // Check if we hit a light with the BSDF sampling
-        Hit nextHit = rayIntersection(ray);
-        if (nextHit.t > 0 && nextHit.mat.type == MAT_EMIT){
-            vec3 Le = nextHit.mat.color * emitIntensity(nextHit.mat);
-            float LdotNl = max(dot(-newDir, nextHit.normal), 1);
+    Ray lightRay = ray;
+    lightRay.dir = lightDir;
+    if (shadow_hit(light, lightRay) > 0){
+        float pbsdf = p_cosineHemisphere(hit.normal, lightDir);
+        float weight = computeWeight(pdirect, pbsdf);
 
-            float pdirect = p_direct(light, nextHit.t, LdotNl)
-                            * shadow_hit(light, ray);
-            float pbsdf = p_cosineHemisphere(hit.normal, newDir);
-            float weight = wbsdf * pbsdf / (wbsdf * pbsdf + wdirect * pdirect);
+        vec3 f_r = oren_nayar(hit, hit.normal, lightDir, viewDir, orenNayarRoughness);
+        float NdotL = max(dot(hit.normal, lightDir), 0);
+        vec3 Le = light.mat.color * emitIntensity(light.mat);
 
-            ray.radiance += clamp(ray.throughput * weight, 0.0, 1.3) * Le;
-            stop(hit, true);
-        }
-    } 
-    else {
-        // Direct lighting
-        updateData(data);
-        float pdirect = sampleLight(data, light);
-        unwrapData(data);
-        vec3 f_r = oren_nayar(hit, hit.normal, ray.dir, viewDir, orenNayarRoughness);
-        ray.throughput *= f_r;
-
-        if (shadow_hit(light, ray) > 0){
-            float pbsdf = p_cosineHemisphere(hit.normal, ray.dir);
-            float weight = 1.0 / (wdirect * pdirect + wbsdf * pbsdf);
-            vec3 Le = light.mat.color * emitIntensity(light.mat);
-            ray.radiance += clamp(ray.throughput * weight, 0.0, 1.3) * Le;
-            stop(hit, true);
-        }
-        else{
-            ray.throughput /= pdirect * wdirect;
-            stop(hit, false);
-        }
+        ray.radiance += clamp(ray.throughput * f_r * weight * NdotL / pdirect, 0.0, 1.3) * Le;
     }
+
+    // BSDF sampling
+    vec3 bsdfDir = randomCosineHemisphere(seed, hit.normal, 1);
+    float pbsdf = p_cosineHemisphere(hit.normal, bsdfDir);
+    float NdotL = max(0, dot(bsdfDir, hit.normal));
+    vec3 f_r = oren_nayar(hit, hit.normal, bsdfDir, viewDir, orenNayarRoughness);
+    ray.throughput *= f_r * NdotL / pbsdf;
+    ray.dir = bsdfDir;
+    ray.pbsdf = pbsdf;
 
     updateData(data);
     russianRoulette(data);

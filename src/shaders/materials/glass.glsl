@@ -30,5 +30,6 @@ void glass(inout RaycastData data){
         ray.throughput *= absorption;
     }
 
+    ray.pbsdf = -1;
     updateData(data);
 }

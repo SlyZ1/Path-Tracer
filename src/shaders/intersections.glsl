@@ -43,7 +43,7 @@ Hit planeIntersect(Primitive plane, Ray ray){
     return Hit(t, normal, plane.mat, false);
 }
 
-Hit triangleIntersect(Triangle tri, Ray ray, Mat mat){
+Hit triangleIntersect(Triangle tri, Ray ray, bool isSmooth, Mat mat){
     Hit hit; hit.t = -2;
 
     vec3 edge1 = tri.v1 - tri.v0;
@@ -69,7 +69,13 @@ Hit triangleIntersect(Triangle tri, Ray ray, Mat mat){
     float t = dot(edge2, qvec) * invDet;
     if (t < 0.001) return hit;
 
-    vec3 normal = normalize(tri.n0 * (1-u-v) + tri.n1 * u + tri.n2 * v);
+    vec3 normal;
+    if (isSmooth){
+        normal = normalize(tri.n0 * (1-u-v) + tri.n1 * u + tri.n2 * v);
+    }
+    else{
+        normal = (tri.n0 + tri.n1 + tri.n2) / 3.0;
+    }
     bool isInside = dot(normal, ray.dir) > 0;
 
     return Hit(t, normal, mat, isInside);
@@ -108,7 +114,7 @@ Triangle scaleTri(Triangle tri, float scale){
     return tri;
 }
 
-Hit bvhIntersect(inout Ray ray, MeshInfos info, int lastNodeIndex)
+Hit bvhIntersect(inout Ray ray, MeshInfos info, int lastNodeIndex, bool isShadow)
 {
     //ray.origin -= modelPos;
     const int STACK_SIZE = 32;
@@ -119,7 +125,7 @@ Hit bvhIntersect(inout Ray ray, MeshInfos info, int lastNodeIndex)
     int triangleOffset = info.triangleOffset;
     int nodeOffset = info.nodeOffset;
     stack[stackPtr++] = lastNodeIndex;
-    
+
     vec3 pos = info.pos;
     float scale = info.scale;
 
@@ -140,8 +146,10 @@ Hit bvhIntersect(inout Ray ray, MeshInfos info, int lastNodeIndex)
         if (debugBVH > 0) ray.throughput *= 0.95;
 
         if (node.triangle >= 0) {
-            Hit triHit = triangleIntersect(scaleTri(triangles[node.triangle + triangleOffset], scale), newRay, info.mat);
+            bool isSmooth = info.isSmooth > 0;
+            Hit triHit = triangleIntersect(scaleTri(triangles[node.triangle + triangleOffset], scale), newRay, isSmooth, info.mat);
             if (triHit.t >= 0) {
+                if (isShadow) return triHit;
                 if (triHit.t < hitT) {
                     hitT = triHit.t;
                     hit = triHit;
@@ -173,7 +181,7 @@ Hit bvhIntersect(inout Ray ray, MeshInfos info, int lastNodeIndex)
     return hit;
 }
 
-Hit rayIntersection(inout Ray ray){
+Hit rayIntersection(inout Ray ray, bool isShadow){
     Hit hit;
     hit.t = 100000;
     for(int i = 0; i < numPrimitives; i += 1){
@@ -193,7 +201,7 @@ Hit rayIntersection(inout Ray ray){
         MeshInfos info = meshInfos[j];
         int lastNodeIndex = numBVHNodes - 1;
         if (j < numMeshes - 1) lastNodeIndex = meshInfos[j + 1].nodeOffset - 1;
-        Hit bvhHit = bvhIntersect(ray, info, lastNodeIndex);
+        Hit bvhHit = bvhIntersect(ray, info, lastNodeIndex, isShadow);
         if (bvhHit.t > 0 && bvhHit.t < hit.t) hit = bvhHit;
     }
 

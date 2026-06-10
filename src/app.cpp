@@ -82,6 +82,7 @@ string App::pickFolderDialog(bool& cancel){
         case NFD_OKAY: {
             printf("NFD_PickFolderU8_With success: %s\n", path);
             string result = path;
+            result += "/";
             NFD_FreePathU8(path);
             cancel = false;
             return result;

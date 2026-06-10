@@ -10,18 +10,11 @@ Scene Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, functi
     Scene scene = Scene(app, camera, resetFrame);
     scene.initGPU();
 
-    Object sphere2;
-    sphere2.type = PrimType::SPHERE;
-    sphere2.pos = vec3(-2, 1, 0);
-    sphere2.scale = 1;
-    sphere2.mat = Material::metalMaterial(vec3(1), 0.3);
-    scene.addObject(sphere2);
-
     Object light;
     light.type = PrimType::SPHERE;
-    light.pos = vec3(-2, 3, -5);
+    light.pos = vec3(0, 5, 2);
     light.scale = 1;
-    light.mat = Material::emitMaterial(vec3(1), 10);
+    light.mat = Material::emitMaterial(vec3(1), 20);
     scene.addObject(light);
 
     Object plane;
@@ -32,22 +25,13 @@ Scene Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, functi
     scene.addObject(plane);
 
     Object meshObject;
-    meshObject.pos = vec3(1.0f);
-    meshObject.scale = 1;
+    meshObject.pos = vec3(0, 1, 0);
+    meshObject.scale = 3;
     meshObject.type = PrimType::MESH_;
-    meshObject.mat = Material::glassMaterial(vec3(1), 1.3);
+    meshObject.mat = Material::glossyMaterial(vec3(0.9f, 0.6f, 0.2f), 0, 0.3f);
     meshObject.mesh = new Mesh();
-    meshObject.mesh->loadFromModel("models/bunny.obj");
+    meshObject.mesh->loadFromModel("models/dragon.obj");
     scene.addObject(meshObject);
-
-    Object meshObject2;
-    meshObject2.pos = vec3(1.0f);
-    meshObject2.scale = 1;
-    meshObject2.type = PrimType::MESH_;
-    meshObject2.mat = Material::glassMaterial(vec3(1), 1.3);
-    meshObject2.mesh = new Mesh();
-    meshObject2.mesh->loadFromModel("models/Cube.obj");
-    scene.addObject(meshObject2);
 
     return scene;
 }
@@ -325,6 +309,7 @@ void Scene::updateGPU(){
             meshInfo.pos = obj.pos;
             meshInfo.scale = obj.scale;
             meshInfo.mat = obj.mat;
+            meshInfo.isSmooth = obj.mesh->isSmooth;
             meshInfos.push_back(meshInfo);
             if (obj.mat.type == MatType::EMIT) obj.mat.type = MatType::DIFFUSE;
             
@@ -367,7 +352,6 @@ void Scene::updateGPU(){
     }
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshInfosBuffer);
-    cout << meshInfos.size() << endl;
     glBufferData(GL_SHADER_STORAGE_BUFFER, meshInfos.size() * sizeof(MeshInfos), meshInfos.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_meshInfosBuffer);
     glUniform1i(ShaderProgram::getVarLoc("numMeshes"), meshInfos.size());

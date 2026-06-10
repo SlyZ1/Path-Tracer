@@ -74,6 +74,7 @@ public:
     static vector<linBVHNode> lineariseBVH(BVHNode* node);
     BVHNode* getBVHNodes() const { return m_nodes; }
     const vector<linBVHNode>& getLinNodes() const { return m_linNodes; }
+    bool isSmooth = false;
     
 private:
     vector<Triangle> m_triangles = {};

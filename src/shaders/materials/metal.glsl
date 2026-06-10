@@ -48,63 +48,48 @@ void metal(inout RaycastData data){
         vec3 f_r = schlickFresnel(VdotN, hit.mat.color);
         ray.throughput *= f_r;
         ray.dir = newDir;
+        ray.pbsdf = -1;
         data = RaycastData(hit, ray, seed);
         return;
     }
 
     // MIS
-    float fuzz = pbrFuzz(hit.mat);
-    float alpha = fuzz * fuzz;
-    float wdirect = 0;
     Primitive light;
     if (numLights > 0)
         light = primitives[lightIndicies[int(rand(seed) * numLights)]];
-        wdirect = 0.3 * alpha;
-    float wGGX = 1 - wdirect;
-    float r = rand(seed);
-    if (r <= wGGX){
-        vec3 viewDir = -ray.dir;
-        vec3 h = randomGGXHemisphere(seed, hit.normal, alpha);
-        vec3 newDir = mix(reflect(-viewDir, h), hit.normal, 0.0);
-        
-        float pGGX = p_GGX(hit.normal, newDir, viewDir, alpha, true);
-        vec3 f_r = cookTorrance(hit, viewDir, newDir, alpha, true);
-        ray.throughput *= f_r /* * NdotL (but is in cookTorrance) */ / (pGGX * wGGX);
-        ray.dir = newDir;
+    float fuzz = pbrFuzz(hit.mat);
+    float alpha = fuzz * fuzz;
+    vec3 viewDir = -ray.dir;
 
-        Hit nextHit = rayIntersection(ray);
-        if (nextHit.t > 0 && nextHit.mat.type == MAT_EMIT){
-            vec3 Le = nextHit.mat.color * emitIntensity(nextHit.mat);
-            float LdotNl = max(dot(-newDir, nextHit.normal), 0);
-            float pdirect = p_direct(light, nextHit.t, LdotNl)
-                            * shadow_hit(light, ray);
-            float weight = wGGX * pGGX / (wGGX * pGGX + wdirect * pdirect);
+    // Direct lighting
+    updateData(data);
+    vec4 lightInfos = sampleLight(data, light);
+    unwrapData(data);
+    vec3 lightDir = lightInfos.xyz;
+    float pdirect = lightInfos.w;
 
-            ray.radiance += clamp(ray.throughput * weight, 0.0, 1.5) * Le;
-            stop(hit, true);
-        }
+    Ray lightRay = ray;
+    lightRay.dir = lightDir;
+    if (shadow_hit(light, lightRay) > 0){
+        float pGGX = p_GGX(hit.normal, lightDir, viewDir, alpha, false);
+        float weight = computeWeight(pdirect, pGGX);
+
+        vec3 f_r = cookTorrance(hit, viewDir, lightDir, alpha, false);
+        float NdotL = max(dot(hit.normal, lightDir), 0);
+        vec3 Le = light.mat.color * emitIntensity(light.mat);
+
+        ray.radiance += clamp(ray.throughput * f_r * weight * NdotL / pdirect, 0.0, 1.3) * Le;
     }
-    else{
-        // Direct lighting
-        vec3 viewDir = -ray.dir;
-        updateData(data);
-        float pdirect = sampleLight(data, light);
-        unwrapData(data);
-        vec3 f_r = cookTorrance(hit, viewDir, ray.dir, alpha, false);
-        ray.throughput *= f_r;
 
-        if (shadow_hit(light, ray) > 0){
-            float pGGX = p_GGX(hit.normal, ray.dir, viewDir, alpha, false);
-            float weight = 1.0 / (wdirect * pdirect + wGGX * pGGX);
-            vec3 Le = light.mat.color * emitIntensity(light.mat);
-            ray.radiance += clamp(ray.throughput * weight, 0.0, 1.5) * Le;
-            stop(hit, true);
-        }
-        else{
-            ray.throughput /= wdirect * pdirect;
-            stop(hit, false);
-        }
-    }
+    // BSDF sampling
+    vec3 h = randomGGXHemisphere(seed, hit.normal, alpha);
+    vec3 GGXDir = reflect(-viewDir, h);
+    float pGGX = p_GGX(hit.normal, GGXDir, viewDir, alpha, false);
+    float NdotL = max(0, dot(GGXDir, hit.normal));
+    vec3 f_r = cookTorrance(hit, viewDir, GGXDir, alpha, false);
+    ray.throughput *= f_r * NdotL / pGGX;
+    ray.dir = GGXDir;
+    ray.pbsdf = pGGX;
 
     updateData(data);
     russianRoulette(data);

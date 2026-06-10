@@ -145,6 +145,12 @@ void UI::renderPopup(){
         Label("Scale");
         if (ImGui::DragFloat("##Scale", &selectedObject->scale, 0.001f))
             m_scene->updateScene();
+
+        if (selectedObject->type == PrimType::MESH_){
+            Label("Is Smooth");
+            if (ImGui::Checkbox("##Is Smooth", &selectedObject->mesh->isSmooth))
+                m_scene->updateScene();
+        }
         EndTwoColumnLayout();
         
         ImGui::Spacing();
@@ -225,20 +231,38 @@ void UI::render() {
     ImGui::Spacing();
     ImGui::Spacing();
     ImGui::Spacing();
+    
+    if (ImGui::CollapsingHeader("Sky Box Settings", ImGuiTreeNodeFlags_DefaultOpen)){
+        BeginTwoColumnLayout();
+
+        Label("Sky Intensity");
+        if (ImGui::SliderFloat("##Sky Intensity", &m_skyIntensity, 0.0f, 1.0f))
+            m_resetFrame();
+        
+        Label("Sky Top Color");
+        if (ImGui::ColorEdit3("##Sky Top Color", &m_skyTopColor.x))
+            m_resetFrame();
+            
+        Label("Sky Middle Color");
+        if (ImGui::ColorEdit3("##Sky Middle Color", &m_skyMiddleColor.x))
+            m_resetFrame();
+            
+        Label("Sky Bottom Color");
+        if (ImGui::ColorEdit3("##Sky Bottom Color", &m_skyBottomColor.x))
+            m_resetFrame();
+
+        EndTwoColumnLayout();
+    }
+
+    ImGui::Spacing();
+    ImGui::Spacing();
+    ImGui::Spacing();
 
     if (ImGui::CollapsingHeader("Model Settings", ImGuiTreeNodeFlags_DefaultOpen)){
         BeginTwoColumnLayout();
 
-        Label("Use Model");
-        if (ImGui::Checkbox("##Use Model", &m_useModel))
-            m_resetFrame();
-
         Label("Debug BVH");
         if (ImGui::Checkbox("##Debug BVH", &m_debugBVH))
-            m_resetFrame();
-
-        Label("Model Position");
-        if (ImGui::DragFloat3("##Model Position", &m_modelPos[0]))
             m_resetFrame();
 
         EndTwoColumnLayout();
@@ -287,7 +311,7 @@ void UI::render() {
 
         if(ImGui::Button("Add Keyframe", ImVec2(-FLT_MIN, 0))){
             KeyFrame keyFrame = {
-                m_modelPos,
+                vec3(0),
                 m_animationTime
             };
             m_animator->addKeyFrame(keyFrame);
@@ -365,10 +389,13 @@ void UI::render() {
 
 void UI::updateGPU() const {
     glUniform1i(ShaderProgram::getVarLoc("maxBounces"), m_maxBounces);
-    glUniform1i(ShaderProgram::getVarLoc("useModel"), m_useModel);
 
     glUniform1i(ShaderProgram::getVarLoc("debugBVH"), m_debugBVH ? 1 : 0);
-    glUniform3f(ShaderProgram::getVarLoc("modelPos"), m_modelPos.x, m_modelPos.y, m_modelPos.z);
+
+    glUniform1f(ShaderProgram::getVarLoc("skyIntensity"), m_skyIntensity);
+    glUniform3f(ShaderProgram::getVarLoc("skyBottomColor"), m_skyBottomColor.x, m_skyBottomColor.y, m_skyBottomColor.z);
+    glUniform3f(ShaderProgram::getVarLoc("skyMiddleColor"), m_skyMiddleColor.x, m_skyMiddleColor.y, m_skyMiddleColor.z);
+    glUniform3f(ShaderProgram::getVarLoc("skyTopColor"), m_skyTopColor.x, m_skyTopColor.y, m_skyTopColor.z);
 }
 
 bool UI::isInteracting(){
