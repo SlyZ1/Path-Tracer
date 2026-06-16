@@ -28,7 +28,7 @@ All renders are available in the [`outputs/`](outputs/) directory.
 | ----------------------- | -------------------- |
 | ![](outputs/GGX1%20(1).png) | ![](outputs/bvh.png) |
 
-![render](outputs/animation/output4.gif)
+![render](outputs/animation/image.png)
 
 ## Build & Run
 
