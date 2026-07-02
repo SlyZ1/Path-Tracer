@@ -139,6 +139,12 @@ uniform int maxBounces;
 #define emitIntensity(m) m.data[0]          
 #define glassIndex(m) m.data[1]
 
+#define MAT_DIFF 0
+#define MAT_METAL 1
+#define MAT_GLASS 2
+#define MAT_GLOSSY 3
+#define MAT_EMIT 4
+
 // -------------------- UTILS
 
 #pragma include "./rand.glsl"
@@ -237,12 +243,6 @@ vec4 sampleLight(inout RaycastData data, Primitive light){
 }
 
 // -------------------- MATERIALS
-
-#define MAT_DIFF 0
-#define MAT_METAL 1
-#define MAT_GLASS 2
-#define MAT_GLOSSY 3
-#define MAT_EMIT 4
 
 #pragma include "./materials/diffuse.glsl"
 #pragma include "./materials/metal.glsl"

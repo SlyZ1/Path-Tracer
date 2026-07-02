@@ -44,7 +44,7 @@ Hit planeIntersect(Primitive plane, Ray ray){
 }
 
 Hit triangleIntersect(Triangle tri, Ray ray, bool isSmooth, Mat mat){
-    Hit hit; hit.t = -2;
+    Hit emptyHit; emptyHit.t = -2;
 
     vec3 edge1 = tri.v1 - tri.v0;
     vec3 edge2 = tri.v2 - tri.v0;
@@ -53,21 +53,21 @@ Hit triangleIntersect(Triangle tri, Ray ray, bool isSmooth, Mat mat){
     float det = dot(edge1, pvec);
 
     if (abs(det) < PROBA_EPS)
-        return hit; // rayon parallèle
+        return emptyHit; // rayon parallèle
 
     float invDet = 1.0 / det;
     vec3 tvec = ray.origin - tri.v0;
     float u = dot(tvec, pvec) * invDet;
     if (u < 0.0 || u > 1.0)
-        return hit;
+        return emptyHit;
 
     vec3 qvec = cross(tvec, edge1);
     float v = dot(ray.dir, qvec) * invDet;
     if (v < 0.0 || u + v > 1.0)
-        return hit;
+        return emptyHit;
 
     float t = dot(edge2, qvec) * invDet;
-    if (t < 0.001) return hit;
+    if (t < 0.001) return emptyHit;
 
     vec3 normal;
     if (isSmooth){
@@ -77,6 +77,7 @@ Hit triangleIntersect(Triangle tri, Ray ray, bool isSmooth, Mat mat){
         normal = (tri.n0 + tri.n1 + tri.n2) / 3.0;
     }
     bool isInside = dot(normal, ray.dir) > 0;
+    if (isInside && mat.type != MAT_GLASS) return emptyHit;
 
     return Hit(t, normal, mat, isInside);
 }
