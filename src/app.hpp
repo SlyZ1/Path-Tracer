@@ -43,6 +43,7 @@ class App {
         unsigned int width();
         unsigned int height();
         void exportImage(const string& path = "outputs/image.png");
+        void exportTextureToExr(GLuint tex, const string& path = "outputs/image.png");
         ImGuiIO* getIo() { return m_io; }
 };
 

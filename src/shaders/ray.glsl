@@ -353,7 +353,7 @@ void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out 
         Hit hit = rayIntersection(tracedRay, false);
         if (hit.t > 0 && firstHit){
             firstHit = false;
-            normal = vec4(hit.normal, 1);
+            normal = vec4(normalize(hit.normal), 1);
             albedo = vec4(hit.mat.color, 1);
         }
         computeLighting(hit, tracedRay, seed);
@@ -375,12 +375,13 @@ void main()
     uint screenY = gl_GlobalInvocationID.y;
     if (screenX >= texSize.x || screenY >= texSize.y) return;
     vec2 fragCoord = vec2(screenX, screenY) + vec2(0.5);
-    vec2 clipPos = (fragCoord / winSize - vec2(0.5)) * 2;
+    vec2 clipPos = (fragCoord / texSize - vec2(0.5)) * 2;
 
     float resolutionFactor = winSize.x / texSize.x;
+    resolutionFactor = 1;
     uint seed = initSeed(uvec2(fragCoord * resolutionFactor), frameCount);
     vec2 pos = ratio(clipPos) * resolutionFactor + ratio(vec2(1)) * (resolutionFactor - 1);
-    vec2 offset = resolutionFactor * vec2(rand(seed), rand(seed)) / winSize;
+    vec2 offset = resolutionFactor * vec2(rand(seed), rand(seed)) / texSize;
     vec2 uv = (clipPos + vec2(1)) * 0.5;
 
     Ray ray = Ray(

@@ -11,7 +11,7 @@ __global__ void unpackDenoiserOutputKernel(
     int HW = H * W;
     float4 outputValue = make_float4(output[0 * HW + idx], output[1 * HW + idx], output[2 * HW + idx], 1.0f);
 
-    surf2Dwrite(outputValue, outputSurf, x * sizeof(float4), y);
+    surf2Dwrite(outputValue, outputSurf, x * sizeof(float4), H - 1 - y);
 }
 
 void unpackDenoiserOutput(

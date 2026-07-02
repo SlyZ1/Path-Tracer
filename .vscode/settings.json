@@ -59,5 +59,16 @@
             ]
         }
     },
-    "terminal.integrated.defaultProfile.windows": "x64 Native Tools"
+    "terminal.integrated.defaultProfile.windows": "x64 Native Tools",
+    "C_Cpp.default.includePath": [
+        "${workspaceFolder}/include",
+        "${workspaceFolder}/include/tinyexr",
+        "${workspaceFolder}/include/imgui",
+        "${workspaceFolder}/include/tensorrt",
+        "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.2/include"
+    ],
+    "C_Cpp.default.compilerPath": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe",
+    "C_Cpp.default.cppStandard": "c++17",
+    "C_Cpp.default.intelliSenseMode": "windows-msvc-x64",
+    "C_Cpp.default.forcedInclude": [],
 }

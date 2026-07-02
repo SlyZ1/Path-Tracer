@@ -2,7 +2,7 @@
 *.exe
 *.o
 *.obj
-models/
+models/*
 *.pdb
 build/
 bin/

@@ -1,4 +1,6 @@
 #include "app.hpp"
+#define TINYEXR_IMPLEMENTATION
+#include <tinyexr/tinyexr.h>
 
 using namespace std;
 
@@ -244,4 +246,75 @@ void App::exportImage(const string& path){
     }
 
     lodepng::encode(path.c_str(), pixels, width(), height(), LCT_RGB);
+}
+
+void App::exportTextureToExr(GLuint tex, const string& path){
+    if (tex == 0) return;
+
+    int h = height();
+    int w = width();
+
+    vector<float> pixels(w * h * 4);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, pixels.data());
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    EXRHeader header;
+    InitEXRHeader(&header);
+
+    EXRImage image;
+    InitEXRImage(&image);
+
+    image.num_channels = 3;
+
+    std::vector<float> images[3];
+    images[0].resize(w * h);
+    images[1].resize(w * h);
+    images[2].resize(w * h);
+
+    // Split RGBRGBRGB... into R, G and B layer
+    for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+        int src = (y * w + x); 
+        int dst = ((h - 1 - y) * w + x);
+        images[0][dst] = pixels[4*src+0];
+        images[1][dst] = pixels[4*src+1];
+        images[2][dst] = pixels[4*src+2];
+        }
+    }
+
+    float* image_ptr[3];
+    image_ptr[0] = &(images[2].at(0)); // B
+    image_ptr[1] = &(images[1].at(0)); // G
+    image_ptr[2] = &(images[0].at(0)); // R
+
+    image.images = (unsigned char**)image_ptr;
+    image.width = w;
+    image.height = h;
+
+    header.num_channels = 3;
+    header.channels = (EXRChannelInfo *)malloc(sizeof(EXRChannelInfo) * header.num_channels); 
+    // Must be (A)BGR order, since most of EXR viewers expect this channel order.
+    strncpy(header.channels[0].name, "B", 255); header.channels[0].name[strlen("B")] = '\0';
+    strncpy(header.channels[1].name, "G", 255); header.channels[1].name[strlen("G")] = '\0';
+    strncpy(header.channels[2].name, "R", 255); header.channels[2].name[strlen("R")] = '\0';
+
+    header.pixel_types = (int *)malloc(sizeof(int) * header.num_channels); 
+    header.requested_pixel_types = (int *)malloc(sizeof(int) * header.num_channels);
+    for (int i = 0; i < header.num_channels; i++) {
+      header.pixel_types[i] = TINYEXR_PIXELTYPE_FLOAT; // pixel type of input image
+      header.requested_pixel_types[i] = TINYEXR_PIXELTYPE_HALF; // pixel type of output image to be stored in .EXR
+    }
+
+    const char* err;
+    int ret = SaveEXRImageToFile(&image, &header, path.c_str(), &err);
+    if (ret != TINYEXR_SUCCESS) {
+      fprintf(stderr, "Save EXR err: %s\n", err);
+      return;
+    }
+    
+    free(header.channels);
+    free(header.pixel_types);
+    free(header.requested_pixel_types);
+    printf("Saved exr file. [ %s ] \n", path);
 }

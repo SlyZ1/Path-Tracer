@@ -103,7 +103,7 @@ void genTextures(unsigned int width, unsigned int height){
 
 void init(){
     app = make_shared<App>();
-    app->init(512 + 256, 512 + 256, "Basic Raytracer");
+    app->init(1600, 900, "Basic Raytracer");
     app->setMousePos(app->width() / 2.0f, app->height() / 2.0f);
     app->toggleCursor(false);
     renderer = make_shared<Renderer>(app);
@@ -148,7 +148,7 @@ void init(){
     camera->resetMousePos(app->mouseX(), app->mouseY());
     scene = make_shared<Scene>(Scene::defaultScene(app, camera, resetFrame));
     ui = make_shared<UI>(app, renderer, animator, scene, camera, resetFrame);
-    denoiser->init(albedoTexture, colorTexture, normalTexture, denoisedTexture);
+    //denoiser->init(albedoTexture, colorTexture, normalTexture, denoisedTexture);
 
     cout << "Program started." << endl;
 }
@@ -272,7 +272,12 @@ void inputs(){
     if (app->keyPressed(GLFW_KEY_LEFT_ALT) && app->keyPressedOnce(GLFW_KEY_S, frameCount)){
         bool cancel;
         string res = app->saveFileDialog(cancel);
-        if (!cancel) app->exportImage(res);
+        if (!cancel){
+            app->exportImage(res);
+        }
+        app->exportTextureToExr(normalTexture, "./normal.exr");
+        app->exportTextureToExr(albedoTexture, "./albedo.exr");
+        app->exportTextureToExr(colorTexture, "./color.exr");
     }
 
     if (app->mousePressedOnce(GLFW_MOUSE_BUTTON_LEFT, frameCount) && ui->isShowing() && !ui->isHovered()){
@@ -306,11 +311,11 @@ void dynamicResolution(){
         resetFrame();
         int resolutionMultiplier = ui->getResolutionMultiplier();
         if (texWidth != app->width() / resolutionMultiplier) {}
-            //genTextures(app->width() / resolutionMultiplier, app->height() / resolutionMultiplier);
+            genTextures(app->width() / resolutionMultiplier, app->height() / resolutionMultiplier);
     }
     else if (texWidth != app->width()){
         resetFrame();
-        //genTextures(app->width(), app->height());
+        genTextures(app->width(), app->height());
     }
 }
 
@@ -331,7 +336,7 @@ int main(){
         app->startFrame(frameCount);
         handleCamera();
         
-        ui->render();
+        ui->render(frameCount);
         render();
         inputs();
 

@@ -18,6 +18,7 @@ INCLUDES = -Iinclude \
            -Iinclude/tinyobjloader \
            -Iinclude/nativefiledialog \
            -Iinclude/tensorrt \
+           -Iinclude/tinyexr \
            -I"$(CUDA_PATH)/include"
 
 LIBS = /LIBPATH:lib glfw3dll.lib nfd.lib ole32.lib uuid.lib nvinfer.lib \
@@ -35,10 +36,12 @@ CU_OBJ = $(patsubst src/%.cu, build/src/%.obj, $(CU_SRC))
 IMGUI_SRC   = $(wildcard include/imgui/*.cpp)
 LODEPNG_SRC = $(wildcard include/lodepng/*.cpp)
 TINYOBJ_SRC = $(wildcard include/tinyobjloader/*.cpp)
+TINYEXR_SRC = $(wildcard include/tinyexr/*.c)
 
-IMGUI_OBJ   = $(patsubst include/imgui/%.cpp,         build/imgui/%.obj,   $(IMGUI_SRC))
-LODEPNG_OBJ = $(patsubst include/lodepng/%.cpp,       build/lodepng/%.obj, $(LODEPNG_SRC))
-TINYOBJ_OBJ = $(patsubst include/tinyobjloader/%.cpp, build/tinyobj/%.obj, $(TINYOBJ_SRC))
+IMGUI_OBJ   = $(patsubst include/imgui/%.cpp,         	build/imgui/%.obj,   $(IMGUI_SRC))
+LODEPNG_OBJ = $(patsubst include/lodepng/%.cpp,       	build/lodepng/%.obj, $(LODEPNG_SRC))
+TINYOBJ_OBJ = $(patsubst include/tinyobjloader/%.cpp, 	build/tinyobj/%.obj, $(TINYOBJ_SRC))
+TINYEXR_OBJ = $(patsubst include/tinyexr/%.c, 		  	build/tinyexr/%.obj, $(TINYEXR_SRC))
 
 THIRD_PARTY_LIB = build/thirdparty.lib
 TARGET          = myprogram.exe
@@ -61,7 +64,7 @@ build/src/%.obj: src/%.cu
 	@if not exist "$(subst /,\,$(dir $@))" mkdir "$(subst /,\,$(dir $@))"
 	$(NVCC) $(NVCCFLAGS) $(INCLUDES) -c $< -o $@
 
-$(THIRD_PARTY_LIB): $(IMGUI_OBJ) $(LODEPNG_OBJ) $(TINYOBJ_OBJ)
+$(THIRD_PARTY_LIB): $(IMGUI_OBJ) $(LODEPNG_OBJ) $(TINYOBJ_OBJ) $(TINYEXR_OBJ)
 	$(LIBTOOL) /nologo /OUT:$@ $^
 
 build/imgui/%.obj: include/imgui/%.cpp | build/imgui
@@ -72,8 +75,11 @@ build/lodepng/%.obj: include/lodepng/%.cpp | build/lodepng
 
 build/tinyobj/%.obj: include/tinyobjloader/%.cpp | build/tinyobj
 	$(CXX) $(CXXFLAGS) $(INCLUDES) /c $< /Fo:$@
+	
+build/tinyexr/%.obj: include/tinyexr/%.c | build/tinyexr
+	$(CXX) $(CXXFLAGS) $(INCLUDES) /c $< /Fo:$@
 
-build/imgui build/lodepng build/tinyobj:
+build/imgui build/lodepng build/tinyobj build/tinyexr:
 	if not exist "$(subst /,\,$@)" mkdir "$(subst /,\,$@)"
 
 clean:

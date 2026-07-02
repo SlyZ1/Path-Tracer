@@ -16,6 +16,7 @@ __global__ void packDenoiserInputKernel(
     col = make_float4(log1p(col.x), log1p(col.y), log1p(col.z), 1.0f);
     float4 norm = tex2D<float4>(normalTex, (float)x, (float)y);
 
+    idx = (H - 1 - y) * W + x;
     int HW = H * W;
     input[0 * HW + idx] = alb.x;
     input[1 * HW + idx] = alb.y;
