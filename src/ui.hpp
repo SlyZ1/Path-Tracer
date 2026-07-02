@@ -37,22 +37,22 @@ class UI {
         // Technical GPU
         int m_resMultiplier = 3;
         int m_maxBounces = 6;
-
+        
         // Sky Box
         float m_skyIntensity = 0.3f;
         glm::vec3 m_skyTopColor = vec3(0.32f, 0.55f, 0.78f);
         glm::vec3 m_skyMiddleColor = vec3(0.75f, 0.78f, 0.82f);
         glm::vec3 m_skyBottomColor = vec3(1.00f, 0.65f, 0.30f);
-
+        
         // Camera
         float m_fov = 50.0f;
-
+        
         // Model
         bool m_debugBVH = false;
         
         // Rendering
         int m_renderSamples = 2048;
-
+        
         // Animation
         int m_animationFPS = 25;
         float m_animationDuration = 1;
@@ -62,12 +62,13 @@ class UI {
         UI() = default;
         UI(shared_ptr<App> app, shared_ptr<Renderer> renderer, shared_ptr<Animator> animator, shared_ptr<Scene> scene, 
             shared_ptr<Camera> camera, function<void()> resetFrame)
-                : m_app(app), m_renderer(renderer), m_animator(animator), m_scene(scene), m_camera(camera), 
-                m_resetFrame(resetFrame) { 
+            : m_app(app), m_renderer(renderer), m_animator(animator), m_scene(scene), m_camera(camera), 
+            m_resetFrame(resetFrame) 
+        { 
             ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
             ImGui::SetNextWindowSize(ImVec2(300, m_app->getIo()->DisplaySize.y));
         };
-        
+            
         static bool isInteracting();
         static bool isDragging();
         static bool isHovered();
@@ -76,6 +77,14 @@ class UI {
         void setDisabled(bool disabled) { m_disabled = disabled; }
         void render();
         void updateGPU() const;
-
+        
+        static enum TexType : int {
+            Color = 0,
+            Albedo = 1,
+            Normal = 2,
+            Denoised = 3,
+            Result = 4
+        };
+        int textureDisplay = 0;
         int getResolutionMultiplier() const { return m_resMultiplier; }
 };

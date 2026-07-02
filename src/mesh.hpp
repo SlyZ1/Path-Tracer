@@ -3,24 +3,26 @@
 
 #include <glm/glm.hpp>
 #include <vector>
+#include <algorithm>
 
 using namespace std;
+using namespace glm;
 
 struct Triangle {
-    glm::vec3 v1;
+    vec3 v1;
     float pad1;
-    glm::vec3 v2;
+    vec3 v2;
     float pad2;
-    glm::vec3 v3;
+    vec3 v3;
     float pad3;
-    glm::vec3 n1;
+    vec3 n1;
     float pad4;
-    glm::vec3 n2;
+    vec3 n2;
     float pad5;
-    glm::vec3 n3;
+    vec3 n3;
     float pad6;
 
-    glm::vec3 centroid() const {
+    vec3 centroid() const {
         return {(v1.x + v3.x + v2.x) / 3.0f,
                 (v1.y + v3.y + v2.y) / 3.0f,
                 (v1.z + v3.z + v2.z) / 3.0f};
@@ -28,12 +30,12 @@ struct Triangle {
 };
 
 struct AABB {
-    glm::vec3 min;
+    vec3 min;
     float pad0;
-    glm::vec3 max;
+    vec3 max;
     float pad1;
 
-    void expand(const glm::vec3& p) {
+    void expand(const vec3& p) {
         min.x = std::min(min.x, p.x);
         min.y = std::min(min.y, p.y);
         min.z = std::min(min.z, p.z);

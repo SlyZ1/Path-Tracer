@@ -378,6 +378,10 @@ void UI::render() {
         Label("Resolution Divider");
         ImGui::InputInt("##Resolution Divider", &m_resMultiplier);
         m_resMultiplier = std::max(m_resMultiplier, 1);
+
+        Label("Texture Display");
+        static const char* textureTypes[]{"Color", "Albedo", "Normal", "Denoised", "Result"};
+        ImGui::Combo("##Texture Display", &textureDisplay, textureTypes, IM_ARRAYSIZE(textureTypes));
         
         EndTwoColumnLayout();
     }

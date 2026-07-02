@@ -2,8 +2,12 @@
 *.exe
 *.o
 *.obj
+models/
+*.pdb
 build/
 bin/
 
 # Logs
 *.log
+
+myprogram.*

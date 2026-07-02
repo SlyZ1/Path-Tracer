@@ -14,14 +14,14 @@ Scene Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, functi
     light.type = PrimType::SPHERE;
     light.pos = vec3(0, 5, 2);
     light.scale = 1;
-    light.mat = Material::emitMaterial(vec3(1), 20);
+    light.mat = Material::emitMaterial(vec3(1), 20.0f);
     scene.addObject(light);
 
     Object plane;
     plane.type = PrimType::PLANE;
     plane.pos = vec3(0);
     plane.scale = 1;
-    plane.mat = Material::glossyMaterial(vec3(1), 0, 0.2);
+    plane.mat = Material::glossyMaterial(vec3(1), 0.0f, 0.2f);
     scene.addObject(plane);
 
     Object meshObject;
@@ -30,7 +30,8 @@ Scene Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, functi
     meshObject.type = PrimType::MESH_;
     meshObject.mat = Material::glossyMaterial(vec3(0.9f, 0.6f, 0.2f), 0, 0.3f);
     meshObject.mesh = new Mesh();
-    meshObject.mesh->loadFromModel("models/dragon.obj");
+    meshObject.mesh->loadFromModel("models/bunny.obj");
+    meshObject.mesh->isSmooth = true;
     scene.addObject(meshObject);
 
     return scene;
@@ -56,7 +57,7 @@ Ray Scene::rayFromClick(shared_ptr<Camera> camera, glm::vec2 screenPos){
     vec3 right = normalize(cross(forward, worldUp));
     vec3 up = cross(right, forward);
 
-    float tanHalfFov = tan(fov * 0.5);
+    float tanHalfFov = tan(fov * 0.5f);
 
     vec3 newDir = forward + (right * screenPos.x + up * screenPos.y) * tanHalfFov;
     ray.direction = normalize(newDir);
@@ -77,7 +78,7 @@ glm::vec2 Scene::worldToScreen(glm::vec3 worldPos){
     float normFactor = 1 / dot(forward, dir);
     dir *= normFactor;
     float fov = m_camera->getCameraProperties()->fov;
-    float tanHalfFov = tan(radians(fov) * 0.5);
+    float tanHalfFov = tan(radians(fov) * 0.5f);
     float rightCompo = dot(right, dir) / tanHalfFov;
     float upCompo = -dot(up, dir) / tanHalfFov;
     return vec2(rightCompo * m_app->height() / 2.0f, upCompo * m_app->height() / 2.0f);
@@ -142,22 +143,22 @@ float Scene::intersectTriangle(const Ray& ray, const Triangle& triangle){
     vec3 pvec = cross(ray.direction, edge2);
     float det = dot(edge1, pvec);
 
-    if (abs(det) < 1e-5)
+    if (abs(det) < 1e-5f)
         return -1; // rayon parallèle
 
-    float invDet = 1.0 / det;
+    float invDet = 1.0f / det;
     vec3 tvec = ray.origin - triangle.v1;
     float u = dot(tvec, pvec) * invDet;
-    if (u < 0.0 || u > 1.0)
+    if (u < 0.0f || u > 1.0f)
         return -1;
 
     vec3 qvec = cross(tvec, edge1);
     float v = dot(ray.direction, qvec) * invDet;
-    if (v < 0.0 || u + v > 1.0)
+    if (v < 0.0f || u + v > 1.0f)
         return -1;
 
     float t = dot(edge2, qvec) * invDet;
-    if (t < 0.001) return -1;
+    if (t < 0.001f) return -1;
     return t;
 }
 
@@ -170,7 +171,7 @@ float Scene::intersectMesh(const Ray& ray, const Object& obj){
     Mesh mesh = *obj.mesh;
     const vector<linBVHNode>& nodes = mesh.getLinNodes();
     const vector<Triangle>& triangles = mesh.getTriangles();
-    stack[stackPtr++] = nodes.size() - 1;
+    stack[stackPtr++] = (int)nodes.size() - 1;
 
     vec3 pos = obj.pos;
     float scale = obj.scale;
@@ -225,7 +226,7 @@ float Scene::intersectMesh(const Ray& ray, const Object& obj){
 int Scene::intersectObject(const Ray& ray){
     float distance = FLT_MAX;
     int intersected = -1;
-    for(size_t i = 0; i < m_objects.size(); i++){
+    for(int i = 0; i < (int)m_objects.size(); i++){
         float dist = -1;
         Object obj = m_objects[i];
         switch(obj.type){
@@ -250,7 +251,7 @@ int Scene::intersectObject(const Ray& ray){
 }
 
 int Scene::addObject(const Object& obj){
-    int newIndex = m_objects.size();
+    int newIndex = (int)m_objects.size();
     if (obj.type == PrimType::MESH_) m_numMeshesChanged = true;
     else if (obj.mat.type == MatType::EMIT) m_lightIndices.push_back(newIndex);
     m_objects.push_back(obj);
@@ -304,8 +305,8 @@ void Scene::updateGPU(){
     for(Object obj : m_objects){
         if (obj.type == PrimType::MESH_){
             MeshInfos meshInfo;
-            meshInfo.triangleOffset = triangles.size();
-            meshInfo.nodeOffset = nodes.size();
+            meshInfo.triangleOffset = (int)triangles.size();
+            meshInfo.nodeOffset = (int)nodes.size();
             meshInfo.pos = obj.pos;
             meshInfo.scale = obj.scale;
             meshInfo.mat = obj.mat;
@@ -328,32 +329,32 @@ void Scene::updateGPU(){
         }
     }
 
-    glUniform1i(ShaderProgram::getVarLoc("numPrimitives"), primitives.size());
-    glUniform1i(ShaderProgram::getVarLoc("numLights"), m_lightIndices.size());
+    glUniform1i(ShaderProgram::getVarLoc("numPrimitives"), (int)primitives.size());
+    glUniform1i(ShaderProgram::getVarLoc("numLights"), (int)m_lightIndices.size());
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_sceneBuffer);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, primitives.size() * sizeof(PrimitiveObject), primitives.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, (int)primitives.size() * sizeof(PrimitiveObject), primitives.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_sceneBuffer);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_lightIndicesBuffer);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, m_lightIndices.size() * sizeof(int), m_lightIndices.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, (int)m_lightIndices.size() * sizeof(int), m_lightIndices.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_lightIndicesBuffer);
 
     if (m_numMeshesChanged){
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_trianglesBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, triangles.size() * sizeof(Triangle), triangles.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, (int)triangles.size() * sizeof(Triangle), triangles.data(), GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_trianglesBuffer);
-        glUniform1i(ShaderProgram::getVarLoc("numTriangles"), triangles.size());
+        glUniform1i(ShaderProgram::getVarLoc("numTriangles"), (int)triangles.size());
     
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_nodesBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, nodes.size() * sizeof(linBVHNode), nodes.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, (int)nodes.size() * sizeof(linBVHNode), nodes.data(), GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_nodesBuffer);
-        glUniform1i(ShaderProgram::getVarLoc("numBVHNodes"), nodes.size());
+        glUniform1i(ShaderProgram::getVarLoc("numBVHNodes"), (int)nodes.size());
     }
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshInfosBuffer);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, meshInfos.size() * sizeof(MeshInfos), meshInfos.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, (int)meshInfos.size() * sizeof(MeshInfos), meshInfos.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_meshInfosBuffer);
-    glUniform1i(ShaderProgram::getVarLoc("numMeshes"), meshInfos.size());
+    glUniform1i(ShaderProgram::getVarLoc("numMeshes"), (int)meshInfos.size());
     
 }

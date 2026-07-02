@@ -8,6 +8,7 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 #include <nativefiledialog/nfd.h>
+#include <cuda_gl_interop.h>
 #include <vector>
 
 #ifndef APP_HPP

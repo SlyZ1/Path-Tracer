@@ -32,7 +32,7 @@ class ShaderProgram {
         void reload();
         void link();
         void use();
-        void dispatch(GLuint x, GLuint y, GLuint z);
+        void dispatch(GLuint x = 1, GLuint y = 1, GLuint z = 1);
         void destroy();
         static void barrier(GLbitfield memBarrier);
         static void indirectBarrier();
@@ -42,24 +42,24 @@ class ShaderProgram {
         template<typename T>
         static tuple<unsigned int, unsigned int, unsigned int> 
         addData(const vector<T>& data, const vector<unsigned int>& indices){
-            unsigned int VBO, VAO, EBO;
-            glGenVertexArrays(1, &VAO);
-            glGenBuffers(1, &VBO);
-            glGenBuffers(1, &EBO);
+            unsigned int s_VBO, s_VAO, s_EBO;
+            glGenVertexArrays(1, &s_VAO);
+            glGenBuffers(1, &s_VBO);
+            glGenBuffers(1, &s_EBO);
 
-            glBindVertexArray(VAO);
+            glBindVertexArray(s_VAO);
 
-            glBindBuffer(GL_ARRAY_BUFFER, VBO);
+            glBindBuffer(GL_ARRAY_BUFFER, s_VBO);
             glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(T), data.data(), GL_STATIC_DRAW);
 
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, s_EBO);
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
 
-            return {VBO, VAO, EBO};
+            return {s_VBO, s_VAO, s_EBO};
         }
 
         static void linkData(int numCoords, int typesize, int layout, int glType = GL_FLOAT, int normalize = GL_FALSE){
-            glVertexAttribPointer(layout, numCoords, glType, normalize, numCoords * typesize, (void*)0);
+            glVertexAttribPointer(layout, numCoords, glType, (GLboolean)normalize, numCoords * typesize, (void*)0);
             glEnableVertexAttribArray(layout);
 
             glBindBuffer(GL_ARRAY_BUFFER, 0);

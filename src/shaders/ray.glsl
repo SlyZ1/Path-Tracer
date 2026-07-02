@@ -1,4 +1,5 @@
 #version 430 core
+layout(local_size_x = 16, local_size_y = 16) in;
 
 struct Camera {
     vec3 pos;
@@ -90,6 +91,11 @@ layout(std430, binding = 3) buffer LightIndicesBuffer {
 };
 uniform int numLights;
 
+layout(rgba32f, binding = 0) writeonly uniform image2D outputImage;
+layout(rgba32f, binding = 1) writeonly uniform image2D normalImage;
+layout(rgba32f, binding = 2) writeonly uniform image2D albedoImage;
+layout(rgba32f, binding = 3) writeonly uniform image2D colorImage;
+
 struct RaycastData {
     Hit hit;
     Ray ray;
@@ -106,14 +112,12 @@ uniform vec3 skyBottomColor;
 uniform vec3 skyMiddleColor;
 uniform vec3 skyTopColor;
 
-out vec4 FragColor;
 uniform vec2 texSize;
 uniform sampler2D screenTex;
 uniform int frameCount;
 uniform int samples;
 uniform vec2 winSize;
 uniform int maxBounces;
-in vec4 vClipPos;
 
 //#define SAMPLES 1
 #define EPS 1e-4
@@ -338,34 +342,46 @@ vec3 sky(vec3 lookingAt){
     return horizon(lookingAt);
 }
 
-vec4 rayColor(in out uint seed, Ray ray){
+void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out vec4 albedo, out vec4 color){
     Ray tracedRay = ray;
-    vec3 albedo = vec3(-1);
+    bool firstHit = true;
+    normal = vec4(0);
+    albedo = vec4(0);
+    color = vec4(0);
     for (int i = 0; i < maxBounces; i++){
 
         Hit hit = rayIntersection(tracedRay, false);
-        //if (hit.t > 0) return vec4(hit.normal, 1); // NORMALS
-        if (hit.t > 0 && albedo.x < 0) albedo = hit.mat.color; // ALBEDO
-        
+        if (hit.t > 0 && firstHit){
+            firstHit = false;
+            normal = vec4(hit.normal, 1);
+            albedo = vec4(hit.mat.color, 1);
+        }
         computeLighting(hit, tracedRay, seed);
+
 
         if (hit.t < 0){
             if (hit.t > -2) tracedRay.radiance += tracedRay.throughput * sky(tracedRay.dir);
-            tracedRay.radiance = tracedRay.radiance / (albedo + vec3(EPS));
-            return vec4(tracedRay.radiance, 1);
+            if (firstHit) albedo = vec4(sky(tracedRay.dir), 1);
+            result = vec4(tracedRay.radiance, 1);
+            color = result / (albedo + vec4(EPS));
+            return;
         }// Cas ou on tombe sur une light ou sur rien
     }
-
-    return vec4(0);
 }
 
 void main()
 {
+    uint screenX = gl_GlobalInvocationID.x;
+    uint screenY = gl_GlobalInvocationID.y;
+    if (screenX >= texSize.x || screenY >= texSize.y) return;
+    vec2 fragCoord = vec2(screenX, screenY) + vec2(0.5);
+    vec2 clipPos = (fragCoord / winSize - vec2(0.5)) * 2;
+
     float resolutionFactor = winSize.x / texSize.x;
-    uint seed = initSeed(uvec2(gl_FragCoord.xy * resolutionFactor), frameCount);
-    vec2 pos = ratio(vClipPos.xy) * resolutionFactor + ratio(vec2(1)) * (resolutionFactor - 1);
+    uint seed = initSeed(uvec2(fragCoord * resolutionFactor), frameCount);
+    vec2 pos = ratio(clipPos) * resolutionFactor + ratio(vec2(1)) * (resolutionFactor - 1);
     vec2 offset = resolutionFactor * vec2(rand(seed), rand(seed)) / winSize;
-    vec2 uv = (vClipPos.xy + vec2(1)) * 0.5;
+    vec2 uv = (clipPos + vec2(1)) * 0.5;
 
     Ray ray = Ray(
         camera.pos, 
@@ -375,14 +391,23 @@ void main()
         -1
     );
 
-    vec4 radiance;
+    vec4 radiance = vec4(0);
+    vec4 normal = vec4(0);
+    vec4 albedo = vec4(0);
+    vec4 color = vec4(0);
     for (int i = 0; i < samples; i++) {
         vec2 AAjitter = vec2(rand(seed), rand(seed)) * 2 / winSize;
-        Ray r = fovRay(pos + AAjitter, ray, seed);
-        radiance += max(rayColor(seed, r), vec4(0));
+        Ray r = fovRay(pos, ray, seed);
+
+        vec4 result = vec4(0);
+        tracePath(seed, r, result, normal, albedo, color);
+        radiance += max(result, vec4(0));
     }
 
-    FragColor = radiance + max(frameCount, 0) * texture(screenTex, uv);
-    FragColor /= frameCount + samples;
-    FragColor = radiance / samples;
+    vec4 finalResult = radiance + max(frameCount, 0) * texture(screenTex, uv);
+    finalResult /= frameCount + samples;
+    imageStore(outputImage, ivec2(fragCoord - vec2(0.5)), finalResult);
+    imageStore(normalImage, ivec2(fragCoord - vec2(0.5)), normal);
+    imageStore(albedoImage, ivec2(fragCoord - vec2(0.5)), albedo);
+    imageStore(colorImage, ivec2(fragCoord - vec2(0.5)), color);
 }

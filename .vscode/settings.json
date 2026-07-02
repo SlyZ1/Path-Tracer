@@ -48,5 +48,16 @@
         "fstream": "cpp",
         "sstream": "cpp"
     },
-    "cmake.ignoreCMakeListsMissing": true
+    "cmake.ignoreCMakeListsMissing": true,
+    "terminal.integrated.profiles.windows": {
+        "x64 Native Tools": {
+            "path": "cmd.exe",
+            "args": [
+                "/k",
+                "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Auxiliary\\Build\\vcvarsall.bat",
+                "x64"
+            ]
+        }
+    },
+    "terminal.integrated.defaultProfile.windows": "x64 Native Tools"
 }

@@ -187,13 +187,11 @@ Hit rayIntersection(inout Ray ray, bool isShadow){
     for(int i = 0; i < numPrimitives; i += 1){
         Primitive prim = primitives[i];
         Hit newHit;
-        switch (prim.type){
-            case PRIM_SPHERE:
-                newHit = sphereIntersect(prim, ray);
-                break;
-            case PRIM_PLANE:
-                newHit = planeIntersect(prim, ray);
-                break; 
+        if (prim.type == PRIM_SPHERE){
+            newHit = sphereIntersect(prim, ray);
+        }
+        else if (prim.type == PRIM_PLANE){
+            newHit = planeIntersect(prim, ray);
         }
         if (newHit.t > 0 && newHit.t < hit.t) hit = newHit;
     }
@@ -205,7 +203,7 @@ Hit rayIntersection(inout Ray ray, bool isShadow){
         if (bvhHit.t > 0 && bvhHit.t < hit.t) hit = bvhHit;
     }
 
-    if(hit.t == 100000) hit.t = -1;
+    if(hit.t >= 100000) hit.t = -1;
 
     return hit;
 }

@@ -94,7 +94,7 @@ void ShaderProgram::load(int type, const char *path){
 
     //Add to program
     glAttachShader(m_shaderProgram, shader);
-    cout << m_name << endl;
+    cout << "Compiling " << m_name << ".glsl..." << endl;
 }
 
 void ShaderProgram::reload(){

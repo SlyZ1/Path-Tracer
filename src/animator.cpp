@@ -29,7 +29,7 @@ void Animator::updateCurrentKeyFrame(float animationTime){
         if (m_animationTime >= kf.keyPos)
             m_currentKeyFrame = std::max(m_currentKeyFrame, i);
     }
-    m_currentKeyFrame = std::clamp(m_currentKeyFrame, 0, m_numKeyFrames - 1);
+    m_currentKeyFrame = glm::clamp(m_currentKeyFrame, 0, m_numKeyFrames - 1);
 }
 
 void Animator::previousKeyFrame(){
@@ -81,7 +81,7 @@ void Animator::animationProcess(){
 
     if (!m_renderer->isRendering()){
         m_animationFrame++;
-        int numFrames = m_animationFPS * m_animationDuration;
+        int numFrames = std::floor(m_animationFPS * m_animationDuration);
         if (m_animationFrame >= numFrames) {
             m_is_running = false;
         }

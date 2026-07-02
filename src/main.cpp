@@ -11,31 +11,38 @@
 #include "ui.hpp"
 #include "animator.hpp"
 #include "scene.hpp"
+#include "cuda_cpp/denoiser.hpp"
 
 using namespace std;
 
 #define SAMPLES 5
 
-ShaderProgram rayTraceShader;
-ShaderProgram accumulationShader;
+ShaderProgram rayTraceShader = {};
+ShaderProgram rayComputeShader = {};
+ShaderProgram accumulationShader = {};
 
-unsigned int VBO, VAO, EBO;
-unsigned int FBO;
-unsigned int texture;
-unsigned int oldTexture;
-unsigned int texWidth, texHeight;
+GLuint VBO, VAO, EBO = 0;
+GLuint FBO = 0;
+GLuint texture = 0;
+GLuint oldTexture = 0;
+GLuint normalTexture = 0;
+GLuint albedoTexture = 0;
+GLuint colorTexture = 0;
+GLuint denoisedTexture = 0;
+GLuint texWidth, texHeight = 0;
 
 int samples = 1;
 
 int frameAccumulator = 0;
 int frameCount = 0;
 
-shared_ptr<Camera> camera = make_shared<Camera>(0.1, 0.3);
+shared_ptr<Camera> camera = make_shared<Camera>(0.1f, 0.3f);
 shared_ptr<App> app;
 shared_ptr<Renderer> renderer;
 shared_ptr<Animator> animator;
 shared_ptr<UI> ui;
 shared_ptr<Scene> scene;
+shared_ptr<Denoiser> denoiser;
 
 extern "C" {
     __declspec(dllexport) unsigned long NvOptimusEnablement = 1;
@@ -46,7 +53,7 @@ void resetFrame(){
     frameAccumulator = 0;
 }
 
-void genTexture(unsigned int width, unsigned int height){
+void genTextures(unsigned int width, unsigned int height){
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
@@ -61,6 +68,34 @@ void genTexture(unsigned int width, unsigned int height){
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
 
+    glGenTextures(1, &normalTexture);
+    glBindTexture(GL_TEXTURE_2D, normalTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glGenTextures(1, &albedoTexture);
+    glBindTexture(GL_TEXTURE_2D, albedoTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glGenTextures(1, &colorTexture);
+    glBindTexture(GL_TEXTURE_2D, colorTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glGenTextures(1, &denoisedTexture);
+    glBindTexture(GL_TEXTURE_2D, denoisedTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
     resetFrame();
     texWidth = width;
     texHeight = height;
@@ -68,11 +103,13 @@ void genTexture(unsigned int width, unsigned int height){
 
 void init(){
     app = make_shared<App>();
-    app->init(1600, 900, "Basic Raytracer");
+    app->init(512 + 256, 512 + 256, "Basic Raytracer");
     app->setMousePos(app->width() / 2.0f, app->height() / 2.0f);
     app->toggleCursor(false);
     renderer = make_shared<Renderer>(app);
     animator = make_shared<Animator>(renderer, resetFrame);
+    denoiser = make_shared<Denoiser>(512 + 256, 512 + 256, 9);
+    denoiser->load("denoiser.engine");
     
     rayTraceShader.create();
     rayTraceShader.load(GL_VERTEX_SHADER, "src/shaders/vertex.glsl");
@@ -83,6 +120,10 @@ void init(){
     accumulationShader.load(GL_VERTEX_SHADER, "src/shaders/screenVertex.glsl");
     accumulationShader.load(GL_FRAGMENT_SHADER, "src/shaders/screenFrag.glsl");
     accumulationShader.link();
+
+    rayComputeShader.create();
+    rayComputeShader.load(GL_COMPUTE_SHADER, "src/shaders/ray.glsl");
+    rayComputeShader.link();
     
     vector<float> vertices = {
         1.f,  1.f, 0.0f,
@@ -97,16 +138,19 @@ void init(){
     tie(VBO, VAO, EBO) = ShaderProgram::addData(vertices, indices);
     ShaderProgram::linkData(3, sizeof(float), 0);
     
-    rayTraceShader.use();
-    glUniform2f(ShaderProgram::getVarLoc("winSize"), app->width(), app->height());
+    rayComputeShader.use();
+    glUniform2f(ShaderProgram::getVarLoc("winSize"), (float)app->width(), (float)app->height());
     
     glGenFramebuffers(1, &FBO);
-    genTexture(app->width(), app->height());
+    genTextures(app->width(), app->height());
     glDisable(GL_FRAMEBUFFER_SRGB);
     
     camera->resetMousePos(app->mouseX(), app->mouseY());
     scene = make_shared<Scene>(Scene::defaultScene(app, camera, resetFrame));
     ui = make_shared<UI>(app, renderer, animator, scene, camera, resetFrame);
+    denoiser->init(albedoTexture, colorTexture, normalTexture, denoisedTexture);
+
+    cout << "Program started." << endl;
 }
 
 void handleCamera(){
@@ -129,24 +173,40 @@ void handleCamera(){
 
 void render(){
     //Current frame
-    glBindFramebuffer(GL_FRAMEBUFFER, FBO);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
-    rayTraceShader.use();
+    rayComputeShader.use();
     
     ui->updateGPU();
     scene->updateGPU();
     camera->updateGPU();
     
-    glUniform2f(ShaderProgram::getVarLoc("texSize"), texWidth, texHeight);
+    glUniform2f(ShaderProgram::getVarLoc("texSize"), (float)texWidth, (float)texHeight);
+
+    glBindImageTexture(0, texture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    glBindImageTexture(1, normalTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    glBindImageTexture(2, albedoTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    glBindImageTexture(3, colorTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, oldTexture);
     glUniform1i(ShaderProgram::getVarLoc("screenTex"), 0);
+
     glUniform1i(ShaderProgram::getVarLoc("frameCount"), frameAccumulator);
     glUniform1i(ShaderProgram::getVarLoc("samples"), samples);
     
-    glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    rayComputeShader.dispatch((texWidth + 15) / 16, (texHeight + 15) / 16);
+    ShaderProgram::barrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+    
+    // glBindImageTexture(0, 0, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    // glBindImageTexture(1, 0, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    // glBindImageTexture(2, 0, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    // glBindImageTexture(3, 0, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    // glBindTexture(GL_TEXTURE_2D, 0);
+
+    // glFinish();
+
+    // denoiser->infer();
+
+    // ShaderProgram::barrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     
     //Update oldTexture
     std::swap(texture, oldTexture);
@@ -155,8 +215,28 @@ void render(){
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     accumulationShader.use();
     
-    glBindTexture(GL_TEXTURE_2D, oldTexture);
+    glActiveTexture(GL_TEXTURE0);
+    GLuint renderTex = 0;
+    switch(ui->textureDisplay){
+        case UI::TexType::Color:
+            renderTex = colorTexture;
+            break;
+        case UI::TexType::Albedo:
+            renderTex = albedoTexture;
+            break;
+        case UI::TexType::Normal:
+            renderTex = normalTexture;
+            break;
+        case UI::TexType::Denoised:
+            renderTex = denoisedTexture;
+            break;
+        case UI::TexType::Result:
+            renderTex = oldTexture;
+            break;
+    }
+    glBindTexture(GL_TEXTURE_2D, renderTex);
     glUniform1i(ShaderProgram::getVarLoc("oldTexture"), 0);
+    glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
@@ -184,7 +264,7 @@ void inputs(){
         Object newObj;
         newObj.type = PrimType::SPHERE;
         newObj.pos = glm::vec3(rand() / (float)RAND_MAX * 10, 1, rand() / (float)RAND_MAX * 10);
-        newObj.scale = rand() / (float)RAND_MAX + 0.5;
+        newObj.scale = rand() / (float)RAND_MAX + 0.5f;
         newObj.mat = Material::glassMaterial(glm::vec3(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX, rand() / (float)RAND_MAX), rand() / (float)RAND_MAX*2 + 1);
         scene->addObject(newObj);
     }
@@ -225,12 +305,12 @@ void dynamicResolution(){
     if (camera->getIsMoving(frameCount) || (UI::isInteracting() && !renderer->isRendering())){
         resetFrame();
         int resolutionMultiplier = ui->getResolutionMultiplier();
-        if (texWidth != app->width() / resolutionMultiplier) 
-            genTexture(app->width() / resolutionMultiplier, app->height() / resolutionMultiplier);
+        if (texWidth != app->width() / resolutionMultiplier) {}
+            //genTextures(app->width() / resolutionMultiplier, app->height() / resolutionMultiplier);
     }
     else if (texWidth != app->width()){
         resetFrame();
-        genTexture(app->width(), app->height());
+        //genTextures(app->width(), app->height());
     }
 }
 
@@ -239,6 +319,8 @@ void end(){
     glDeleteBuffers(1, &VBO);
     glDeleteFramebuffers(1, &FBO);
     rayTraceShader.destroy();
+    accumulationShader.destroy();
+    rayComputeShader.destroy();
     app->terminate();
 }
 

@@ -22,6 +22,7 @@ Triangle Mesh::scaleTri(Triangle tri, float scale){
 }
 
 void Mesh::loadFromModel(const char* path){
+    cout << "Loading 3D model and computing BVH... (at " << path << ")" << endl;
     ifstream ifs(path);
     if (!ifs) {
         cerr << "Cannot open OBJ file\n" << endl;
@@ -50,7 +51,7 @@ void Mesh::loadFromModel(const char* path){
     }
     
     auto getPos = [&](tinyobj::index_t i){
-        return glm::vec3(
+        return vec3(
             attrib.vertices[3 * i.vertex_index + 0],
             attrib.vertices[3 * i.vertex_index + 1],
             attrib.vertices[3 * i.vertex_index + 2]
@@ -59,19 +60,19 @@ void Mesh::loadFromModel(const char* path){
 
     auto getNormal = [&](tinyobj::index_t i){
         if (i.normal_index >= 0) {
-            return glm::vec3(
+            return vec3(
                 attrib.normals[3 * i.normal_index + 0],
                 attrib.normals[3 * i.normal_index + 1],
                 attrib.normals[3 * i.normal_index + 2]
             );
         }
-        return glm::vec3(0.0f); // pas de normale dans le fichier
+        return vec3(0.0f); // pas de normale dans le fichier
     };
-    
+
     for(const auto &shape : shapes){
         const auto &mesh = shape.mesh;
         int numVertex = 3;
-        int size = mesh.num_face_vertices.size();
+        int size = (int)mesh.num_face_vertices.size();
         int index_offset = 0;
         for (int i = 0; i < size; i++)
         {
@@ -91,12 +92,11 @@ void Mesh::loadFromModel(const char* path){
                 
                 m_triangles.push_back(newTriangle);   
             }
-
             index_offset += fv;
         }
     }
 
-    int size = m_triangles.size();
+    int size = (int)m_triangles.size();
     vector<int> triIndices(size);
     for (int i = 0; i < size; i++) {
         triIndices[i] = i;
@@ -147,7 +147,7 @@ BVHNode* Mesh::computeBVH(vector<Triangle>& triangles,
     for (int i = begin + 1; i < end; ++i)
         centroidBounds.expand(triangles[indices[i]].centroid());
 
-    glm::vec3 extent = centroidBounds.max - centroidBounds.min;
+    vec3 extent = centroidBounds.max - centroidBounds.min;
     int axis = 0;
     if (extent.y > extent.x && extent.y > extent.z)
         axis = 1;
@@ -170,7 +170,7 @@ BVHNode* Mesh::computeBVH(vector<Triangle>& triangles,
 }
 
 int indexOfTriangle(const vector<Triangle>& triangles, const Triangle& triangle){
-    int size = triangles.size();
+    int size = (int)triangles.size();
     for(int i = 0; i < size; i++){
         Triangle tri = triangles[i];
         if (tri.v1 == triangle.v1 && tri.v2 == triangle.v2 && tri.v3 == triangle.v3){
@@ -195,7 +195,7 @@ int lineariseRec(BVHNode* node, vector<linBVHNode>& nodes){
         right,
         triangle
     };
-    int i = nodes.size();
+    int i = (int)nodes.size();
     nodes.push_back(linNode);
     return i;
 }

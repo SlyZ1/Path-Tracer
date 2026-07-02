@@ -12,6 +12,7 @@
                 "-I${workspaceFolder}/include/imgui",
                 "-I${workspaceFolder}/include/lodepng",
                 "-I${workspaceFolder}/include/tinyobjloader",
+                "-I${workspaceFolder}/include/tensorrt",
 
                 "-L${workspaceFolder}/lib",
 
@@ -22,6 +23,7 @@
                 "${workspaceFolder}/src/glad.c",
 
                 "-lglfw3dll",
+                "-lnvinfer_11dll",
 
                 "-o",
                 "${workspaceFolder}/myprogram.exe",

@@ -38,6 +38,9 @@ void App::init(int width, int height, const char *name){
         exit(1);
     }
 
+    cudaGLSetGLDevice(0);
+    cudaFree(0);
+
     glViewport(0, 0, width, height);
     glfwSetFramebufferSizeCallback(m_window, framebuffer_size_callback);
 
