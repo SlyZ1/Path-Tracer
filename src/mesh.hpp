@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include <algorithm>
+#include <string>
 
 using namespace std;
 using namespace glm;
@@ -70,13 +71,17 @@ public:
     Mesh();
     static AABB scaleAABB(AABB box, float scale);
     static Triangle scaleTri(Triangle tri, float scale);
+
+    bool isSmooth = false;
+    string modelPath = "";
+
     void loadFromModel(const char* path);
     const vector<Triangle>& getTriangles() const;
     BVHNode* computeBVH(vector<Triangle>& triangles, vector<int>& indices, int begin, int end);
     static vector<linBVHNode> lineariseBVH(BVHNode* node);
     BVHNode* getBVHNodes() const { return m_nodes; }
     const vector<linBVHNode>& getLinNodes() const { return m_linNodes; }
-    bool isSmooth = false;
+    void deleteMesh();
     
 private:
     vector<Triangle> m_triangles = {};
@@ -84,6 +89,7 @@ private:
     vector<linBVHNode> m_linNodes = {};
     static AABB triangleBounds(const Triangle& tri);
     static AABB computeBounds(const vector<Triangle>& triangles, int start, int end);
+    void deleteBVH(BVHNode* node);
 };
 
 #endif

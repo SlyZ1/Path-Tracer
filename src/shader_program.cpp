@@ -11,8 +11,8 @@ void ShaderProgram::create(){
 
 // Extracts path from lines like : #pragma include "path"
 fs::path ShaderProgram::extractPath(const string& line){
-    int start = line.find_first_of("\"") + 1;
-    int end = line.find_last_of("\"");
+    int start = (int)line.find_first_of("\"") + 1;
+    int end = (int)line.find_last_of("\"");
     return fs::path(line.substr(start, end - start));
 }
 

@@ -6,23 +6,23 @@ using namespace glm;
 glm::vec3 Scene::m_cameraDirection = glm::vec3(0, 0, -1);
 glm::vec3 Scene::m_cameraPosition  = glm::vec3(0, 0, 0);
 
-Scene Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, function<void()> resetFrame){
-    Scene scene = Scene(app, camera, resetFrame);
-    scene.initGPU();
+shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, function<void()> resetFrame){
+    shared_ptr<Scene> scene = make_shared<Scene>(app, camera, resetFrame);
+    scene->initGPU();
 
     Object light;
     light.type = PrimType::SPHERE;
     light.pos = vec3(0, 5, 2);
     light.scale = 1;
     light.mat = Material::emitMaterial(vec3(1), 20.0f);
-    scene.addObject(light);
+    scene->addObject(light);
 
     Object plane;
     plane.type = PrimType::PLANE;
     plane.pos = vec3(0);
     plane.scale = 1;
     plane.mat = Material::glossyMaterial(vec3(1), 0.0f, 0.2f);
-    scene.addObject(plane);
+    scene->addObject(plane);
 
     Object meshObject;
     meshObject.pos = vec3(0, 1, 0);
@@ -32,7 +32,7 @@ Scene Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, functi
     meshObject.mesh = new Mesh();
     meshObject.mesh->loadFromModel("models/bunny.obj");
     meshObject.mesh->isSmooth = true;
-    scene.addObject(meshObject);
+    scene->addObject(meshObject);
 
     return scene;
 }
@@ -62,6 +62,73 @@ Ray Scene::rayFromClick(shared_ptr<Camera> camera, glm::vec2 screenPos){
     vec3 newDir = forward + (right * screenPos.x + up * screenPos.y) * tanHalfFov;
     ray.direction = normalize(newDir);
     return ray;
+}
+
+SceneState Scene::stateFromJson(const string& path){
+    std::ifstream f(path);
+    json data = json::parse(f);
+    f.close();
+    return data.get<SceneState>();
+}
+
+void Scene::stateToJson(const SceneState& sceneState, const string& path){
+    json data = json(sceneState);
+    ofstream f(path);
+    f << data.dump(4);
+    f.close();
+    cout << "Scene saved to " << path << "." << endl;
+}
+
+void Scene::loadFromState(const SceneState& sceneState){
+    deleteScene();
+    for (ObjectState objState : sceneState.objectStates)
+    {
+        if (objState.mat.type == MatType::EMIT){
+            m_lightIndices.push_back((int)m_objects.size());
+        }
+
+        Object newObject;
+        newObject.pos = objState.pos;
+        newObject.scale = objState.scale;
+        newObject.mat = objState.mat;
+        newObject.type = objState.type;
+        if (objState.type == PrimType::MESH_){
+            Mesh* newMesh = new Mesh();
+            string modelPath = sceneState.modelPaths[objState.modelIndex];
+            newMesh->loadFromModel(modelPath.c_str());
+            newMesh->isSmooth = objState.isSmooth;
+            newObject.mesh = newMesh;
+        }
+        else{
+            newObject.mesh = nullptr;
+        }
+        m_objects.push_back(newObject);
+    }
+    m_selectedObject = -1;
+    m_copiedObject = -1;
+    m_sceneChanged = true;
+    cout << "Scene loaded." << endl;
+}
+
+SceneState Scene::getState(){
+    SceneState sceneState;
+    sceneState.modelPaths = {};
+    sceneState.objectStates = {};
+    for (Object obj : m_objects){
+        ObjectState objState;
+        objState.pos = obj.pos;
+        objState.scale = obj.scale;
+        objState.mat = obj.mat;
+        objState.type = obj.type;
+        objState.modelIndex = -1;
+        if (obj.type == PrimType::MESH_){
+            objState.modelIndex = (int)sceneState.modelPaths.size();
+            sceneState.modelPaths.push_back(obj.mesh->modelPath);
+            objState.isSmooth = obj.mesh->isSmooth;
+        }
+        sceneState.objectStates.push_back(objState);
+    }
+    return sceneState;
 }
 
 glm::vec2 Scene::worldToScreen(glm::vec3 worldPos){
@@ -218,7 +285,6 @@ float Scene::intersectMesh(const Ray& ray, const Object& obj){
         }
     }
 
-    //ray.origin += modelPos;
     return hitT;
 }
 
@@ -261,7 +327,7 @@ int Scene::addObject(const Object& obj){
 }
 
 Object* Scene::getObject(int index){
-    if (index < 0 || index > (int)m_objects.size()) return nullptr;
+    if (index < 0 || index >= (int)m_objects.size()) return nullptr;
 
     return &m_objects[index];
 }
@@ -355,6 +421,18 @@ void Scene::updateGPU(){
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshInfosBuffer);
     glBufferData(GL_SHADER_STORAGE_BUFFER, (int)meshInfos.size() * sizeof(MeshInfos), meshInfos.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_meshInfosBuffer);
-    glUniform1i(ShaderProgram::getVarLoc("numMeshes"), (int)meshInfos.size());
-    
+    glUniform1i(ShaderProgram::getVarLoc("numMeshes"), (int)meshInfos.size()); //a
+}
+
+void Scene::deleteScene(){
+    for (Object& obj : m_objects)
+    {
+        if (obj.mesh != nullptr){
+            obj.mesh->deleteMesh();
+            delete obj.mesh;
+            obj.mesh = nullptr;
+        }
+    }
+    m_objects.clear();
+    m_lightIndices.clear();
 }

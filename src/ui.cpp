@@ -210,7 +210,7 @@ void UI::renderPopup(){
         ImGui::Spacing();
         
         ImGui::NewLine();
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0, 0.3, 0.3, 1.0));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
         if (ImGui::Button("Remove", ImVec2(-1, 0))){
             m_scene->removeObject(m_scene->getSelectedObject());
             m_scene->selectObject(-1);
@@ -225,20 +225,43 @@ void UI::render(int frameAccumulator) {
         renderPointer();
         return;
     }
-
-    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.5f, 0.2f, 1.0f, 0.3f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.5f, 0.2f, 1.0f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.5f, 0.2f, 1.0f, 0.8f));
     
     renderStats(frameAccumulator);
     renderPopup();
     renderGizmos();
 
     ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(300, m_app->getIo()->DisplaySize.y), ImGuiCond_Always);
-    ImGui::Begin("Parameters", (bool*)NULL, 0);
+    ImGui::SetNextWindowSize(ImVec2(300, ImGui::GetIO().DisplaySize.y), ImGuiCond_Always);
+    ImGui::Begin("Parameters", (bool*)NULL, ImGuiWindowFlags_MenuBar);
 
     ImGui::BeginDisabled(m_renderer->isRendering() || m_disabled);
+
+    if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("Fichier")) {
+            if (ImGui::MenuItem("Quit"))  {
+                glfwSetWindowShouldClose(m_app->getWindow(), true);
+            }
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Scene")) {
+            if (ImGui::MenuItem("Save")) {
+                bool cancel;
+                string path = m_app->saveFileDialog(cancel, "scene.json");
+                m_scene->stateToJson(m_scene->getState(), path);
+            }
+            if (ImGui::MenuItem("Load"))  {
+                bool cancel;
+                string path = m_app->openFileDialog(cancel);
+                m_scene->loadFromState(m_scene->stateFromJson(path));
+            }
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
+
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.5f, 0.2f, 1.0f, 0.3f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.5f, 0.2f, 1.0f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.5f, 0.2f, 1.0f, 0.8f));
 
     if (ImGui::CollapsingHeader("Camera Settings", ImGuiTreeNodeFlags_DefaultOpen)){
         BeginTwoColumnLayout();

@@ -151,7 +151,7 @@ void init(){
     glDisable(GL_FRAMEBUFFER_SRGB);
     
     camera->resetMousePos(app->mouseX(), app->mouseY());
-    scene = make_shared<Scene>(Scene::defaultScene(app, camera, resetFrame));
+    scene = Scene::defaultScene(app, camera, resetFrame);
     ui = make_shared<UI>(app, renderer, animator, scene, camera, resetFrame);
     //denoiser->init(albedoTexture, colorTexture, normalTexture, denoisedTexture);
 
@@ -252,17 +252,15 @@ void render(){
 void inputs(){
     if (UI::isInteracting()) return;
     
-    if (app->keyPressedOnce(GLFW_KEY_ESCAPE, frameCount)){
-        animator->cancelAnimation();
-        renderer->cancelRender();
-    }
-    
     if (renderer->isRendering()) return;
 
     if (app->keyPressedOnce(GLFW_KEY_K, frameCount))
         cout << "Frame Time: " << glfwGetTime() << "s with " << frameAccumulator << " samples." << endl;
     
     if (app->keyPressedOnce(GLFW_KEY_ESCAPE, frameCount)){
+        animator->cancelAnimation();
+        renderer->cancelRender();
+
         app->setMousePos(app->width() / 2.0f, app->height() / 2.0f);
         ui->toggle();
         app->toggleCursor(app->cursorIsHidden());
@@ -280,7 +278,7 @@ void inputs(){
 
     if (app->keyPressed(GLFW_KEY_LEFT_ALT) && app->keyPressedOnce(GLFW_KEY_S, frameCount)){
         bool cancel;
-        string res = app->saveFileDialog(cancel);
+        string res = app->saveFileDialog(cancel, "output.png");
         if (!cancel){
             app->exportImage(res);
         }
@@ -331,6 +329,7 @@ void end(){
     glDeleteFramebuffers(1, &FBO);
     accumulationShader.destroy();
     rayComputeShader.destroy();
+    scene->deleteScene();
     app->terminate();
 }
 

@@ -103,6 +103,7 @@ void Mesh::loadFromModel(const char* path){
     }
     computeBVH(m_triangles, triIndices, 0, size);
     m_linNodes = lineariseBVH(m_nodes);
+    modelPath = path;
 }
 
 const vector<Triangle>& Mesh::getTriangles() const {
@@ -204,4 +205,16 @@ vector<linBVHNode> Mesh::lineariseBVH(BVHNode* node){
     vector<linBVHNode> nodes = {};
     lineariseRec(node, nodes);
     return nodes;
+}
+
+void Mesh::deleteBVH(BVHNode* node){
+    if (node == nullptr) return;
+    deleteBVH(node->left);
+    deleteBVH(node->right);
+    delete node;
+}
+
+void Mesh::deleteMesh(){
+    deleteBVH(m_nodes);
+    m_nodes = nullptr;
 }

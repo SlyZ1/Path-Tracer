@@ -30,7 +30,7 @@ void Renderer::startRendering(int renderSamples, string exportFileName, bool fil
     if (fileDialog){
         bool cancel;
         if (exportFileName.empty()){
-            string path = m_app->saveFileDialog(cancel);
+            string path = m_app->saveFileDialog(cancel, "output.png");
             m_exportPath = "";
             m_exportFileName = path;
         }

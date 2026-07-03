@@ -70,7 +70,7 @@ class UI {
             m_resetFrame(resetFrame) 
         { 
             ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
-            ImGui::SetNextWindowSize(ImVec2(300, m_app->getIo()->DisplaySize.y));
+            ImGui::SetNextWindowSize(ImVec2(300.0f, ImGui::GetIO().DisplaySize.y));
         };
             
         static bool isInteracting();

@@ -24,8 +24,10 @@ class App {
 
     public:
         void init(int width, int height, const char *name);
-        string saveFileDialog(bool& cancel);
+        string saveFileDialog(bool& cancel, const string& defaultName);
+        string openFileDialog(bool& cancel);
         string pickFolderDialog(bool& cancel);
+        GLFWwindow* getWindow() const {return m_window; };
         void setClearColor(float r, float g, float b, float a);
         void startFrame(unsigned int frameCount);
         void endFrame();
@@ -44,7 +46,6 @@ class App {
         unsigned int height();
         void exportImage(const string& path = "outputs/image.png");
         void exportTextureToExr(GLuint tex, const string& path = "outputs/image.png");
-        ImGuiIO* getIo() { return m_io; }
 };
 
 #endif

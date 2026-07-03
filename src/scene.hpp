@@ -4,6 +4,17 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include <functional>
+#include <nlohmannjson/json.hpp>
+namespace glm {
+    inline void to_json(nlohmann::json& j, const vec2& v) { j = {v.x, v.y}; }
+    inline void from_json(const nlohmann::json& j, vec2& v) { v.x = j[0]; v.y = j[1]; }
+
+    inline void to_json(nlohmann::json& j, const vec3& v) { j = {v.x, v.y, v.z}; }
+    inline void from_json(const nlohmann::json& j, vec3& v) { v.x = j[0]; v.y = j[1]; v.z = j[2]; }
+
+    inline void to_json(nlohmann::json& j, const vec4& v) { j = {v.x, v.y, v.z, v.w}; }
+    inline void from_json(const nlohmann::json& j, vec4& v) { v.x = j[0]; v.y = j[1]; v.z = j[2]; v.w = j[3]; }
+}
 #include "camera.hpp"
 #include "app.hpp"
 #include "shader_program.hpp"
@@ -11,6 +22,7 @@
 #include "material.hpp"
 
 using namespace std;
+using json = nlohmann::json;
 
 enum PrimType : int {
     SPHERE = 0,
@@ -51,6 +63,36 @@ struct Ray {
     glm::vec3 direction;
 };
 
+struct ObjectState {
+    glm::vec3 pos;
+    float scale;
+    Material mat;
+    PrimType type;
+    int modelIndex;
+    bool isSmooth;
+};
+struct SceneState {
+    vector<string> modelPaths;
+    vector<ObjectState> objectStates;
+};
+
+NLOHMANN_JSON_SERIALIZE_ENUM(MatType, {
+    { MatType::DIFFUSE,     "diffuse"   },
+    { MatType::METAL,       "metal"     },
+    { MatType::GLASS,       "glass"     },
+    { MatType::GLOSSY,      "glossy"    },
+    { MatType::EMIT,        "emit"      }
+})
+NLOHMANN_JSON_SERIALIZE_ENUM(PrimType, {
+    { PrimType::SPHERE,     "sphere"    },
+    { PrimType::PLANE,      "plane"     },
+    { PrimType::CUBE,       "cube"      },
+    { PrimType::MESH_,      "mesh"      }
+})
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Material, color, type, data)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ObjectState, pos, scale, mat, type, modelIndex, isSmooth)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SceneState, modelPaths, objectStates)
+
 class Scene {
 private:
     shared_ptr<App> m_app = {};
@@ -83,8 +125,13 @@ public:
     Scene() = default;
     Scene(shared_ptr<App> app, shared_ptr<Camera> camera, function<void()> resetFrame) 
     : m_app(app), m_camera(camera), m_resetFrame(resetFrame) {}
-    static Scene defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, function<void()> resetFrame = nullptr);
+    static shared_ptr<Scene> defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, function<void()> resetFrame = nullptr);
     static Ray rayFromClick(shared_ptr<Camera> camera, glm::vec2 screenPos);
+    static SceneState stateFromJson(const string& path);
+    static void stateToJson(const SceneState& sceneState, const string& path);
+
+    void loadFromState(const SceneState& sceneState);
+    SceneState getState();
     glm::vec2 worldToScreen(glm::vec3 worldPos);
     void initGPU();
     int intersectObject(const Ray& ray);
@@ -97,5 +144,6 @@ public:
     int getSelectedObject() const {return m_selectedObject; };
     void updateScene();
     void updateGPU();
+    void deleteScene();
 };
 #endif

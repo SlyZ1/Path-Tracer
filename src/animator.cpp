@@ -81,7 +81,7 @@ void Animator::animationProcess(){
 
     if (!m_renderer->isRendering()){
         m_animationFrame++;
-        int numFrames = std::floor(m_animationFPS * m_animationDuration);
+        int numFrames = (int)std::floor(m_animationFPS * m_animationDuration);
         if (m_animationFrame >= numFrames) {
             m_is_running = false;
         }
@@ -90,7 +90,7 @@ void Animator::animationProcess(){
         m_animationTime += step;
         updateCurrentKeyFrame(m_animationTime);
         
-        m_renderer->startRendering(m_renderSamples, to_string(m_animationFrame + 1) + ".png", false);
+        m_renderer->startRendering(m_renderSamples, to_string(m_animationFrame + 1) + ".png", false, false);
         m_resetFrame();
     }
     // C:\ffmpeg\bin\ffmpeg.exe -framerate 20 -i %d.png -c:v libx264 -crf 18 -preset slow -pix_fmt yuv420p output.mp4

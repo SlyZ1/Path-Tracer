@@ -54,9 +54,10 @@ void App::init(int width, int height, const char *name){
     ImGui_ImplOpenGL3_Init("#version 430");
 }
 
-string App::saveFileDialog(bool& cancel){
+string App::saveFileDialog(bool& cancel, const string& defaultName){
     char* path;
     nfdsavedialogu8args_t args = {0};
+    args.defaultName = defaultName.c_str();
     const nfdresult_t res = NFD_SaveDialogU8_With(&path, &args);
     switch (res) {
         case NFD_OKAY: {
@@ -71,6 +72,31 @@ string App::saveFileDialog(bool& cancel){
             break;
         case NFD_ERROR:
             printf("NFD_SaveDialogU8_With error: %s\n", NFD_GetError());
+            break;
+        default:
+            break;
+        }
+    cancel = true;
+    return "";
+}
+
+string App::openFileDialog(bool& cancel){
+    char* path;
+    nfdopendialogu8args_t args = {0};
+    const nfdresult_t res = NFD_OpenDialogU8_With(&path, &args);
+    switch (res) {
+        case NFD_OKAY: {
+            printf("NFD_OpenDialogU8_With success: %s\n", path);
+            string result = path;
+            NFD_FreePathU8(path);
+            cancel = false;
+            return result;
+        }
+        case NFD_CANCEL:
+            printf("NFD_OpenDialogU8_With cancelled\n");
+            break;
+        case NFD_ERROR:
+            printf("NFD_OpenDialogU8_With error: %s\n", NFD_GetError());
             break;
         default:
             break;
@@ -201,6 +227,7 @@ float App::mouseY(){
 }
 
 void App::terminate(){
+    cout << "Program terminated." << endl;
     glfwTerminate();
 }
 
@@ -232,7 +259,7 @@ void App::exportImage(const string& path){
     );
 
     vector<unsigned char> pixels(width() * height() * 3);
-    for (int i = 0; i < width() * height() * 3; i++) {
+    for (unsigned int i = 0; i < width() * height() * 3; i++) {
         float c = std::clamp(pixelsF[i], 0.0f, 1.0f);
         pixels[i] = (unsigned char)(c * 255.0f + 0.5f);
     }
@@ -301,9 +328,9 @@ void App::exportTextureToExr(GLuint tex, const string& path){
     header.num_channels = 3;
     header.channels = (EXRChannelInfo *)malloc(sizeof(EXRChannelInfo) * header.num_channels); 
     // Must be (A)BGR order, since most of EXR viewers expect this channel order.
-    strncpy(header.channels[0].name, "B", 255); header.channels[0].name[strlen("B")] = '\0';
-    strncpy(header.channels[1].name, "G", 255); header.channels[1].name[strlen("G")] = '\0';
-    strncpy(header.channels[2].name, "R", 255); header.channels[2].name[strlen("R")] = '\0';
+    strncpy_s(header.channels[0].name, "B", 255); header.channels[0].name[strlen("B")] = '\0';
+    strncpy_s(header.channels[1].name, "G", 255); header.channels[1].name[strlen("G")] = '\0';
+    strncpy_s(header.channels[2].name, "R", 255); header.channels[2].name[strlen("R")] = '\0';
 
     header.pixel_types = (int *)malloc(sizeof(int) * header.num_channels); 
     header.requested_pixel_types = (int *)malloc(sizeof(int) * header.num_channels);

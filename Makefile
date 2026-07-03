@@ -19,6 +19,7 @@ INCLUDES = -Iinclude \
            -Iinclude/nativefiledialog \
            -Iinclude/tensorrt \
            -Iinclude/tinyexr \
+           -Iinclude/nlohmannjson \
            -I"$(CUDA_PATH)/include"
 
 LIBS = /LIBPATH:lib glfw3dll.lib nfd.lib ole32.lib uuid.lib nvinfer.lib \

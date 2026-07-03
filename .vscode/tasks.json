@@ -10,6 +10,7 @@
                 "${workspaceFolder}/include/nativefiledialog",
                 "${workspaceFolder}/include/tensorrt",
                 "${workspaceFolder}/include/tinyexr",
+                "${workspaceFolder}/include/nlohmannjson",
                 "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.2/include"
             ],
             "defines": ["_WIN64"],

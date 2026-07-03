@@ -1,0 +1,41 @@
+{
+    "modelPaths": ["models/bunny.obj"],
+    "objectStates": [
+        {
+            "isSmooth": true,
+            "mat": {
+                "color": [1.0,1.0,1.0],
+                "data": [20.0,0.0],
+                "type": "emit"
+            },
+            "modelIndex": -1,
+            "pos": [0.0,5.0,2.0],
+            "scale": 1.0,
+            "type": "sphere"
+        },
+        {
+            "isSmooth": true,
+            "mat": {
+                "color": [1.0,1.0,1.0],
+                "data": [0.0,0.20000000298023224],
+                "type": "glossy"
+            },
+            "modelIndex": -1,
+            "pos": [0.0,0.0,0.0],
+            "scale": 1.0,
+            "type": "plane"
+        },
+        {
+            "isSmooth": true,
+            "mat": {
+                "color": [0.8999999761581421,0.6000000238418579,0.20000000298023224],
+                "data": [0.0,0.30000001192092896],
+                "type": "glossy"
+            },
+            "modelIndex": 0,
+            "pos": [0.0,1.0,0.0],
+            "scale": 3.0,
+            "type": "mesh"
+        }
+    ]
+}
