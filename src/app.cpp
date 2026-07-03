@@ -219,8 +219,7 @@ unsigned int App::height(){
 void App::exportImage(const string& path){
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    vector<unsigned char> pixels(width() * height() * 3);
-    auto data = pixels.data();
+    vector<float> pixelsF(width() * height() * 3);
 
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
 
@@ -228,9 +227,16 @@ void App::exportImage(const string& path){
         0, 0,
         width(), height(),
         GL_RGB,
-        GL_UNSIGNED_BYTE,
-        data
+        GL_FLOAT,
+        pixelsF.data()
     );
+
+    vector<unsigned char> pixels(width() * height() * 3);
+    for (int i = 0; i < width() * height() * 3; i++) {
+        float c = std::clamp(pixelsF[i], 0.0f, 1.0f);
+        pixels[i] = (unsigned char)(c * 255.0f + 0.5f);
+    }
+    unsigned char* data = pixels.data();
 
     //flip vertical
     int stride = width() * 3;
@@ -316,5 +322,5 @@ void App::exportTextureToExr(GLuint tex, const string& path){
     free(header.channels);
     free(header.pixel_types);
     free(header.requested_pixel_types);
-    printf("Saved exr file. [ %s ] \n", path);
+    printf("Saved exr file. [ %s ] \n", path.c_str());
 }
