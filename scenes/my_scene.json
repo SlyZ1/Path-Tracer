@@ -1,5 +1,5 @@
 {
-    "modelPaths": ["C:\\Users\\conta\\Documents\\Dev\\CPP\\Raytracing\\models\\ChessKnight.obj"],
+    "modelPaths": ["C:\\Users\\conta\\Documents\\Dev\\CPP\\Raytracing\\models\\dragon.obj"],
     "objectStates": [
         {
             "isSmooth": true,
@@ -8,7 +8,7 @@
                 "data": [20.0,0.0],
                 "type": "emit"
             },
-            "meshIndex": -2018511776,
+            "meshIndex": 686814800,
             "pos": [0.0,5.0,2.0],
             "scale": 1.0,
             "type": "sphere"
@@ -33,8 +33,8 @@
                 "type": "glossy"
             },
             "meshIndex": 0,
-            "pos": [0.0,1.0,0.0],
-            "scale": 3.0,
+            "pos": [-1.5299999713897705,1.0,0.0],
+            "scale": 3.743000030517578,
             "type": "mesh"
         }
     ]

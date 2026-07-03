@@ -115,6 +115,8 @@ private:
     float intersectTriangle(const Ray& ray, const Triangle& triangle);
     float intersectMesh(const Ray& ray, const Object& obj);
 
+    shared_ptr<Mesh> findMesh(const string& path);
+
 public:
     Scene() = default;
     Scene(shared_ptr<App> app, shared_ptr<Camera> camera, function<void()> resetFrame) 

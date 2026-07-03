@@ -101,14 +101,26 @@ void Scene::stateToJson(SceneState sceneState, const string& path){
     cout << "Scene saved to " << path << "." << endl;
 }
 
+shared_ptr<Mesh> Scene::findMesh(const string& path){
+    for (auto mesh : m_meshes){
+        if (mesh->modelPath == path) return mesh;
+    }
+    return nullptr;
+}
+
 void Scene::loadFromState(const SceneState& sceneState){
-    deleteScene();
     vector<shared_ptr<Mesh>> meshes;
     for (const string& path: sceneState.modelPaths){
-        shared_ptr<Mesh> newMesh = make_shared<Mesh>();
-        newMesh->loadFromModel(path.c_str());
+        shared_ptr<Mesh> newMesh = findMesh(path);
+        if (newMesh == nullptr){
+            newMesh = make_shared<Mesh>();
+            newMesh->loadFromModel(path.c_str());
+        }
         meshes.push_back(newMesh);
     }
+    
+    deleteScene();
+
     for (int i = 0; i < (int)sceneState.objectStates.size(); i++){
         const Object& obj = sceneState.objectStates[i];
         if (obj.mat.type == MatType::EMIT){
