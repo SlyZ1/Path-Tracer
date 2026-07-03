@@ -103,6 +103,7 @@ void Mesh::loadFromModel(const char* path){
     }
     computeBVH(m_triangles, triIndices, 0, size);
     m_linNodes = lineariseBVH(m_nodes);
+    modelName = fs::path(path).stem().string();
     modelPath = path;
 }
 

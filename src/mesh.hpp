@@ -5,9 +5,11 @@
 #include <vector>
 #include <algorithm>
 #include <string>
+#include <filesystem>
 
 using namespace std;
 using namespace glm;
+namespace fs = std::filesystem;
 
 struct Triangle {
     vec3 v1;
@@ -72,8 +74,8 @@ public:
     static AABB scaleAABB(AABB box, float scale);
     static Triangle scaleTri(Triangle tri, float scale);
 
-    bool isSmooth = false;
     string modelPath = "";
+    string modelName = "";
 
     void loadFromModel(const char* path);
     const vector<Triangle>& getTriangles() const;

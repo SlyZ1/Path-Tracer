@@ -24,14 +24,17 @@ shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> ca
     plane.mat = Material::glossyMaterial(vec3(1), 0.0f, 0.2f);
     scene->addObject(plane);
 
+    shared_ptr<Mesh> bunnyMesh = make_shared<Mesh>();
+    bunnyMesh->loadFromModel("models/bunny.obj");
+    int bunnyIndex = scene->addMesh(bunnyMesh);
+
     Object meshObject;
     meshObject.pos = vec3(0, 1, 0);
     meshObject.scale = 3;
     meshObject.type = PrimType::MESH_;
     meshObject.mat = Material::glossyMaterial(vec3(0.9f, 0.6f, 0.2f), 0, 0.3f);
-    meshObject.mesh = new Mesh();
-    meshObject.mesh->loadFromModel("models/bunny.obj");
-    meshObject.mesh->isSmooth = true;
+    meshObject.meshIndex = bunnyIndex;
+    meshObject.isSmooth = true;
     scene->addObject(meshObject);
 
     return scene;
@@ -81,29 +84,20 @@ void Scene::stateToJson(const SceneState& sceneState, const string& path){
 
 void Scene::loadFromState(const SceneState& sceneState){
     deleteScene();
-    for (ObjectState objState : sceneState.objectStates)
-    {
-        if (objState.mat.type == MatType::EMIT){
-            m_lightIndices.push_back((int)m_objects.size());
-        }
-
-        Object newObject;
-        newObject.pos = objState.pos;
-        newObject.scale = objState.scale;
-        newObject.mat = objState.mat;
-        newObject.type = objState.type;
-        if (objState.type == PrimType::MESH_){
-            Mesh* newMesh = new Mesh();
-            string modelPath = sceneState.modelPaths[objState.modelIndex];
-            newMesh->loadFromModel(modelPath.c_str());
-            newMesh->isSmooth = objState.isSmooth;
-            newObject.mesh = newMesh;
-        }
-        else{
-            newObject.mesh = nullptr;
-        }
-        m_objects.push_back(newObject);
+    vector<shared_ptr<Mesh>> meshes;
+    for (const string& path: sceneState.modelPaths){
+        shared_ptr<Mesh> newMesh = make_shared<Mesh>();
+        newMesh->loadFromModel(path.c_str());
+        meshes.push_back(newMesh);
     }
+    for (int i = 0; i < (int)sceneState.objectStates.size(); i++){
+        const Object& obj = sceneState.objectStates[i];
+        if (obj.mat.type == MatType::EMIT){
+            m_lightIndices.push_back(i);
+        }
+    }
+    m_meshes = meshes;
+    m_objects = sceneState.objectStates;
     m_selectedObject = -1;
     m_copiedObject = -1;
     m_sceneChanged = true;
@@ -113,20 +107,9 @@ void Scene::loadFromState(const SceneState& sceneState){
 SceneState Scene::getState(){
     SceneState sceneState;
     sceneState.modelPaths = {};
-    sceneState.objectStates = {};
-    for (Object obj : m_objects){
-        ObjectState objState;
-        objState.pos = obj.pos;
-        objState.scale = obj.scale;
-        objState.mat = obj.mat;
-        objState.type = obj.type;
-        objState.modelIndex = -1;
-        if (obj.type == PrimType::MESH_){
-            objState.modelIndex = (int)sceneState.modelPaths.size();
-            sceneState.modelPaths.push_back(obj.mesh->modelPath);
-            objState.isSmooth = obj.mesh->isSmooth;
-        }
-        sceneState.objectStates.push_back(objState);
+    sceneState.objectStates = m_objects;
+    for (auto mesh : m_meshes){
+        sceneState.modelPaths.push_back(mesh->modelPath);
     }
     return sceneState;
 }
@@ -235,15 +218,15 @@ float Scene::intersectMesh(const Ray& ray, const Object& obj){
     int stack[STACK_SIZE];
     int stackPtr = 0;
 
-    Mesh mesh = *obj.mesh;
-    const vector<linBVHNode>& nodes = mesh.getLinNodes();
-    const vector<Triangle>& triangles = mesh.getTriangles();
+    shared_ptr<Mesh> mesh = m_meshes[obj.meshIndex];
+    const vector<linBVHNode>& nodes = mesh->getLinNodes();
+    const vector<Triangle>& triangles = mesh->getTriangles();
     stack[stackPtr++] = (int)nodes.size() - 1;
 
     vec3 pos = obj.pos;
     float scale = obj.scale;
 
-    float hitT = 1e6;
+    float hitT = FLT_MAX;
     Ray newRay = ray;
     newRay.origin -= pos;
     Ray invRay = newRay;
@@ -316,10 +299,15 @@ int Scene::intersectObject(const Ray& ray){
     return intersected;
 }
 
+int Scene::addMesh(shared_ptr<Mesh> newMesh){
+    m_meshes.push_back(newMesh);
+    m_numMeshesChanged = true;
+    return (int)m_meshes.size() - 1;
+}
+
 int Scene::addObject(const Object& obj){
     int newIndex = (int)m_objects.size();
-    if (obj.type == PrimType::MESH_) m_numMeshesChanged = true;
-    else if (obj.mat.type == MatType::EMIT) m_lightIndices.push_back(newIndex);
+    if (obj.mat.type == MatType::EMIT) m_lightIndices.push_back(newIndex);
     m_objects.push_back(obj);
     m_sceneChanged = true;
     m_selectedObject = newIndex;
@@ -336,23 +324,32 @@ void Scene::removeObject(int index){
     if (index < 0 || index >= (int)m_objects.size()) return;
 
     Object obj = m_objects[index];
-    if (obj.type == PrimType::MESH_) m_numMeshesChanged = true;
-    else if (obj.mat.type == MatType::EMIT) 
+    if (obj.mat.type == MatType::EMIT) 
         m_lightIndices.erase(
             std::remove(m_lightIndices.begin(), m_lightIndices.end(), index),
             m_lightIndices.end()
         );
     m_objects.erase(m_objects.begin() + index);
     m_sceneChanged = true;
+    m_selectedObject = -1;
 }
 
 void Scene::copyObject(int index){
     m_copiedObject = index;
+    cout << index << endl;
 }
 
 int Scene::pasteObject(){
     Object newObj = *getObject(m_copiedObject);
     return addObject(newObj);
+}
+
+vector<const char*> Scene::getMeshNames() const {
+    vector<const char*> result;
+    for (shared_ptr<Mesh> mesh : m_meshes){
+        result.push_back(mesh->modelName.c_str());
+    }
+    return result;
 }
 
 void Scene::updateScene(){
@@ -368,22 +365,32 @@ void Scene::updateGPU(){
     vector<MeshInfos> meshInfos;
     vector<Triangle> triangles;
     vector<linBVHNode> nodes;
-    for(Object obj : m_objects){
+    vector<int> triangleOffsets;
+    vector<int> nodeOffsets;
+    vector<int> numberOfNodes;
+    for (auto mesh : m_meshes){
+        const vector<Triangle>& meshTriangles = mesh->getTriangles();
+        const vector<linBVHNode>& meshNodes = mesh->getLinNodes();
+
+        triangleOffsets.push_back((int)triangles.size());
+        nodeOffsets.push_back((int)nodes.size());
+        numberOfNodes.push_back((int)meshNodes.size());
+
+        triangles.insert(triangles.end(), meshTriangles.begin(), meshTriangles.end());
+        nodes.insert(nodes.end(), meshNodes.begin(), meshNodes.end());
+    }
+    for (Object obj : m_objects){
         if (obj.type == PrimType::MESH_){
             MeshInfos meshInfo;
-            meshInfo.triangleOffset = (int)triangles.size();
-            meshInfo.nodeOffset = (int)nodes.size();
+            meshInfo.triangleOffset = triangleOffsets[obj.meshIndex];
+            meshInfo.nodeOffset = nodeOffsets[obj.meshIndex];
+            meshInfo.numberOfNodes = numberOfNodes[obj.meshIndex];
             meshInfo.pos = obj.pos;
             meshInfo.scale = obj.scale;
             meshInfo.mat = obj.mat;
-            meshInfo.isSmooth = obj.mesh->isSmooth;
+            meshInfo.isSmooth = obj.isSmooth;
             meshInfos.push_back(meshInfo);
             if (obj.mat.type == MatType::EMIT) obj.mat.type = MatType::DIFFUSE;
-            
-            const vector<Triangle>& meshTriangles = obj.mesh->getTriangles();
-            const vector<linBVHNode>& meshNodes = obj.mesh->getLinNodes();
-            triangles.insert(triangles.end(), meshTriangles.begin(), meshTriangles.end());
-            nodes.insert(nodes.end(), meshNodes.begin(), meshNodes.end());
         }
         else{
             PrimitiveObject prim;
@@ -425,14 +432,7 @@ void Scene::updateGPU(){
 }
 
 void Scene::deleteScene(){
-    for (Object& obj : m_objects)
-    {
-        if (obj.mesh != nullptr){
-            obj.mesh->deleteMesh();
-            delete obj.mesh;
-            obj.mesh = nullptr;
-        }
-    }
     m_objects.clear();
     m_lightIndices.clear();
+    m_meshes.clear();
 }

@@ -44,8 +44,8 @@ struct MeshInfos {
     float scale;
     int triangleOffset;
     int nodeOffset;
+    int numberOfNodes;
     int isSmooth; 
-    int pad;
     Material mat;
 };
 
@@ -55,7 +55,8 @@ struct Object {
     Material mat;
     glm::vec3 pad;
     PrimType type;
-    Mesh* mesh = nullptr;
+    int meshIndex;
+    bool isSmooth;
 };
 
 struct Ray {
@@ -63,17 +64,9 @@ struct Ray {
     glm::vec3 direction;
 };
 
-struct ObjectState {
-    glm::vec3 pos;
-    float scale;
-    Material mat;
-    PrimType type;
-    int modelIndex;
-    bool isSmooth;
-};
 struct SceneState {
     vector<string> modelPaths;
-    vector<ObjectState> objectStates;
+    vector<Object> objectStates;
 };
 
 NLOHMANN_JSON_SERIALIZE_ENUM(MatType, {
@@ -90,7 +83,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(PrimType, {
     { PrimType::MESH_,      "mesh"      }
 })
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Material, color, type, data)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ObjectState, pos, scale, mat, type, modelIndex, isSmooth)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Object, pos, scale, mat, type, meshIndex, isSmooth)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SceneState, modelPaths, objectStates)
 
 class Scene {
@@ -106,6 +99,7 @@ private:
     bool m_sceneChanged = false;
     bool m_numMeshesChanged = false;
     vector<Object> m_objects = {};
+    vector<shared_ptr<Mesh>> m_meshes = {};
     vector<int> m_lightIndices = {};
     static glm::vec3 m_cameraDirection;
     static glm::vec3 m_cameraPosition;
@@ -135,6 +129,7 @@ public:
     glm::vec2 worldToScreen(glm::vec3 worldPos);
     void initGPU();
     int intersectObject(const Ray& ray);
+    int addMesh(shared_ptr<Mesh> newMesh);
     int addObject(const Object& prim);
     Object* getObject(int index);
     void removeObject(int index);
@@ -142,6 +137,7 @@ public:
     int pasteObject();
     void selectObject(int index) { m_selectedObject = index; };
     int getSelectedObject() const {return m_selectedObject; };
+    vector<const char*> getMeshNames() const;
     void updateScene();
     void updateGPU();
     void deleteScene();

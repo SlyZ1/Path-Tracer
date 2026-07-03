@@ -176,9 +176,19 @@ void UI::renderPopup(){
         if (ImGui::DragFloat("##Scale", &selectedObject->scale, 0.001f))
             m_scene->updateScene();
 
+        EndTwoColumnLayout();
+        ImGui::Separator();
+        BeginTwoColumnLayout();
+
         if (selectedObject->type == PrimType::MESH_){
+            Label("Model");
+            vector<const char*> meshes = m_scene->getMeshNames();
+            if (ImGui::Combo("##Model", &selectedObject->meshIndex, meshes.data(), (int)meshes.size())){
+                m_scene->updateScene();
+            }
+
             Label("Is Smooth");
-            if (ImGui::Checkbox("##Is Smooth", &selectedObject->mesh->isSmooth))
+            if (ImGui::Checkbox("##Is Smooth", &selectedObject->isSmooth))
                 m_scene->updateScene();
         }
         EndTwoColumnLayout();
@@ -213,7 +223,6 @@ void UI::renderPopup(){
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
         if (ImGui::Button("Remove", ImVec2(-1, 0))){
             m_scene->removeObject(m_scene->getSelectedObject());
-            m_scene->selectObject(-1);
         }
         ImGui::PopStyleColor(1);
     }
@@ -237,7 +246,15 @@ void UI::render(int frameAccumulator) {
     ImGui::BeginDisabled(m_renderer->isRendering() || m_disabled);
 
     if (ImGui::BeginMenuBar()) {
-        if (ImGui::BeginMenu("Fichier")) {
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Import Model (.obj)"))  {
+                bool cancel;
+                string path = m_app->openFileDialog(cancel);
+                shared_ptr<Mesh> newMesh = make_shared<Mesh>();
+                newMesh->loadFromModel(path.c_str());
+                m_scene->addMesh(newMesh);
+            }
+            ImGui::Separator();
             if (ImGui::MenuItem("Quit"))  {
                 glfwSetWindowShouldClose(m_app->getWindow(), true);
             }
@@ -365,7 +382,7 @@ void UI::render(int frameAccumulator) {
 
         if(ImGui::Button("Add Keyframe", ImVec2(-FLT_MIN, 0))){
             KeyFrame keyFrame = {
-                vec3(0),
+                m_scene->getState(),
                 m_animationTime
             };
             m_animator->addKeyFrame(keyFrame);

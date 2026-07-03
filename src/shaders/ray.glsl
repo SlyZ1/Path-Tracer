@@ -47,8 +47,8 @@ struct MeshInfos {
     float scale;
     int triangleOffset;
     int nodeOffset;
+    int numberOfNodes;
     int isSmooth; 
-    int pad;
     Mat mat;
 };
 

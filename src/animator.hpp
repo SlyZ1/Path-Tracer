@@ -4,9 +4,10 @@
 #include "renderer.hpp"
 #include <functional>
 #include <glm/glm.hpp>
+#include "scene.hpp"
 
 struct KeyFrame {
-    glm::vec3 modelPos;
+    SceneState state;
     float keyPos;
 };
 
