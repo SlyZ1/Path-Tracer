@@ -25,7 +25,7 @@ class App {
     public:
         void init(int width, int height, const char *name);
         string saveFileDialog(bool& cancel, const string& defaultName);
-        string openFileDialog(bool& cancel);
+        string openFileDialog(bool& cancel, nfdopendialogu8args_t args = {0});
         string pickFolderDialog(bool& cancel);
         GLFWwindow* getWindow() const {return m_window; };
         void setClearColor(float r, float g, float b, float a);

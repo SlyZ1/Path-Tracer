@@ -22,6 +22,8 @@ Triangle Mesh::scaleTri(Triangle tri, float scale){
 }
 
 void Mesh::loadFromModel(const char* path){
+    if (fs::path(path).extension().string() != ".obj") return;
+
     cout << "Loading 3D model and computing BVH... (at " << path << ")" << endl;
     ifstream ifs(path);
     if (!ifs) {

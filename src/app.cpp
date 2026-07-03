@@ -80,9 +80,8 @@ string App::saveFileDialog(bool& cancel, const string& defaultName){
     return "";
 }
 
-string App::openFileDialog(bool& cancel){
+string App::openFileDialog(bool& cancel, nfdopendialogu8args_t args){
     char* path;
-    nfdopendialogu8args_t args = {0};
     const nfdresult_t res = NFD_OpenDialogU8_With(&path, &args);
     switch (res) {
         case NFD_OKAY: {

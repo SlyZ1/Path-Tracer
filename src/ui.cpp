@@ -176,10 +176,6 @@ void UI::renderPopup(){
         if (ImGui::DragFloat("##Scale", &selectedObject->scale, 0.001f))
             m_scene->updateScene();
 
-        EndTwoColumnLayout();
-        ImGui::Separator();
-        BeginTwoColumnLayout();
-
         if (selectedObject->type == PrimType::MESH_){
             Label("Model");
             vector<const char*> meshes = m_scene->getMeshNames();
@@ -230,12 +226,12 @@ void UI::renderPopup(){
 }
 
 void UI::render(int frameAccumulator) {
+    renderStats(frameAccumulator);
     if (!m_show){
         renderPointer();
         return;
     }
     
-    renderStats(frameAccumulator);
     renderPopup();
     renderGizmos();
 
@@ -249,7 +245,14 @@ void UI::render(int frameAccumulator) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Import Model (.obj)"))  {
                 bool cancel;
-                string path = m_app->openFileDialog(cancel);
+                nfdopendialogu8args_t args;
+                nfdfilteritem_t filters[] = {
+                    { "3D Models", "obj" },
+                    { "OBJ", "obj" }
+                };
+                args.filterList = filters;
+                args.filterCount = 2;
+                string path = m_app->openFileDialog(cancel, args);
                 shared_ptr<Mesh> newMesh = make_shared<Mesh>();
                 newMesh->loadFromModel(path.c_str());
                 m_scene->addMesh(newMesh);
@@ -268,7 +271,14 @@ void UI::render(int frameAccumulator) {
             }
             if (ImGui::MenuItem("Load"))  {
                 bool cancel;
-                string path = m_app->openFileDialog(cancel);
+                nfdopendialogu8args_t args;
+                nfdfilteritem_t filters[] = {
+                    { "JSON", "json" },
+                    { "json" }
+                };
+                args.filterList = filters;
+                args.filterCount = 1;
+                string path = m_app->openFileDialog(cancel, args);
                 m_scene->loadFromState(m_scene->stateFromJson(path));
             }
             ImGui::EndMenu();

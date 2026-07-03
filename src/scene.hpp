@@ -122,7 +122,7 @@ public:
     static shared_ptr<Scene> defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, function<void()> resetFrame = nullptr);
     static Ray rayFromClick(shared_ptr<Camera> camera, glm::vec2 screenPos);
     static SceneState stateFromJson(const string& path);
-    static void stateToJson(const SceneState& sceneState, const string& path);
+    static void stateToJson(SceneState sceneState, const string& path);
 
     void loadFromState(const SceneState& sceneState);
     SceneState getState();

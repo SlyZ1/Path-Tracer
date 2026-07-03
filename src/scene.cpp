@@ -68,13 +68,32 @@ Ray Scene::rayFromClick(shared_ptr<Camera> camera, glm::vec2 screenPos){
 }
 
 SceneState Scene::stateFromJson(const string& path){
+    if (fs::path(path).extension().string() != ".json") return SceneState();
     std::ifstream f(path);
     json data = json::parse(f);
     f.close();
     return data.get<SceneState>();
 }
 
-void Scene::stateToJson(const SceneState& sceneState, const string& path){
+void Scene::stateToJson(SceneState sceneState, const string& path){
+    // Remove unused meshes and remap mesh indices
+    vector<string> utilizedMeshes;
+    vector<int> meshIsUsed = vector<int>(sceneState.modelPaths.size(), -1);
+    for (Object& obj : sceneState.objectStates){
+        if (obj.type == PrimType::MESH_){
+            int index = obj.meshIndex;
+            if (meshIsUsed[index] >= 0){
+                obj.meshIndex = meshIsUsed[index];
+            }
+            else{
+                utilizedMeshes.push_back(sceneState.modelPaths[index]);
+                obj.meshIndex = (int)utilizedMeshes.size() - 1;
+                meshIsUsed[index] = obj.meshIndex;
+            }
+        }
+    }
+    sceneState.modelPaths = utilizedMeshes;
+
     json data = json(sceneState);
     ofstream f(path);
     f << data.dump(4);
@@ -368,7 +387,20 @@ void Scene::updateGPU(){
     vector<int> triangleOffsets;
     vector<int> nodeOffsets;
     vector<int> numberOfNodes;
-    for (auto mesh : m_meshes){
+    vector<bool> meshIsUsed = vector<bool>(m_meshes.size(), false);
+    for (const Object& obj : m_objects){
+        if (obj.type != PrimType::MESH_) continue;
+        meshIsUsed[obj.meshIndex] = true;
+    }
+    for (int i = 0; i < (int)m_meshes.size(); i++){
+        if (!meshIsUsed[i]){
+            triangleOffsets.push_back(-1);
+            nodeOffsets.push_back(-1);
+            numberOfNodes.push_back(-1);
+            continue;
+        }
+        shared_ptr<Mesh> mesh = m_meshes[i];
+
         const vector<Triangle>& meshTriangles = mesh->getTriangles();
         const vector<linBVHNode>& meshNodes = mesh->getLinNodes();
 
@@ -379,7 +411,7 @@ void Scene::updateGPU(){
         triangles.insert(triangles.end(), meshTriangles.begin(), meshTriangles.end());
         nodes.insert(nodes.end(), meshNodes.begin(), meshNodes.end());
     }
-    for (Object obj : m_objects){
+    for (const Object& obj : m_objects){
         if (obj.type == PrimType::MESH_){
             MeshInfos meshInfo;
             meshInfo.triangleOffset = triangleOffsets[obj.meshIndex];
@@ -390,7 +422,7 @@ void Scene::updateGPU(){
             meshInfo.mat = obj.mat;
             meshInfo.isSmooth = obj.isSmooth;
             meshInfos.push_back(meshInfo);
-            if (obj.mat.type == MatType::EMIT) obj.mat.type = MatType::DIFFUSE;
+            if (obj.mat.type == MatType::EMIT) meshInfo.mat.type = MatType::DIFFUSE;
         }
         else{
             PrimitiveObject prim;
