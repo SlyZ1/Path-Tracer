@@ -17,7 +17,6 @@ using namespace std;
 
 #define SAMPLES 5
 
-ShaderProgram rayTraceShader = {};
 ShaderProgram rayComputeShader = {};
 ShaderProgram accumulationShader = {};
 
@@ -28,6 +27,7 @@ GLuint oldTexture = 0;
 GLuint normalTexture = 0;
 GLuint albedoTexture = 0;
 GLuint colorTexture = 0;
+GLuint depthTexture = 0;
 GLuint denoisedTexture = 0;
 GLuint texWidth, texHeight = 0;
 
@@ -89,6 +89,13 @@ void genTextures(unsigned int width, unsigned int height){
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glBindTexture(GL_TEXTURE_2D, 0);
 
+    glGenTextures(1, &depthTexture);
+    glBindTexture(GL_TEXTURE_2D, depthTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
     glGenTextures(1, &denoisedTexture);
     glBindTexture(GL_TEXTURE_2D, denoisedTexture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
@@ -99,6 +106,9 @@ void genTextures(unsigned int width, unsigned int height){
     resetFrame();
     texWidth = width;
     texHeight = height;
+    vector<GLuint> textures = {oldTexture, albedoTexture, colorTexture, normalTexture, depthTexture};
+    vector<string> texturesNames = {"reference", "albedo", "color", "normal", "depth"};
+    renderer->setRenderingTextures(textures, texturesNames);
 }
 
 void init(){
@@ -110,11 +120,6 @@ void init(){
     animator = make_shared<Animator>(renderer, resetFrame);
     denoiser = make_shared<Denoiser>(512 + 256, 512 + 256, 9);
     denoiser->load("denoiser.engine");
-    
-    rayTraceShader.create();
-    rayTraceShader.load(GL_VERTEX_SHADER, "src/shaders/vertex.glsl");
-    rayTraceShader.load(GL_FRAGMENT_SHADER, "src/shaders/frag.glsl");
-    rayTraceShader.link();
     
     accumulationShader.create();
     accumulationShader.load(GL_VERTEX_SHADER, "src/shaders/screenVertex.glsl");
@@ -185,6 +190,7 @@ void render(){
     glBindImageTexture(1, normalTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
     glBindImageTexture(2, albedoTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
     glBindImageTexture(3, colorTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    glBindImageTexture(4, depthTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, oldTexture);
@@ -226,6 +232,9 @@ void render(){
             break;
         case UI::TexType::Normal:
             renderTex = normalTexture;
+            break;
+        case UI::TexType::Depth:
+            renderTex = depthTexture;
             break;
         case UI::TexType::Denoised:
             renderTex = denoisedTexture;
@@ -275,9 +284,6 @@ void inputs(){
         if (!cancel){
             app->exportImage(res);
         }
-        app->exportTextureToExr(normalTexture, "./normal.exr");
-        app->exportTextureToExr(albedoTexture, "./albedo.exr");
-        app->exportTextureToExr(colorTexture, "./color.exr");
     }
 
     if (app->mousePressedOnce(GLFW_MOUSE_BUTTON_LEFT, frameCount) && ui->isShowing() && !ui->isHovered()){
@@ -323,7 +329,6 @@ void end(){
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteFramebuffers(1, &FBO);
-    rayTraceShader.destroy();
     accumulationShader.destroy();
     rayComputeShader.destroy();
     app->terminate();
@@ -335,11 +340,9 @@ int main(){
     {
         app->startFrame(frameCount);
         handleCamera();
-        
-        ui->render(frameCount);
+        ui->render(frameAccumulator);
         render();
         inputs();
-
         animator->animationProcess();
         renderer->renderingProcess(frameAccumulator);
         

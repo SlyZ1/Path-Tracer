@@ -95,6 +95,7 @@ layout(rgba32f, binding = 0) writeonly uniform image2D outputImage;
 layout(rgba32f, binding = 1) writeonly uniform image2D normalImage;
 layout(rgba32f, binding = 2) writeonly uniform image2D albedoImage;
 layout(rgba32f, binding = 3) writeonly uniform image2D colorImage;
+layout(rgba32f, binding = 4) writeonly uniform image2D depthImage;
 
 struct RaycastData {
     Hit hit;
@@ -168,6 +169,7 @@ vec3 reflect(vec3 I, vec3 N);
 vec3 refract(vec3 I, vec3 N, float n);
 void stop(inout Hit hit, bool touchedLight);
 float luminanceMean(vec3 c);
+float linearToDepth(float depth, float near, float far);
 
 // INTERSECTIONS.GLSL
 Hit rayIntersection(inout Ray ray, bool isShadow);
@@ -342,12 +344,13 @@ vec3 sky(vec3 lookingAt){
     return horizon(lookingAt);
 }
 
-void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out vec4 albedo, out vec4 color){
+void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out vec4 albedo, out vec4 color, out float depth){
     Ray tracedRay = ray;
     bool firstHit = true;
     normal = vec4(0);
     albedo = vec4(0);
     color = vec4(0);
+    depth = 1e2;
     for (int i = 0; i < maxBounces; i++){
 
         Hit hit = rayIntersection(tracedRay, false);
@@ -355,6 +358,7 @@ void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out 
             firstHit = false;
             normal = vec4(normalize(hit.normal), 1);
             albedo = vec4(hit.mat.color, 1);
+            depth = hit.t;
         }
         computeLighting(hit, tracedRay, seed);
 
@@ -396,12 +400,13 @@ void main()
     vec4 normal = vec4(0);
     vec4 albedo = vec4(0);
     vec4 color = vec4(0);
+    float depth = 0;
     for (int i = 0; i < samples; i++) {
         vec2 AAjitter = vec2(rand(seed), rand(seed)) * 2 / winSize;
         Ray r = fovRay(pos, ray, seed);
 
         vec4 result = vec4(0);
-        tracePath(seed, r, result, normal, albedo, color);
+        tracePath(seed, r, result, normal, albedo, color, depth);
         radiance += max(result, vec4(0));
     }
 
@@ -411,4 +416,5 @@ void main()
     imageStore(normalImage, ivec2(fragCoord - vec2(0.5)), normal);
     imageStore(albedoImage, ivec2(fragCoord - vec2(0.5)), albedo);
     imageStore(colorImage, ivec2(fragCoord - vec2(0.5)), color);
+    imageStore(depthImage, ivec2(fragCoord - vec2(0.5)), vec4(depth / 1e2));
 }

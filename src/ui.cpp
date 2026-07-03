@@ -81,6 +81,36 @@ void UI::renderGizmos(){
     // draw->AddTriangleFilled(pos + ImVec2(0, -60), pos + ImVec2(-7, -50), pos + ImVec2(7, -50), orange);
 }
 
+void UI::renderStats(int frameAccumulator){
+    float currentTime = (float)glfwGetTime();
+
+    ImGuiIO& io = ImGui::GetIO();
+    ImGuiWindowFlags flags =  ImGuiWindowFlags_AlwaysAutoResize 
+                            | ImGuiWindowFlags_NoCollapse
+                            | ImGuiWindowFlags_NoDecoration
+                            | ImGuiWindowFlags_NoMove
+                            | ImGuiWindowFlags_NoMouseInputs
+                            | ImGuiWindowFlags_NoResize;
+    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x, 0), ImGuiCond_Always, ImVec2(1, 0));
+    if (ImGui::Begin("Stats", nullptr, flags)) {
+        BeginTwoColumnLayout();
+
+        Label("Accumulation:");
+        ImGui::Text(to_string(frameAccumulator).c_str());
+
+        Label("FPS:");
+        ImGui::Text(to_string((int)floor(1.0f / (currentTime - m_lastTime))).c_str());
+
+        Label("Frame Time:");
+        ImGui::Text((to_string((currentTime - m_lastTime) * 100.0f) + "ms").c_str());
+        
+        EndTwoColumnLayout();
+    }
+    ImGui::End();
+
+    m_lastTime = currentTime;
+}
+
 void UI::renderPopupData(Object* selectedObject){
     MatType matType = selectedObject->mat.type;
     switch(matType){
@@ -190,7 +220,7 @@ void UI::renderPopup(){
     ImGui::End();
 }
 
-void UI::render() {
+void UI::render(int frameAccumulator) {
     if (!m_show){
         renderPointer();
         return;
@@ -200,6 +230,7 @@ void UI::render() {
     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.5f, 0.2f, 1.0f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.5f, 0.2f, 1.0f, 0.8f));
     
+    renderStats(frameAccumulator);
     renderPopup();
     renderGizmos();
 
@@ -344,8 +375,12 @@ void UI::render() {
     
         EndTwoColumnLayout();
        
+        if (ImGui::Button("Export Textures", ImVec2(-FLT_MIN, 0))){
+            m_renderer->startRendering(m_renderSamples, "result.png", true, true);
+        }
+
         if (ImGui::Button("Render Image", ImVec2(-FLT_MIN, 0))){
-            m_renderer->startRendering(m_renderSamples, "image.png");
+            m_renderer->startRendering(m_renderSamples);
         }
 
         if (ImGui::Button("Render Animation", ImVec2(-FLT_MIN, 0))){
@@ -380,7 +415,7 @@ void UI::render() {
         m_resMultiplier = std::max(m_resMultiplier, 1);
 
         Label("Texture Display");
-        static const char* textureTypes[]{"Color", "Albedo", "Normal", "Denoised", "Result"};
+        static const char* textureTypes[]{"Result", "Color", "Albedo", "Normal", "Depth", "Denoised"};
         ImGui::Combo("##Texture Display", &textureDisplay, textureTypes, IM_ARRAYSIZE(textureTypes));
         
         EndTwoColumnLayout();

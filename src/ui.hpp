@@ -26,6 +26,10 @@ class UI {
         void drawMarker(ImVec2 minRect, ImVec2 maxRect, float keyPos) const;
         
         void renderGizmos();
+
+        // Stats
+        void renderStats(int frameAccumulator);
+        float m_lastTime = 0.0f;
         
         bool m_popupOpened = false;
         void renderToolTip(const string& tip) const;
@@ -55,8 +59,8 @@ class UI {
         
         // Animation
         int m_animationFPS = 25;
-        float m_animationDuration = 1;
-        float m_animationTime = 0;
+        float m_animationDuration = 1.0f;
+        float m_animationTime = 0.0f;
         
     public:
         UI() = default;
@@ -75,16 +79,17 @@ class UI {
         bool isShowing() const { return m_show; }
         void toggle();
         void setDisabled(bool disabled) { m_disabled = disabled; }
-        void render();
+        void render(int frameAccumulator);
         void updateGPU() const;
         
-        static enum TexType : int {
-            Color = 0,
-            Albedo = 1,
-            Normal = 2,
-            Denoised = 3,
-            Result = 4
+        enum TexType : int {
+            Result = 0,
+            Color = 1,
+            Albedo = 2,
+            Normal = 3,
+            Depth = 4,
+            Denoised = 5,
         };
-        int textureDisplay = 0;
+        int textureDisplay = TexType::Result;
         int getResolutionMultiplier() const { return m_resMultiplier; }
 };

@@ -21,3 +21,8 @@ float luminanceMean(vec3 c){
 void stop(inout Hit hit, bool touchedLight){
     hit.t = touchedLight ? -2 : -1;
 }
+
+float linearToDepth(float depth, float near, float far){
+    float temp = (far + near) / (far - near) - (2.0 * far * near) / (depth * (far - near));
+    return (temp + 1) / 2;
+}
