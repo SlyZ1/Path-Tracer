@@ -102,13 +102,15 @@ void Scene::stateToJson(SceneState sceneState, const string& path){
 }
 
 shared_ptr<Mesh> Scene::findMesh(const string& path){
-    for (auto mesh : m_meshes){
+    for (shared_ptr<Mesh> mesh : m_meshes){
         if (mesh->modelPath == path) return mesh;
     }
     return nullptr;
 }
 
-void Scene::loadFromState(const SceneState& sceneState){
+void Scene::loadFromState(const SceneState& sceneState, bool verbose){
+    if ((int)sceneState.objectStates.empty()) return;
+
     vector<shared_ptr<Mesh>> meshes;
     for (const string& path: sceneState.modelPaths){
         shared_ptr<Mesh> newMesh = findMesh(path);
@@ -118,7 +120,7 @@ void Scene::loadFromState(const SceneState& sceneState){
         }
         meshes.push_back(newMesh);
     }
-    
+
     deleteScene();
 
     for (int i = 0; i < (int)sceneState.objectStates.size(); i++){
@@ -132,7 +134,7 @@ void Scene::loadFromState(const SceneState& sceneState){
     m_selectedObject = -1;
     m_copiedObject = -1;
     m_sceneChanged = true;
-    cout << "Scene loaded." << endl;
+    if (verbose) cout << "Scene loaded." << endl;
 }
 
 SceneState Scene::getState(){

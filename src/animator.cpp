@@ -11,11 +11,18 @@ vector<float> Animator::getKeyPoses() const {
     return keyPoses;
 }
 
-void Animator::addKeyFrame(KeyFrame keyFrame){
+void Animator::addKeyFrame(){
+    KeyFrame keyFrame = {
+        m_scene->getState(),
+        m_animationTime
+    };
+
     if (m_numKeyFrames > 0){
-        if (m_keyFrames[m_currentKeyFrame].keyPos == m_animationTime)
-            return;
+        if (m_keyFrames[m_currentKeyFrame].keyPos == m_animationTime){
+            m_keyFrames[m_currentKeyFrame] = keyFrame;
+        }
     }
+
     m_currentKeyFrame++;
     m_keyFrames.insert(m_keyFrames.begin() + m_currentKeyFrame, keyFrame);
     m_numKeyFrames++;
@@ -66,14 +73,25 @@ void Animator::animationProcess(){
     if (m_numKeyFrames > 1 && m_prevAnimationTime != m_animationTime){
         KeyFrame prevKf = m_keyFrames[m_currentKeyFrame];
         KeyFrame nextKf = m_keyFrames[std::min(m_currentKeyFrame + 1, m_numKeyFrames - 1)];
+        if (!running()){
+            if (m_animationTime - prevKf.keyPos < 0.05f && m_animationTime - prevKf.keyPos >= 0) 
+                m_animationTime = prevKf.keyPos;
+            else if (nextKf.keyPos - m_animationTime < 0.05f && nextKf.keyPos - m_animationTime >= 0)
+                m_animationTime = nextKf.keyPos;
+        }
         
         float t = 0;
         if (prevKf.keyPos != nextKf.keyPos){
             t = (m_animationTime - prevKf.keyPos) / (nextKf.keyPos - prevKf.keyPos);
             t = glm::clamp(t, 0.0f, 1.0f);
         }
-        //ui.modelPos = glm::mix(prevKf.modelPos, nextKf.modelPos, t);
-        
+
+        SceneState state = prevKf.state;
+        for (int i = 0; i < (int)state.objectStates.size(); i++){
+            const Object& interpolatedObj = state.objectStates[i] * (1 - t) + nextKf.state.objectStates[i] * t;
+            state.objectStates[i] = interpolatedObj;
+        }
+        m_scene->loadFromState(state, false);
         m_prevAnimationTime = m_animationTime;
     }
     

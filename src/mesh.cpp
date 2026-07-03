@@ -131,10 +131,10 @@ AABB Mesh::computeBounds(const vector<Triangle>& triangles, int start, int end) 
     return box;
 }
 
-BVHNode* Mesh::computeBVH(vector<Triangle>& triangles, 
+shared_ptr<BVHNode> Mesh::computeBVH(vector<Triangle>& triangles, 
                           vector<int>& indices,
                           int begin, int end) {
-    BVHNode* node = new BVHNode();
+    shared_ptr<BVHNode> node = make_shared<BVHNode>();
 
     node->bounds = triangleBounds(triangles[indices[begin]]);
     for (int i = begin + 1; i < end; ++i)
@@ -184,7 +184,7 @@ int indexOfTriangle(const vector<Triangle>& triangles, const Triangle& triangle)
     return -1;
 }
 
-int lineariseRec(BVHNode* node, vector<linBVHNode>& nodes){
+int lineariseRec(shared_ptr<BVHNode> node, vector<linBVHNode>& nodes){
     if (node == nullptr){
         return -1;
     }
@@ -204,20 +204,8 @@ int lineariseRec(BVHNode* node, vector<linBVHNode>& nodes){
     return i;
 }
 
-vector<linBVHNode> Mesh::lineariseBVH(BVHNode* node){
+vector<linBVHNode> Mesh::lineariseBVH(shared_ptr<BVHNode> node){
     vector<linBVHNode> nodes = {};
     lineariseRec(node, nodes);
     return nodes;
-}
-
-void Mesh::deleteBVH(BVHNode* node){
-    if (node == nullptr) return;
-    deleteBVH(node->left);
-    deleteBVH(node->right);
-    delete node;
-}
-
-void Mesh::deleteMesh(){
-    deleteBVH(m_nodes);
-    m_nodes = nullptr;
 }

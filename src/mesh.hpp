@@ -55,8 +55,8 @@ struct AABB {
 
 struct BVHNode {
     AABB bounds;
-    BVHNode* left = nullptr;
-    BVHNode* right = nullptr;
+    shared_ptr<BVHNode> left = nullptr;
+    shared_ptr<BVHNode> right = nullptr;
     int triangle = -1;
 };
 
@@ -79,19 +79,17 @@ public:
 
     void loadFromModel(const char* path);
     const vector<Triangle>& getTriangles() const;
-    BVHNode* computeBVH(vector<Triangle>& triangles, vector<int>& indices, int begin, int end);
-    static vector<linBVHNode> lineariseBVH(BVHNode* node);
-    BVHNode* getBVHNodes() const { return m_nodes; }
+    shared_ptr<BVHNode> computeBVH(vector<Triangle>& triangles, vector<int>& indices, int begin, int end);
+    static vector<linBVHNode> lineariseBVH(shared_ptr<BVHNode> node);
+    shared_ptr<BVHNode> getBVHNodes() const { return m_nodes; }
     const vector<linBVHNode>& getLinNodes() const { return m_linNodes; }
-    void deleteMesh();
     
 private:
     vector<Triangle> m_triangles = {};
-    BVHNode* m_nodes = nullptr;
+    shared_ptr<BVHNode> m_nodes = nullptr;
     vector<linBVHNode> m_linNodes = {};
     static AABB triangleBounds(const Triangle& tri);
     static AABB computeBounds(const vector<Triangle>& triangles, int start, int end);
-    void deleteBVH(BVHNode* node);
 };
 
 #endif

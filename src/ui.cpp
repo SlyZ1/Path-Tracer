@@ -403,11 +403,7 @@ void UI::render(int frameAccumulator) {
         EndTwoColumnLayout();
 
         if(ImGui::Button("Add Keyframe", ImVec2(-FLT_MIN, 0))){
-            KeyFrame keyFrame = {
-                m_scene->getState(),
-                m_animationTime
-            };
-            m_animator->addKeyFrame(keyFrame);
+            m_animator->addKeyFrame();
         }
 
         ImGui::Spacing();

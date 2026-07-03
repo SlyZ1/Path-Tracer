@@ -22,6 +22,24 @@ struct Material {
     static Material glassMaterial(glm::vec3 color, float refractionIndex);
     static Material glossyMaterial(glm::vec3 color, float fuzziness, float metallic);
     static Material emitMaterial(glm::vec3 color, float intensity);
+
+    Material operator+(const Material& other){
+        return {
+            color + other.color,
+            type,
+            data + other.data,
+            pad
+        };
+    }
+
+    Material operator*(float t){
+        return {
+            color * t,
+            type,
+            data * t,
+            pad
+        };
+    }
 };
 
 #endif

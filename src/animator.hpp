@@ -15,6 +15,7 @@ class Animator {
 private:
     bool m_is_running = false;
     shared_ptr<Renderer> m_renderer;
+    shared_ptr<Scene> m_scene;
 
     int m_currentKeyFrame = -1;
     int m_numKeyFrames = 0;
@@ -30,11 +31,14 @@ private:
     function<void()> m_resetFrame;
 public: 
     Animator() = default;
-    Animator(shared_ptr<Renderer> renderer, function<void()> resetFrame) : m_renderer(renderer), m_resetFrame(resetFrame) {}
+    Animator(shared_ptr<Renderer> renderer, shared_ptr<Scene> scene, function<void()> resetFrame) 
+    : m_renderer(renderer), m_scene(scene), m_resetFrame(resetFrame) {}
+
     vector<float> getKeyPoses() const;
     bool running() const { return m_is_running; }
+    bool isOnKeyFrame() const { return m_animationTime == m_keyFrames[m_currentKeyFrame].keyPos; };
     float getAnimationTime() const { return m_animationTime; }
-    void addKeyFrame(KeyFrame keyFrame);
+    void addKeyFrame();
     void updateCurrentKeyFrame(float animationTime);
     void previousKeyFrame();
     bool canGoToPreviousKeyFrame() const;

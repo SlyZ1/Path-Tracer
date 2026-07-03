@@ -117,9 +117,8 @@ void init(){
     app->setMousePos(app->width() / 2.0f, app->height() / 2.0f);
     app->toggleCursor(false);
     renderer = make_shared<Renderer>(app);
-    animator = make_shared<Animator>(renderer, resetFrame);
-    denoiser = make_shared<Denoiser>(512 + 256, 512 + 256, 9);
-    denoiser->load("denoiser.engine");
+    // denoiser = make_shared<Denoiser>(512 + 256, 512 + 256, 9);
+    // denoiser->load("denoiser.engine");
     
     accumulationShader.create();
     accumulationShader.load(GL_VERTEX_SHADER, "src/shaders/screenVertex.glsl");
@@ -152,6 +151,7 @@ void init(){
     
     camera->resetMousePos(app->mouseX(), app->mouseY());
     scene = Scene::defaultScene(app, camera, resetFrame);
+    animator = make_shared<Animator>(renderer, scene, resetFrame);
     ui = make_shared<UI>(app, renderer, animator, scene, camera, resetFrame);
     //denoiser->init(albedoTexture, colorTexture, normalTexture, denoisedTexture);
 

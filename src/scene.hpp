@@ -57,6 +57,24 @@ struct Object {
     PrimType type;
     int meshIndex;
     bool isSmooth;
+
+    Object operator+(const Object& other){
+        return {
+            pos + other.pos,
+            scale + other.scale,
+            mat + other.mat,
+            pad, type, meshIndex, isSmooth
+        };
+    }
+
+    Object operator*(float t){
+        return {
+            pos * t,
+            scale * t,
+            mat * t,
+            pad, type, meshIndex, isSmooth
+        };
+    }
 };
 
 struct Ray {
@@ -126,7 +144,7 @@ public:
     static SceneState stateFromJson(const string& path);
     static void stateToJson(SceneState sceneState, const string& path);
 
-    void loadFromState(const SceneState& sceneState);
+    void loadFromState(const SceneState& sceneState, bool verbose = true);
     SceneState getState();
     glm::vec2 worldToScreen(glm::vec3 worldPos);
     void initGPU();
