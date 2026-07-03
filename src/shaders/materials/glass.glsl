@@ -26,7 +26,7 @@ void glass(inout RaycastData data){
     }
 
     if (hit.inside){
-        vec3 absorption = exp(-(vec3(1) - hit.mat.color) * hit.t); // Beer-Lambert
+        vec3 absorption = exp(-(vec3(1) - hit.mat.color) * absorptionFactor(hit.mat) * hit.t); // Beer-Lambert
         ray.throughput *= absorption;
     }
 

@@ -130,6 +130,7 @@ public:
     void initGPU();
     int intersectObject(const Ray& ray);
     int addMesh(shared_ptr<Mesh> newMesh);
+    void removeMesh(int index);
     int addObject(const Object& prim);
     Object* getObject(int index);
     void removeObject(int index);

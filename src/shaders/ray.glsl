@@ -139,6 +139,7 @@ uniform int maxBounces;
 #define pbrMetallic(m) m.data[1]
 #define emitIntensity(m) m.data[0]          
 #define glassIndex(m) m.data[1]
+#define absorptionFactor(m) m.data[0]
 
 #define MAT_DIFF 0
 #define MAT_METAL 1

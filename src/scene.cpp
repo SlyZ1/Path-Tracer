@@ -324,6 +324,14 @@ int Scene::addMesh(shared_ptr<Mesh> newMesh){
     return (int)m_meshes.size() - 1;
 }
 
+void Scene::removeMesh(int index){
+    for (Object& obj : m_objects){
+        if (obj.type != PrimType::MESH_) continue;
+        if (obj.meshIndex > index) obj.meshIndex -= 1;
+    }
+    m_meshes.erase(m_meshes.begin() + index);
+}
+
 int Scene::addObject(const Object& obj){
     int newIndex = (int)m_objects.size();
     if (obj.mat.type == MatType::EMIT) m_lightIndices.push_back(newIndex);
@@ -460,7 +468,7 @@ void Scene::updateGPU(){
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshInfosBuffer);
     glBufferData(GL_SHADER_STORAGE_BUFFER, (int)meshInfos.size() * sizeof(MeshInfos), meshInfos.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_meshInfosBuffer);
-    glUniform1i(ShaderProgram::getVarLoc("numMeshes"), (int)meshInfos.size()); //a
+    glUniform1i(ShaderProgram::getVarLoc("numMeshes"), (int)meshInfos.size());
 }
 
 void Scene::deleteScene(){
