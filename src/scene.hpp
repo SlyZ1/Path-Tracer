@@ -53,7 +53,8 @@ struct Object {
     glm::vec3 pos;
     float scale;
     Material mat;
-    glm::vec3 pad;
+    glm::vec2 pad;
+    unsigned int ID;
     PrimType type;
     int meshIndex;
     bool isSmooth;
@@ -63,7 +64,7 @@ struct Object {
             pos + other.pos,
             scale + other.scale,
             mat + other.mat,
-            pad, type, meshIndex, isSmooth
+            pad, ID, type, meshIndex, isSmooth
         };
     }
 
@@ -72,7 +73,7 @@ struct Object {
             pos * t,
             scale * t,
             mat * t,
-            pad, type, meshIndex, isSmooth
+            pad, ID, type, meshIndex, isSmooth
         };
     }
 };
@@ -101,7 +102,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(PrimType, {
     { PrimType::MESH_,      "mesh"      }
 })
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Material, color, type, data)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Object, pos, scale, mat, type, meshIndex, isSmooth)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Object, pos, scale, mat, ID, type, meshIndex, isSmooth)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SceneState, modelPaths, objectStates)
 
 class Scene {
@@ -124,6 +125,7 @@ private:
 
     int m_copiedObject = -1;
     int m_selectedObject = -1;
+    unsigned int m_maxId = 0;
     
     function<void()> m_resetFrame = {};
     
@@ -143,6 +145,7 @@ public:
     static Ray rayFromClick(shared_ptr<Camera> camera, glm::vec2 screenPos);
     static SceneState stateFromJson(const string& path);
     static void stateToJson(SceneState sceneState, const string& path);
+    static shared_ptr<Object> getObjectFromId(SceneState sceneState, unsigned int ID);
 
     void loadFromState(const SceneState& sceneState, bool verbose = true);
     SceneState getState();
@@ -151,7 +154,7 @@ public:
     int intersectObject(const Ray& ray);
     int addMesh(shared_ptr<Mesh> newMesh);
     void removeMesh(int index);
-    int addObject(const Object& prim);
+    int addObject(Object& prim);
     Object* getObject(int index);
     void removeObject(int index);
     void copyObject(int index);

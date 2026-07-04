@@ -1,5 +1,19 @@
 #include "animator.hpp"
 
+int Animator::getClosestKeyFrame() const {
+    if (m_numKeyFrames <= 0) return -1;
+    KeyFrame prevKf = m_keyFrames[m_currentKeyFrame];
+    KeyFrame nextKf = m_keyFrames[std::min(m_currentKeyFrame + 1, m_numKeyFrames - 1)];
+    if (abs(prevKf.keyPos - m_animationTime) <= abs(nextKf.keyPos - m_animationTime))
+        return m_currentKeyFrame;
+    return m_currentKeyFrame + 1;
+}
+
+bool Animator::isOnKeyFrame() const {
+    if (m_numKeyFrames <= 0) return false;
+    return m_keyFrames[getClosestKeyFrame()].keyPos == m_animationTime;
+}
+
 vector<float> Animator::getKeyPoses() const {
     vector<float> keyPoses = {};
     if (m_keyFrames.empty()) return keyPoses;
@@ -18,8 +32,10 @@ void Animator::addKeyFrame(){
     };
 
     if (m_numKeyFrames > 0){
-        if (m_keyFrames[m_currentKeyFrame].keyPos == m_animationTime){
-            m_keyFrames[m_currentKeyFrame] = keyFrame;
+        int closestKeyFrame = getClosestKeyFrame();
+        if (abs(m_keyFrames[closestKeyFrame].keyPos - m_animationTime) < 1e-5f){
+            m_keyFrames[closestKeyFrame] = keyFrame;
+            return;
         }
     }
 
@@ -88,7 +104,10 @@ void Animator::animationProcess(){
 
         SceneState state = prevKf.state;
         for (int i = 0; i < (int)state.objectStates.size(); i++){
-            const Object& interpolatedObj = state.objectStates[i] * (1 - t) + nextKf.state.objectStates[i] * t;
+            shared_ptr<Object> correspondingObject = Scene::getObjectFromId(nextKf.state, state.objectStates[i].ID);
+            if (correspondingObject == nullptr) continue;
+
+            const Object& interpolatedObj = state.objectStates[i] * (1 - t) + *correspondingObject * t;
             state.objectStates[i] = interpolatedObj;
         }
         m_scene->loadFromState(state, false);
@@ -100,8 +119,10 @@ void Animator::animationProcess(){
     if (!m_renderer->isRendering()){
         m_animationFrame++;
         int numFrames = (int)std::floor(m_animationFPS * m_animationDuration);
-        if (m_animationFrame >= numFrames) {
+        if (m_animationFrame > numFrames) {
             m_is_running = false;
+            glfwSetWindowShouldClose(App::Window, true);
+            return;
         }
         
         float step = 1 / (float)numFrames;
@@ -131,4 +152,13 @@ void Animator::start(int renderSamples, int animationFPS, float animationDuratio
 void Animator::cancelAnimation(){
     m_is_running = false;
     m_renderer->cancelRender();
+}
+
+void Animator::clear(){
+    m_keyFrames.clear();
+    m_currentKeyFrame = -1;
+    m_numKeyFrames = 0;
+    m_animationFrame = 0;
+    m_animationTime = 0;
+    m_prevAnimationTime = 0;
 }

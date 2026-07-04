@@ -14,6 +14,7 @@ void Renderer::renderingProcess(int frameAccumulator){
         m_progress = m_renderSamples;
 
         m_app->exportImage(m_exportPath + m_exportFileName);
+        if (!m_renderTextures) return;
         for (int i = 0; i < (int)m_renderingTextures.size(); i++){
             GLuint tex = m_renderingTextures[i];
             string name = m_renderingTexturesNames[i];
@@ -40,6 +41,9 @@ void Renderer::startRendering(int renderSamples, string exportFileName, bool fil
             m_exportFileName = exportFileName;    
         }
         if (cancel) cancelRender();
+    }
+    else{
+        m_exportFileName = exportFileName;
     }
 }
 

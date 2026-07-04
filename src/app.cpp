@@ -4,6 +4,8 @@
 
 using namespace std;
 
+GLFWwindow* App::Window = {};
+
 void framebuffer_size_callback(GLFWwindow*, int width, int height)
 {
     glViewport(0, 0, width, height);
@@ -26,6 +28,7 @@ void App::init(int width, int height, const char *name){
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     
     m_window = glfwCreateWindow(width, height, "ZMMR", NULL, NULL);
+    Window = m_window;
     glfwSetWindowTitle(m_window, name);
     if (m_window == NULL)
     {

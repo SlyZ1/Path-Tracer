@@ -12,3 +12,5 @@ myprogram.*
 *.log
 
 custom_dataset/
+outputs/dragon_metal/
+scenes/

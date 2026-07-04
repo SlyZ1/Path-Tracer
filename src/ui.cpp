@@ -83,9 +83,10 @@ void UI::renderGizmos(){
 
 void UI::renderStats(int frameAccumulator){
     float currentTime = (float)glfwGetTime();
+    float deltaTime = currentTime - m_lastTime;
 
     ImGuiIO& io = ImGui::GetIO();
-    ImGuiWindowFlags flags =  ImGuiWindowFlags_AlwaysAutoResize 
+    ImGuiWindowFlags flags =  ImGuiWindowFlags_AlwaysAutoResize
                             | ImGuiWindowFlags_NoCollapse
                             | ImGuiWindowFlags_NoDecoration
                             | ImGuiWindowFlags_NoMove
@@ -96,14 +97,14 @@ void UI::renderStats(int frameAccumulator){
         BeginTwoColumnLayout();
 
         Label("Accumulation:");
-        ImGui::Text(to_string(frameAccumulator).c_str());
+        ImGui::Text("%d", frameAccumulator);
 
         Label("FPS:");
-        ImGui::Text(to_string((int)floor(1.0f / (currentTime - m_lastTime))).c_str());
+        ImGui::Text("%d", deltaTime > 0.0f ? (int)floor(1.0f / deltaTime) : 0);
 
         Label("Frame Time:");
-        ImGui::Text((to_string((currentTime - m_lastTime) * 100.0f) + "ms").c_str());
-        
+        ImGui::Text("%.2fms", deltaTime * 100.0f);
+
         EndTwoColumnLayout();
     }
     ImGui::End();
@@ -257,7 +258,7 @@ void UI::render(int frameAccumulator) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Import Model (.obj)"))  {
                 bool cancel;
-                nfdopendialogu8args_t args;
+                nfdopendialogu8args_t args = {0};
                 nfdfilteritem_t filters[] = {
                     { "3D Models", "obj" },
                     { "OBJ", "obj" }
@@ -283,7 +284,7 @@ void UI::render(int frameAccumulator) {
             }
             if (ImGui::MenuItem("Load"))  {
                 bool cancel;
-                nfdopendialogu8args_t args;
+                nfdopendialogu8args_t args = {0};
                 nfdfilteritem_t filters[] = {
                     { "JSON", "json" },
                     { "json" }
@@ -292,6 +293,7 @@ void UI::render(int frameAccumulator) {
                 args.filterCount = 1;
                 string path = m_app->openFileDialog(cancel, args);
                 m_scene->loadFromState(m_scene->stateFromJson(path));
+                m_animator->clear();
             }
             ImGui::EndMenu();
         }
@@ -302,7 +304,7 @@ void UI::render(int frameAccumulator) {
     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.5f, 0.2f, 1.0f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.5f, 0.2f, 1.0f, 0.8f));
 
-    if (ImGui::CollapsingHeader("Camera Settings", ImGuiTreeNodeFlags_DefaultOpen)){
+    if (ImGui::CollapsingHeader("Camera Settings")){
         BeginTwoColumnLayout();
         CameraProperties* camProps = m_camera->getCameraProperties();
 
@@ -325,7 +327,7 @@ void UI::render(int frameAccumulator) {
     ImGui::Spacing();
     ImGui::Spacing();
     
-    if (ImGui::CollapsingHeader("Sky Box Settings", ImGuiTreeNodeFlags_DefaultOpen)){
+    if (ImGui::CollapsingHeader("Sky Box Settings")){
         BeginTwoColumnLayout();
 
         Label("Sky Intensity");
@@ -351,7 +353,7 @@ void UI::render(int frameAccumulator) {
     ImGui::Spacing();
     ImGui::Spacing();
 
-    if (ImGui::CollapsingHeader("Model Settings", ImGuiTreeNodeFlags_DefaultOpen)){
+    if (ImGui::CollapsingHeader("Model Settings")){
         BeginTwoColumnLayout();
 
         Label("Debug BVH");
@@ -365,7 +367,7 @@ void UI::render(int frameAccumulator) {
     ImGui::Spacing();
     ImGui::Spacing();
 
-    if (ImGui::CollapsingHeader("Animation Settings", ImGuiTreeNodeFlags_DefaultOpen)){
+    if (ImGui::CollapsingHeader("Animation Settings")){
        
         BeginTwoColumnLayout();
 
@@ -402,7 +404,9 @@ void UI::render(int frameAccumulator) {
 
         EndTwoColumnLayout();
 
-        if(ImGui::Button("Add Keyframe", ImVec2(-FLT_MIN, 0))){
+        string keyFrameLabel = "Add Keyframe";
+        if (m_animator->isOnKeyFrame()) keyFrameLabel = "Update Keyframe";
+        if(ImGui::Button(keyFrameLabel.c_str(), ImVec2(-FLT_MIN, 0))){
             m_animator->addKeyFrame();
         }
 
@@ -424,7 +428,7 @@ void UI::render(int frameAccumulator) {
     ImGui::Spacing();
     ImGui::Spacing();
 
-    if (ImGui::CollapsingHeader("Render Settings", ImGuiTreeNodeFlags_DefaultOpen)){
+    if (ImGui::CollapsingHeader("Render Settings")){
     
         BeginTwoColumnLayout();
     
@@ -454,7 +458,7 @@ void UI::render(int frameAccumulator) {
             float windowWidth = ImGui::GetContentRegionAvail().x;
             float textWidth   = ImGui::CalcTextSize(text.c_str()).x;
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (windowWidth - textWidth) * 0.5f);
-            ImGui::Text(text.c_str());
+            ImGui::Text("%s", text.c_str());
         }
     }
 
@@ -462,7 +466,7 @@ void UI::render(int frameAccumulator) {
     ImGui::Spacing();
     ImGui::Spacing();
 
-    if (ImGui::CollapsingHeader("Technical Settings", ImGuiTreeNodeFlags_DefaultOpen)){
+    if (ImGui::CollapsingHeader("Technical Settings")){
         BeginTwoColumnLayout();
         
         Label("Max Bounces");

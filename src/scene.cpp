@@ -147,6 +147,14 @@ SceneState Scene::getState(){
     return sceneState;
 }
 
+shared_ptr<Object> Scene::getObjectFromId(SceneState sceneState, unsigned int ID){
+    for (const Object& obj : sceneState.objectStates){
+        if (obj.ID == ID) return make_shared<Object>(obj);
+    }
+    return nullptr;
+}
+
+
 glm::vec2 Scene::worldToScreen(glm::vec3 worldPos){
     vec3 forward = m_cameraDirection;
 
@@ -346,7 +354,8 @@ void Scene::removeMesh(int index){
     m_meshes.erase(m_meshes.begin() + index);
 }
 
-int Scene::addObject(const Object& obj){
+int Scene::addObject(Object& obj){
+    obj.ID = m_maxId++;
     int newIndex = (int)m_objects.size();
     if (obj.mat.type == MatType::EMIT) m_lightIndices.push_back(newIndex);
     m_objects.push_back(obj);

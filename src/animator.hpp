@@ -29,6 +29,9 @@ private:
     string m_export_folder = {};
     int m_renderSamples;
     function<void()> m_resetFrame;
+
+    int getClosestKeyFrame() const;
+    
 public: 
     Animator() = default;
     Animator(shared_ptr<Renderer> renderer, shared_ptr<Scene> scene, function<void()> resetFrame) 
@@ -36,7 +39,7 @@ public:
 
     vector<float> getKeyPoses() const;
     bool running() const { return m_is_running; }
-    bool isOnKeyFrame() const { return m_animationTime == m_keyFrames[m_currentKeyFrame].keyPos; };
+    bool isOnKeyFrame() const;
     float getAnimationTime() const { return m_animationTime; }
     void addKeyFrame();
     void updateCurrentKeyFrame(float animationTime);
@@ -47,6 +50,7 @@ public:
     void start(int renderSamples, int animationFPS, float animationDuration, string export_folder = "");
     void animationProcess();
     void cancelAnimation();
+    void clear();
 };
 
 #endif

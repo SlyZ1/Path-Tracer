@@ -54,6 +54,14 @@ void resetFrame(){
 }
 
 void genTextures(unsigned int width, unsigned int height){
+    glDeleteTextures(1, &texture);
+    glDeleteTextures(1, &oldTexture);
+    glDeleteTextures(1, &normalTexture);
+    glDeleteTextures(1, &albedoTexture);
+    glDeleteTextures(1, &colorTexture);
+    glDeleteTextures(1, &depthTexture);
+    glDeleteTextures(1, &denoisedTexture);
+
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
@@ -314,7 +322,7 @@ void dynamicResolution(){
     if (camera->getIsMoving(frameCount) || (UI::isInteracting() && !renderer->isRendering())){
         resetFrame();
         int resolutionMultiplier = ui->getResolutionMultiplier();
-        if (texWidth != app->width() / resolutionMultiplier) {}
+        if (texWidth != app->width() / resolutionMultiplier)
             genTextures(app->width() / resolutionMultiplier, app->height() / resolutionMultiplier);
     }
     else if (texWidth != app->width()){

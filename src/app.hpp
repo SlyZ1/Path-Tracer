@@ -23,6 +23,8 @@ class App {
         bool m_cursorHidden = false;
 
     public:
+        static GLFWwindow *Window;
+
         void init(int width, int height, const char *name);
         string saveFileDialog(bool& cancel, const string& defaultName);
         string openFileDialog(bool& cancel, nfdopendialogu8args_t args = {0});

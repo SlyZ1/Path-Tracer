@@ -2,18 +2,20 @@
     "modelPaths": ["C:\\Users\\conta\\Documents\\Dev\\CPP\\Raytracing\\models\\dragon.obj"],
     "objectStates": [
         {
+            "ID": 0,
             "isSmooth": true,
             "mat": {
                 "color": [1.0,1.0,1.0],
                 "data": [20.0,0.0],
                 "type": "emit"
             },
-            "meshIndex": 686814800,
+            "meshIndex": 721286848,
             "pos": [0.0,5.0,2.0],
             "scale": 1.0,
             "type": "sphere"
         },
         {
+            "ID": 1,
             "isSmooth": true,
             "mat": {
                 "color": [1.0,1.0,1.0],
@@ -26,6 +28,7 @@
             "type": "plane"
         },
         {
+            "ID": 2,
             "isSmooth": true,
             "mat": {
                 "color": [0.8999999761581421,0.6000000238418579,0.20000000298023224],
@@ -33,8 +36,8 @@
                 "type": "glossy"
             },
             "meshIndex": 0,
-            "pos": [-1.5299999713897705,1.0,0.0],
-            "scale": 3.743000030517578,
+            "pos": [0.0,1.0,0.0],
+            "scale": 3.0,
             "type": "mesh"
         }
     ]
