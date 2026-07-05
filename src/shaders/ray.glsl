@@ -31,15 +31,18 @@ struct Triangle {
 };
 
 struct AABB {
-    vec3 min;
-    vec3 max;
+    vec4 min;
+    vec4 max;
 };
 
 struct BVHNode {
-    AABB aabb;
     int left;
     int right;
     int triangle;
+    int pad;
+    AABB aabb;
+    AABB leftAabb;
+    AABB rightAabb;
 };
 
 struct MeshInfos {
@@ -209,8 +212,8 @@ float p_direct(Primitive light, float distance, float cosLight){
 
 float shadow_hit(Primitive light, Ray ray){
     Hit hit = rayIntersection(ray, true);
-    vec3 hitPos = ray.origin + ray.dir * hit.t + hit.normal * EPS;
-    if (hit.t > 0 && length(hitPos - light.pos) > light.scale + sqrt(EPS)) return 0;
+    vec3 hitPos = ray.origin + ray.dir * hit.t;
+    if (hit.t >= 0 && length(hitPos - light.pos) > light.scale + sqrt(EPS)) return 0;
     return 1;
 }
 

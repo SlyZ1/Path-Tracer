@@ -2,8 +2,10 @@
 #define RENDERER
 #include "app.hpp"
 #include <memory>
+#include <filesystem>
 
 using namespace std;
+namespace fs = filesystem;
 
 class Renderer {
 private:

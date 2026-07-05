@@ -47,7 +47,7 @@ public:
     bool canGoToPreviousKeyFrame() const;
     void nextKeyFrame();
     bool canGoToNextKeyFrame() const;
-    void start(int renderSamples, int animationFPS, float animationDuration, string export_folder = "");
+    void start(int renderSamples, int animationFPS, float animationDuration, string export_folder = "", bool renderTextures = false);
     void animationProcess();
     void cancelAnimation();
     void clear();

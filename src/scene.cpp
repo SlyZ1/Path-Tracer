@@ -214,8 +214,8 @@ float Scene::intersectPlane(const Ray& ray, const Object& plane){
 }
 
 float Scene::intersectAABB(const Ray& invRay, const AABB& aabb, float tMin, float tMax){
-    vec3 t0 = (aabb.min - invRay.origin) * invRay.direction;
-    vec3 t1 = (aabb.max - invRay.origin) * invRay.direction;
+    vec3 t0 = (vec3(aabb.min) - invRay.origin) * invRay.direction;
+    vec3 t1 = (vec3(aabb.max) - invRay.origin) * invRay.direction;
 
     vec3 tNear = min(t0, t1);
     vec3 tFar  = max(t0, t1);
@@ -292,9 +292,9 @@ float Scene::intersectMesh(const Ray& ray, const Object& obj){
             float leftDist = -1;
             float rightDist = -1;
             if (node.left >= 0)
-                leftDist = intersectAABB(invRay, Mesh::scaleAABB(nodes[node.left].bounds, scale), 0.001f, hitT);
+                leftDist = intersectAABB(invRay, Mesh::scaleAABB(node.leftBounds, scale), 0.001f, hitT);
             if (node.right >= 0)
-                rightDist = intersectAABB(invRay, Mesh::scaleAABB(nodes[node.right].bounds, scale), 0.001f, hitT);
+                rightDist = intersectAABB(invRay, Mesh::scaleAABB(node.rightBounds, scale), 0.001f, hitT);
 
             if (leftDist >= 0 && rightDist >= 0){
                 if (leftDist < rightDist) {

@@ -18,7 +18,9 @@ void Renderer::renderingProcess(int frameAccumulator){
         for (int i = 0; i < (int)m_renderingTextures.size(); i++){
             GLuint tex = m_renderingTextures[i];
             string name = m_renderingTexturesNames[i];
-            m_app->exportTextureToExr(tex, m_exportPath + name + ".exr");
+            string exportName = name + "_" + fs::path(m_exportFileName).stem().string() + ".exr";
+            fs::path path = fs::path(m_exportPath).append(exportName);
+            m_app->exportTextureToExr(tex, path.string());
         }
     }
 }

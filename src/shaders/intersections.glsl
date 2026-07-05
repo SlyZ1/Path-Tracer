@@ -45,7 +45,7 @@ Hit planeIntersect(Primitive plane, Ray ray){
 
 Hit triangleIntersect(Triangle tri, Ray ray, bool isSmooth, Mat mat){
     Hit emptyHit; emptyHit.t = -2;
-
+    
     vec3 edge1 = tri.v1 - tri.v0;
     vec3 edge2 = tri.v2 - tri.v0;
 
@@ -69,7 +69,7 @@ Hit triangleIntersect(Triangle tri, Ray ray, bool isSmooth, Mat mat){
     float t = dot(edge2, qvec) * invDet;
     if (t < 0.001) return emptyHit;
 
-    vec3 normal;
+    vec3 normal = vec3(0);
     if (isSmooth){
         normal = normalize(tri.n0 * (1-u-v) + tri.n1 * u + tri.n2 * v);
     }
@@ -87,8 +87,8 @@ Hit intersectAABB(Ray invRay, AABB box, float tMin, float tMax)
     Hit hit;
     hit.t = -1.0f;
     
-    vec3 t0 = (box.min - invRay.origin) * invRay.dir;
-    vec3 t1 = (box.max - invRay.origin) * invRay.dir;
+    vec3 t0 = (box.min.xyz - invRay.origin) * invRay.dir;
+    vec3 t1 = (box.max.xyz - invRay.origin) * invRay.dir;
 
     vec3 tNear = min(t0, t1);
     vec3 tFar  = max(t0, t1);
@@ -103,8 +103,8 @@ Hit intersectAABB(Ray invRay, AABB box, float tMin, float tMax)
 }
 
 AABB scaleAABB(AABB box, float scale){
-    box.min *= scale;
-    box.max *= scale;
+    box.min.xyz *= scale;
+    box.max.xyz *= scale;
     return box;
 }
 
@@ -118,7 +118,7 @@ Triangle scaleTri(Triangle tri, float scale){
 Hit bvhIntersect(inout Ray ray, MeshInfos info, bool isShadow)
 {
     //ray.origin -= modelPos;
-    const int STACK_SIZE = 32;
+    const int STACK_SIZE = 16;
 
     int stack[STACK_SIZE];
     int stackPtr = 0;
@@ -161,9 +161,9 @@ Hit bvhIntersect(inout Ray ray, MeshInfos info, bool isShadow)
             Hit leftHit; leftHit.t = -1;
             Hit rightHit; rightHit.t = -1;
             if (node.left >= 0)
-                leftHit = intersectAABB(invRay, scaleAABB(nodes[node.left + nodeOffset].aabb, scale), 0.001, hitT);
+                leftHit = intersectAABB(invRay, scaleAABB(node.leftAabb, scale), 0.001, hitT);
             if (node.right >= 0)
-                rightHit = intersectAABB(invRay, scaleAABB(nodes[node.right + nodeOffset].aabb, scale), 0.001, hitT);
+                rightHit = intersectAABB(invRay, scaleAABB(node.rightAabb, scale), 0.001, hitT);
 
             if (leftHit.t >= 0 && rightHit.t >= 0){
                 if (leftHit.t < rightHit.t) {

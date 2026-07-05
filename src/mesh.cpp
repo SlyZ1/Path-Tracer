@@ -103,7 +103,7 @@ void Mesh::loadFromModel(const char* path){
     for (int i = 0; i < size; i++) {
         triIndices[i] = i;
     }
-    computeBVH(m_triangles, triIndices, 0, size);
+    m_nodes = computeSAH(m_triangles, triIndices, 0, size);
     m_linNodes = lineariseBVH(m_nodes);
     modelName = fs::path(path).stem().string();
     modelPath = path;
@@ -117,28 +117,28 @@ AABB Mesh::triangleBounds(const Triangle& tri) {
     AABB box;
     box.min =  {std::min({tri.v3.x, tri.v1.x, tri.v2.x}),
                 std::min({tri.v3.y, tri.v1.y, tri.v2.y}),
-                std::min({tri.v3.z, tri.v1.z, tri.v2.z})};
+                std::min({tri.v3.z, tri.v1.z, tri.v2.z}),
+                0};
     box.max =  {std::max({tri.v3.x, tri.v1.x, tri.v2.x}),
                 std::max({tri.v3.y, tri.v1.y, tri.v2.y}),
-                std::max({tri.v3.z, tri.v1.z, tri.v2.z})};
+                std::max({tri.v3.z, tri.v1.z, tri.v2.z}),
+                0};
     return box;
 }
 
-AABB Mesh::computeBounds(const vector<Triangle>& triangles, int start, int end) {
-    AABB box = triangleBounds(triangles[start]);
-    for(int i = start + 1; i < end; ++i)
-        box.expand(triangleBounds(triangles[i]));
+AABB Mesh::computeBounds(const vector<Triangle>& triangles, vector<int>& indices, int begin, int end) {
+    AABB box = triangleBounds(triangles[indices[begin]]);
+    for(int i = begin + 1; i < end; ++i)
+        box.expand(triangleBounds(triangles[indices[i]]));
     return box;
 }
 
 shared_ptr<BVHNode> Mesh::computeBVH(vector<Triangle>& triangles, 
                           vector<int>& indices,
-                          int begin, int end) {
+                          int begin, int end) 
+{
     shared_ptr<BVHNode> node = make_shared<BVHNode>();
-
-    node->bounds = triangleBounds(triangles[indices[begin]]);
-    for (int i = begin + 1; i < end; ++i)
-        node->bounds.expand(triangleBounds(triangles[indices[i]]));
+    node->bounds = computeBounds(triangles, indices, begin, end);
 
     const int MAX_TRIANGLES_PER_LEAF = 1;
     if (end - begin <= MAX_TRIANGLES_PER_LEAF) {
@@ -146,12 +146,12 @@ shared_ptr<BVHNode> Mesh::computeBVH(vector<Triangle>& triangles,
         return node;
     }
 
-    AABB centroidBounds;
-    centroidBounds.min = centroidBounds.max = triangles[indices[begin]].centroid();
+    AABB centroidAABB;
+    centroidAABB.min = centroidAABB.max = vec4(triangles[indices[begin]].centroid(), 0);
     for (int i = begin + 1; i < end; ++i)
-        centroidBounds.expand(triangles[indices[i]].centroid());
+        centroidAABB.expand(triangles[indices[i]].centroid());
 
-    vec3 extent = centroidBounds.max - centroidBounds.min;
+    vec4 extent = centroidAABB.max - centroidAABB.min;
     int axis = 0;
     if (extent.y > extent.x && extent.y > extent.z)
         axis = 1;
@@ -168,7 +168,94 @@ shared_ptr<BVHNode> Mesh::computeBVH(vector<Triangle>& triangles,
     node->left = computeBVH(triangles, indices, begin, mid);
     node->right = computeBVH(triangles, indices, mid, end);
 
-    m_nodes = node;
+    return node;
+}
+
+shared_ptr<BVHNode> Mesh::computeSAH(vector<Triangle>& triangles, vector<int>& indices, int begin, int end){
+    shared_ptr<BVHNode> node = make_shared<BVHNode>();
+    node->bounds = computeBounds(triangles, indices, begin, end);
+    node->triangle = -1;
+    
+    const int MAX_TRIANGLES_PER_LEAF = 1;
+    if (end - begin <= MAX_TRIANGLES_PER_LEAF) {
+        node->triangle = indices[begin];
+        node->leftBounds = {vec4(0), vec4(0)};
+        node->rightBounds = {vec4(0), vec4(0)};
+        return node;
+    }
+    
+    AABB centroidAABB;
+    centroidAABB.min = centroidAABB.max = vec4(triangles[indices[begin]].centroid(), 0);
+    for (int i = begin + 1; i < end; i++){
+        centroidAABB.expand(triangles[indices[i]].centroid());
+    }
+
+    vec4 extent = centroidAABB.max - centroidAABB.min;
+    int axis = 0;
+    if (extent.y > extent.x && extent.y > extent.z)
+        axis = 1;
+    else if (extent.z > extent.x)
+        axis = 2;
+
+    const int NUM_BUCKETS = 16;
+    struct Bucket { AABB bounds; int count = 0; };
+    Bucket buckets[NUM_BUCKETS];
+
+    for (int i = begin; i < end; i++){
+        const Triangle& tri = triangles[indices[i]];
+        float t = (tri.centroid()[axis] - centroidAABB.min[axis]) / extent[axis];
+        int b = std::clamp((int)(t * NUM_BUCKETS), 0, NUM_BUCKETS - 1);
+        buckets[b].bounds.expand(triangleBounds(tri));
+        buckets[b].count++;
+    }
+
+    AABB leftBounds[NUM_BUCKETS];
+    int leftCounts[NUM_BUCKETS];
+    AABB acc; int count = 0;
+    for (int i = 0; i < NUM_BUCKETS; i++){
+        if (buckets[i].count > 0){
+            acc.expand(buckets[i].bounds);
+            count += buckets[i].count;
+        }
+        leftBounds[i] = acc;
+        leftCounts[i] = count;
+    }
+
+    AABB rightBounds[NUM_BUCKETS];
+    int rightCounts[NUM_BUCKETS];
+    acc = {}; count = 0;
+    for (int i = NUM_BUCKETS - 1; i >= 0; i--){
+        if (buckets[i].count > 0){
+            acc.expand(buckets[i].bounds);
+            count += buckets[i].count;
+        }
+        rightBounds[i] = acc;
+        rightCounts[i] = count;
+    }
+
+    float minCost = FLT_MAX;
+    float bestSplitPoint = 0;
+    for (int i = 0; i < NUM_BUCKETS - 1; i++){
+        float cost = leftCounts[i] * leftBounds[i].surfaceArea() 
+                + rightCounts[i+1] * rightBounds[i+1].surfaceArea();
+        if (cost < minCost){
+            minCost = cost;
+            bestSplitPoint = centroidAABB.min[axis] + (float)(i+1) / NUM_BUCKETS * extent[axis];
+        }
+    }
+
+    auto mid = std::partition(indices.begin() + begin, indices.begin() + end,
+        [&](int idx) {
+            return triangles[idx].centroid()[axis] <= bestSplitPoint;
+        });
+
+    int splitMid = (int)(mid - indices.begin());
+    splitMid = std::clamp(splitMid, begin + 1, end - 1);
+
+    node->left = computeSAH(triangles, indices, begin, splitMid);
+    node->right = computeSAH(triangles, indices, splitMid, end);
+    node->leftBounds = node->left->bounds;
+    node->rightBounds = node->right->bounds;
 
     return node;
 }
@@ -189,16 +276,15 @@ int lineariseRec(shared_ptr<BVHNode> node, vector<linBVHNode>& nodes){
         return -1;
     }
 
-    int left = lineariseRec(node->left, nodes);
-    int right = lineariseRec(node->right, nodes);
-    int triangle = node->triangle;
+    linBVHNode linNode;
+    linNode.left = lineariseRec(node->left, nodes);
+    linNode.right = lineariseRec(node->right, nodes);
+    linNode.triangle = node->triangle;
+    linNode.pad = 0;
+    linNode.bounds = node->bounds;
+    linNode.leftBounds = node->leftBounds;
+    linNode.rightBounds = node->rightBounds;
 
-    linBVHNode linNode = {
-        node->bounds,
-        left,
-        right,
-        triangle
-    };
     int i = (int)nodes.size();
     nodes.push_back(linNode);
     return i;
