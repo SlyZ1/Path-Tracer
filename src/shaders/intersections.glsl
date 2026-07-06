@@ -117,16 +117,6 @@ Triangle scaleTri(Triangle tri, float scale){
 
 Hit bvhIntersect(inout Ray ray, MeshInfos info, bool isShadow)
 {
-    //ray.origin -= modelPos;
-    const int STACK_SIZE = 24;
-
-    int stack[STACK_SIZE];
-    int stackPtr = 0;
-
-    int triangleOffset = info.triangleOffset;
-    int nodeOffset = info.nodeOffset;
-    stack[stackPtr++] = info.numberOfNodes - 1 + info.nodeOffset;
-
     vec3 pos = info.pos;
     float scale = info.scale;
 
@@ -137,6 +127,18 @@ Hit bvhIntersect(inout Ray ray, MeshInfos info, bool isShadow)
     newRay.origin -= pos;
     Ray invRay = newRay;
     invRay.dir = 1 / invRay.dir;
+
+    Hit boxHit = intersectAABB(invRay, scaleAABB(nodes[info.numberOfNodes - 1 + info.nodeOffset].aabb, scale), 0.001, hitT);
+    if (boxHit.t < 0) return hit;
+
+    const int STACK_SIZE = 24;
+
+    int stack[STACK_SIZE];
+    int stackPtr = 0;
+
+    int triangleOffset = info.triangleOffset;
+    int nodeOffset = info.nodeOffset;
+    stack[stackPtr++] = info.numberOfNodes - 1 + info.nodeOffset;
 
     while (stackPtr > 0) {
         int nodeIndex = stack[--stackPtr];

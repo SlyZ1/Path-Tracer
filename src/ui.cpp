@@ -82,7 +82,7 @@ void UI::renderGizmos(){
 }
 
 void UI::renderStats(int frameAccumulator){
-    float currentTime = (float)glfwGetTime();
+    float currentTime = (float)glfwGetTime(); 
     float deltaTime = currentTime - m_lastTime;
 
     ImGuiIO& io = ImGui::GetIO();
@@ -132,6 +132,12 @@ void UI::renderPopupData(Object* selectedObject){
             }
             break;
         case MatType::GLASS:
+            Label("Fuzziness", "Controls how unpolished the glass will be.\nUsed in the Cook-Torrance model with the GGX microfacets distribution.");
+            selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.8f);
+            if (ImGui::SliderFloat("##Fuzziness", &selectedObject->mat.data.x, 0.0f, 0.8f)){
+                selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.8f);
+                m_scene->updateScene();
+            }
             Label("Refraction Index", "Refraction index of the dielectric. If 1.3 <= n <= 2.3, Schlick-Fresnel's approximation is used.");
             selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 1.0f, 4.0f);
             if (ImGui::SliderFloat("##Refraction Index", &selectedObject->mat.data.y, 1.0f, 4.0f)){
@@ -139,9 +145,9 @@ void UI::renderPopupData(Object* selectedObject){
                 m_scene->updateScene();
             }
             Label("Absorption Factor", "How much light is absorbed in the dielectric, using Beer-Lambert's law.");
-            selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 10.0f);
-            if (ImGui::SliderFloat("##Absorption Factor", &selectedObject->mat.data.x, 0.0f, 10.0f)){
-                selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 10.0f);
+            selectedObject->mat.data.z = glm::clamp(selectedObject->mat.data.z, 0.0f, 10.0f);
+            if (ImGui::SliderFloat("##Absorption Factor", &selectedObject->mat.data.z, 0.0f, 10.0f)){
+                selectedObject->mat.data.z = glm::clamp(selectedObject->mat.data.z, 0.0f, 10.0f);
                 m_scene->updateScene();
             }
             break;

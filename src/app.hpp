@@ -25,7 +25,7 @@ class App {
     public:
         static GLFWwindow *Window;
 
-        void init(int width, int height, const char *name);
+        void init(int width, int height, const char *name, bool headless=false);
         string saveFileDialog(bool& cancel, const string& defaultName);
         string openFileDialog(bool& cancel, nfdopendialogu8args_t args = {0});
         string pickFolderDialog(bool& cancel);

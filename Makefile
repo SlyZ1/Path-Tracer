@@ -90,4 +90,4 @@ clean:
 re: clean all
 
 run: all
-	$(TARGET)
+	$(TARGET) $(ARGS)

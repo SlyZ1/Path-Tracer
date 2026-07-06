@@ -8,8 +8,8 @@ struct Camera {
 struct Mat {
     vec3 color;
     int type;
-    float[3] data;
-    float pad;
+    float[2] data;
+    vec2 pad;
 };
 
 struct Primitive {
@@ -93,16 +93,16 @@ layout(std430, binding = 3) buffer LightIndicesBuffer {
 };
 uniform int numLights;
 
+layout(rgba32f, binding = 1) writeonly uniform image2D normalImage;
+layout(rgba32f, binding = 2) writeonly uniform image2D albedoImage;
+layout(rgba32f, binding = 3) writeonly uniform image2D colorImage;
+layout(rgba32f, binding = 4) writeonly uniform image2D depthImage;
+
 struct RaycastData {
     Hit hit;
     Ray ray;
     uint seed;
 };
-
-uniform Camera camera;
-uniform float cameraFov;
-uniform float cameraAperture;
-uniform float cameraFocalLength;
 
 uniform float skyIntensity;
 uniform vec3 skyBottomColor;
@@ -120,7 +120,6 @@ layout (location = 0) out vec4 FragColor;
 layout (location = 1) out vec4 NormalOut;
 layout (location = 2) out vec4 AlbedoOut;
 layout (location = 3) out vec4 ColorOut;
-layout (location = 4) out vec4 DepthOut;
 in vec4 vClipPos;
 
 //#define SAMPLES 1
@@ -132,18 +131,17 @@ in vec4 vClipPos;
 #define updateData(data) data = RaycastData(hit, ray, seed)
 #define unwrapData(data) ray = data.ray; hit = data.hit; seed = data.seed
 
-#define mData(d0, d1) float[3](d0, d1, 0.0)
-#define mData0(d) float[3](d, 0, 0)
-#define mData1(d) float[3](0, d, 0)
-#define mData2(d) float[3](0, 0, d)
-#define mNoData() float[3](0, 0, 0)
+#define mData(d0, d1) float[2](d0, d1)
+#define mData0(d) float[2](d, 0)
+#define mData1(d) float[2](0, d)
+#define mNoData() float[2](0, 0)
 
 #define diffuseRoughness(m) m.data[0]
 #define pbrFuzz(m) m.data[0]              
 #define pbrMetallic(m) m.data[1]
 #define emitIntensity(m) m.data[0]          
 #define glassIndex(m) m.data[1]
-#define absorptionFactor(m) m.data[2]
+#define absorptionFactor(m) m.data[0]
 
 #define MAT_DIFF 0
 #define MAT_METAL 1
@@ -421,8 +419,8 @@ void main()
         Ray r = fovRay(pos + AAjitter, ray, seed);
 
         vec4 result = vec4(0);
-        tracePath(seed, r, result, normal, albedo, color, depth);
-        radiance += max(result, vec4(0));
+        //tracePath(seed, r, result, normal, albedo, color, depth);
+        radiance += max(rayColor(seed, r), vec4(0));
     }
 
     vec4 finalResult = radiance + max(frameCount, 0) * texture(screenTex, uv);
@@ -431,6 +429,4 @@ void main()
     NormalOut = normal;
     AlbedoOut = albedo;
     ColorOut = color;
-    depth = clamp(depth / 1e2, 0.0, 1.0);
-    DepthOut = vec4(depth);
 }

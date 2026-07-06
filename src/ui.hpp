@@ -30,7 +30,6 @@ class UI {
         // Stats
         void renderStats(int frameAccumulator);
         float m_lastTime = 0.0f;
-        int m_lastFrameAcc = 0;
         
         bool m_popupOpened = false;
         void renderToolTip(const string& tip) const;

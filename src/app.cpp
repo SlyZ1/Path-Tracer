@@ -11,7 +11,7 @@ void framebuffer_size_callback(GLFWwindow*, int width, int height)
     glViewport(0, 0, width, height);
 }
 
-void App::init(int width, int height, const char *name){
+void App::init(int width, int height, const char *name, bool headless){
     if (!glfwInit())
     {
         cerr << "Failed to initialize GLFW" << endl;
@@ -27,6 +27,7 @@ void App::init(int width, int height, const char *name){
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     
+    if (headless) glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     m_window = glfwCreateWindow(width, height, "ZMMR", NULL, NULL);
     Window = m_window;
     glfwSetWindowTitle(m_window, name);
@@ -55,6 +56,8 @@ void App::init(int width, int height, const char *name){
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(m_window, true);
     ImGui_ImplOpenGL3_Init("#version 430");
+
+    if (headless) glfwSwapInterval(0);
 }
 
 string App::saveFileDialog(bool& cancel, const string& defaultName){
@@ -142,7 +145,6 @@ void App::startFrame(unsigned int frameCount){
     bool qPressedOnce = keyPressedOnce(GLFW_KEY_A, frameCount);
     if(altPressed && qPressedOnce)
         glfwSetWindowShouldClose(m_window, true);
-    glClear(GL_COLOR_BUFFER_BIT);
 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();

@@ -119,9 +119,9 @@ void genTextures(unsigned int width, unsigned int height){
     renderer->setRenderingTextures(textures, texturesNames);
 }
 
-void init(){
+void init(bool headless = false){
     app = make_shared<App>();
-    app->init(1600, 900, "Basic Raytracer");
+    app->init(1600, 900, "Basic Raytracer", headless);
     app->setMousePos(app->width() / 2.0f, app->height() / 2.0f);
     app->toggleCursor(false);
     renderer = make_shared<Renderer>(app);
@@ -162,7 +162,7 @@ void init(){
     scene = Scene::defaultScene(app, camera, resetFrame);
     animator = make_shared<Animator>(renderer, scene, resetFrame);
     ui = make_shared<UI>(app, renderer, animator, scene, camera, resetFrame);
-    //denoiser->init(albedoTexture, colorTexture, normalTexture, denoisedTexture);
+    // denoiser->init(albedoTexture, colorTexture, normalTexture, denoisedTexture);
 
     cout << "Program started." << endl;
 }
@@ -192,13 +192,15 @@ void render(){
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, normalTexture, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, albedoTexture, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, colorTexture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, depthTexture, 0);
     GLenum drawBuffers[] = {
         GL_COLOR_ATTACHMENT0,
         GL_COLOR_ATTACHMENT1,
         GL_COLOR_ATTACHMENT2,
-        GL_COLOR_ATTACHMENT3
+        GL_COLOR_ATTACHMENT3,
+        GL_COLOR_ATTACHMENT4,
     };
-    glDrawBuffers(4, drawBuffers);
+    glDrawBuffers(5, drawBuffers);
     rayTracingShader.use();
     
     ui->updateGPU();
@@ -281,7 +283,7 @@ void inputs(){
         newObj.type = PrimType::SPHERE;
         newObj.pos = glm::vec3(rand() / (float)RAND_MAX * 10, 1, rand() / (float)RAND_MAX * 10);
         newObj.scale = rand() / (float)RAND_MAX + 0.5f;
-        newObj.mat = Material::glassMaterial(glm::vec3(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX, rand() / (float)RAND_MAX), rand() / (float)RAND_MAX*2 + 1);
+        newObj.mat = Material::glassMaterial(glm::vec3(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX, rand() / (float)RAND_MAX), 0.0f, rand() / (float)RAND_MAX*2 + 1, 0.0f);
         scene->addObject(newObj);
     }
 
@@ -342,21 +344,29 @@ void end(){
     app->terminate();
 }
 
-int main(){
-    init();
+int main(int argc, char* argv[]){
+    bool headless = false;
+    for (int i = 0; i < argc; i++) {
+        if (string(argv[i]) == "headless") headless = true;
+    }
+    init(headless);
     while(!app->shouldClose())
     {
         app->startFrame(frameCount);
-        handleCamera();
-        ui->render(frameAccumulator);
+        if (!headless){
+            handleCamera();
+            ui->render(frameAccumulator);
+        } 
         render();
-        inputs();
-        animator->animationProcess();
-        renderer->renderingProcess(frameAccumulator);
+        if (!headless){
+            inputs();
+            animator->animationProcess();
+            renderer->renderingProcess(frameAccumulator);
+        }
         
         frameAccumulator += samples;
         frameCount++;
-        dynamicResolution();
+        if (!headless) dynamicResolution();
         app->endFrame();
     }
     end();
