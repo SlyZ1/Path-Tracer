@@ -1,5 +1,4 @@
 #version 430 core
-layout(local_size_x = 16, local_size_y = 16) in;
 
 struct Camera {
     vec3 pos;
@@ -94,7 +93,6 @@ layout(std430, binding = 3) buffer LightIndicesBuffer {
 };
 uniform int numLights;
 
-layout(rgba32f, binding = 0) writeonly uniform image2D outputImage;
 layout(rgba32f, binding = 1) writeonly uniform image2D normalImage;
 layout(rgba32f, binding = 2) writeonly uniform image2D albedoImage;
 layout(rgba32f, binding = 3) writeonly uniform image2D colorImage;
@@ -122,6 +120,12 @@ uniform int frameCount;
 uniform int samples;
 uniform vec2 winSize;
 uniform int maxBounces;
+
+layout (location = 0) out vec4 FragColor;
+layout (location = 1) out vec4 NormalOut;
+layout (location = 2) out vec4 AlbedoOut;
+layout (location = 3) out vec4 ColorOut;
+in vec4 vClipPos;
 
 //#define SAMPLES 1
 #define EPS 1e-4
@@ -377,20 +381,30 @@ void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out 
     }
 }
 
+vec4 rayColor(in out uint seed, Ray ray){
+    Ray tracedRay = ray;
+    for (int i = 0; i < maxBounces; i++){
+
+        Hit hit = rayIntersection(tracedRay, false);
+        //if (hit.t > 0) tracedRay.throughput *= exp(-hit.t * 0.015);
+        computeLighting(hit, tracedRay, seed);
+
+        if (hit.t < 0){
+            if (hit.t > -2) tracedRay.radiance += tracedRay.throughput * sky(tracedRay.dir);
+            return vec4(tracedRay.radiance, 1);
+        }// Cas ou on tombe sur une light ou sur rien
+    }
+
+    return vec4(0);
+}
+
 void main()
 {
-    uint screenX = gl_GlobalInvocationID.x;
-    uint screenY = gl_GlobalInvocationID.y;
-    if (screenX >= texSize.x || screenY >= texSize.y) return;
-    vec2 fragCoord = vec2(screenX, screenY) + vec2(0.5);
-    vec2 clipPos = (fragCoord / texSize - vec2(0.5)) * 2;
-
     float resolutionFactor = winSize.x / texSize.x;
-    resolutionFactor = 1;
-    uint seed = initSeed(uvec2(fragCoord * resolutionFactor), frameCount);
-    vec2 pos = ratio(clipPos) * resolutionFactor + ratio(vec2(1)) * (resolutionFactor - 1);
-    vec2 offset = resolutionFactor * vec2(rand(seed), rand(seed)) / texSize;
-    vec2 uv = (clipPos + vec2(1)) * 0.5;
+    uint seed = initSeed(uvec2(gl_FragCoord.xy * resolutionFactor), frameCount);
+    vec2 pos = ratio(vClipPos.xy) * resolutionFactor + ratio(vec2(1)) * (resolutionFactor - 1);
+    vec2 offset = resolutionFactor * vec2(rand(seed), rand(seed)) / winSize;
+    vec2 uv = (vClipPos.xy + vec2(1)) * 0.5;
 
     Ray ray = Ray(
         camera.pos, 
@@ -407,18 +421,17 @@ void main()
     float depth = 0;
     for (int i = 0; i < samples; i++) {
         vec2 AAjitter = vec2(rand(seed), rand(seed)) * 2 / winSize;
-        Ray r = fovRay(pos, ray, seed);
+        Ray r = fovRay(pos + AAjitter, ray, seed);
 
         vec4 result = vec4(0);
-        tracePath(seed, r, result, normal, albedo, color, depth);
-        radiance += max(result, vec4(0));
+        //tracePath(seed, r, result, normal, albedo, color, depth);
+        radiance += max(rayColor(seed, r), vec4(0));
     }
 
     vec4 finalResult = radiance + max(frameCount, 0) * texture(screenTex, uv);
     finalResult /= frameCount + samples;
-    imageStore(outputImage, ivec2(fragCoord - vec2(0.5)), finalResult);
-    imageStore(normalImage, ivec2(fragCoord - vec2(0.5)), normal);
-    imageStore(albedoImage, ivec2(fragCoord - vec2(0.5)), albedo);
-    imageStore(colorImage, ivec2(fragCoord - vec2(0.5)), color);
-    imageStore(depthImage, ivec2(fragCoord - vec2(0.5)), vec4(depth / 1e2));
+    FragColor = finalResult;
+    NormalOut = normal;
+    AlbedoOut = albedo;
+    ColorOut = color;
 }

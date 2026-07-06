@@ -77,7 +77,7 @@ Hit triangleIntersect(Triangle tri, Ray ray, bool isSmooth, Mat mat){
         normal = (tri.n0 + tri.n1 + tri.n2) / 3.0;
     }
     bool isInside = dot(normal, ray.dir) > 0;
-    if (isInside && mat.type != MAT_GLASS) return emptyHit;
+    //if (isInside && mat.type != MAT_GLASS) return emptyHit;
 
     return Hit(t, normal, mat, isInside);
 }
@@ -118,7 +118,7 @@ Triangle scaleTri(Triangle tri, float scale){
 Hit bvhIntersect(inout Ray ray, MeshInfos info, bool isShadow)
 {
     //ray.origin -= modelPos;
-    const int STACK_SIZE = 16;
+    const int STACK_SIZE = 24;
 
     int stack[STACK_SIZE];
     int stackPtr = 0;

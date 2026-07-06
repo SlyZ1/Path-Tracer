@@ -17,7 +17,7 @@ using namespace std;
 
 #define SAMPLES 5
 
-ShaderProgram rayComputeShader = {};
+ShaderProgram rayTracingShader = {};
 ShaderProgram accumulationShader = {};
 
 GLuint VBO, VAO, EBO = 0;
@@ -133,9 +133,10 @@ void init(){
     accumulationShader.load(GL_FRAGMENT_SHADER, "src/shaders/screenFrag.glsl");
     accumulationShader.link();
 
-    rayComputeShader.create();
-    rayComputeShader.load(GL_COMPUTE_SHADER, "src/shaders/ray.glsl");
-    rayComputeShader.link();
+    rayTracingShader.create();
+    rayTracingShader.load(GL_VERTEX_SHADER, "src/shaders/vertex.glsl");
+    rayTracingShader.load(GL_FRAGMENT_SHADER, "src/shaders/ray.glsl");
+    rayTracingShader.link();
     
     vector<float> vertices = {
         1.f,  1.f, 0.0f,
@@ -150,7 +151,7 @@ void init(){
     tie(VBO, VAO, EBO) = ShaderProgram::addData(vertices, indices);
     ShaderProgram::linkData(3, sizeof(float), 0);
     
-    rayComputeShader.use();
+    rayTracingShader.use();
     glUniform2f(ShaderProgram::getVarLoc("winSize"), (float)app->width(), (float)app->height());
     
     glGenFramebuffers(1, &FBO);
@@ -186,7 +187,19 @@ void handleCamera(){
 
 void render(){
     //Current frame
-    rayComputeShader.use();
+    glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, normalTexture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, albedoTexture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, colorTexture, 0);
+    GLenum drawBuffers[] = {
+        GL_COLOR_ATTACHMENT0,
+        GL_COLOR_ATTACHMENT1,
+        GL_COLOR_ATTACHMENT2,
+        GL_COLOR_ATTACHMENT3
+    };
+    glDrawBuffers(4, drawBuffers);
+    rayTracingShader.use();
     
     ui->updateGPU();
     scene->updateGPU();
@@ -194,27 +207,15 @@ void render(){
     
     glUniform2f(ShaderProgram::getVarLoc("texSize"), (float)texWidth, (float)texHeight);
 
-    glBindImageTexture(0, texture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-    glBindImageTexture(1, normalTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-    glBindImageTexture(2, albedoTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-    glBindImageTexture(3, colorTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-    glBindImageTexture(4, depthTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, oldTexture);
     glUniform1i(ShaderProgram::getVarLoc("screenTex"), 0);
 
     glUniform1i(ShaderProgram::getVarLoc("frameCount"), frameAccumulator);
     glUniform1i(ShaderProgram::getVarLoc("samples"), samples);
-    
-    rayComputeShader.dispatch((texWidth + 15) / 16, (texHeight + 15) / 16);
-    ShaderProgram::barrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
-    
-    // glBindImageTexture(0, 0, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-    // glBindImageTexture(1, 0, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-    // glBindImageTexture(2, 0, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-    // glBindImageTexture(3, 0, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-    // glBindTexture(GL_TEXTURE_2D, 0);
+
+    glBindVertexArray(VAO);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
     // glFinish();
 
@@ -336,7 +337,7 @@ void end(){
     glDeleteBuffers(1, &VBO);
     glDeleteFramebuffers(1, &FBO);
     accumulationShader.destroy();
-    rayComputeShader.destroy();
+    rayTracingShader.destroy();
     scene->deleteScene();
     app->terminate();
 }
