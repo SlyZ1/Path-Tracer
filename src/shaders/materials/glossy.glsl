@@ -13,12 +13,12 @@ void glossy(inout RaycastData data){
 
     float reflectance = fresnel(cos1, cos2, n);
     if (totalReflection || rand(seed) <= reflectance){
-        data.hit.mat.data = mData(pbrFuzz(hit.mat), 0);
+        data.hit.mat.data = vec4(pbrFuzz(hit.mat), 0.0, 0.0, 0.0);
         data.hit.mat.color = vec3(1);
         metal(data);
     }
     else{
-        data.hit.mat.data = mData(0, 0);
+        data.hit.mat.data = vec4(0.0);
         diffuse(data);
     }
 }

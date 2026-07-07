@@ -1,108 +1,186 @@
-float p_GGX_refract(vec3 wn, vec3 wm, vec3 wi, vec3 wo, float alpha, float n){
-    float IdotM = dot(wi, wm);
-    float OdotM = dot(wo, wm);
-    float NdotM = max(EPS, dot(wn, wm));
-    float D = DGTR(alpha * alpha, NdotM);
+float p_GGX_refract(vec3 N, vec3 H, vec3 L, vec3 V, float alpha, float n){
+    float HdotL = dot(H, L);
+    float HdotV = dot(H, V);
+    float NdotV = dot(N, V);
+    float NdotH = max(EPS, dot(N, H));
+    float D = DVGTR(alpha * alpha, HdotV, NdotV, NdotH);
     
-    float denom = IdotM + OdotM / n;
-    return D * NdotM * abs(OdotM) / (denom * denom);
+    float denom = HdotL + HdotV / n;
+    return D * abs(HdotV) / (denom * denom);
 }
 
-float cookTorranceDielectrics(vec3 wn, vec3 wo, vec3 wm, vec3 wi, float alpha, float n){
-    float IdotM = dot(wi, wm);
-    float OdotM = dot(wo, wm);
-    float cosI = dot(wi, wn);
-    float cosO = dot(wo, wn);
+float cookTorranceReflectDielectric(vec3 N, vec3 V, vec3 L, float alpha){
     float a2 = alpha * alpha;
+    vec3 H = normalize(L + V);
+    float NdotL = dot(N, L);
+    float NdotV = dot(N, V);
+    float HdotL = dot(H, L);
+    float HdotV = dot(H, V);
+    float NdotH = max(dot(N, H), 0.0);
 
-    float NdotM = max(dot(wn, wm), 0.0);
-    float D = DGTR(a2, NdotM);
-    float G = G1GTR(a2, abs(cosO)) * G1GTR(a2, abs(cosI));
+    float D = DGTR(a2, NdotH);
+    float G = G1GTR(a2, HdotV, NdotV) * G1GTR(a2, HdotL, NdotL);
 
-    float denom = IdotM + OdotM / n;
+    return D * G / max(4 * NdotV * NdotL, PROBA_EPS);
+}
+
+float cookTorranceRefractDielectric(vec3 N, vec3 V, vec3 L, float alpha, float n){
+    float a2 = alpha * alpha;
+    vec3 H = normalize(L + V);
+    float NdotL = dot(N, L);
+    float NdotV = dot(N, V);
+    float HdotL = dot(H, L);
+    float HdotV = dot(H, V);
+    float NdotH = max(dot(N, H), 0.0);
+
+    float D = DGTR(a2, NdotH);
+    float G = G1GTR(a2, HdotV, NdotV) * G1GTR(a2, HdotL, NdotL);
+    float denom = (HdotL + HdotV / n);
     float left = D * G / (denom * denom);
 
-    float right = abs(IdotM) * abs(OdotM) / (abs(cosI) * abs(cosO));
+    float right = abs(HdotL) * abs(HdotV) / abs(NdotL) / abs(NdotV);
 
     return left * right;
+}
+
+float weightVNDFRefractDielectric(vec3 N, vec3 H, vec3 L, float alpha){
+    float NdotL = dot(N, L);
+    float HdotL = dot(H, L);
+    float a2 = alpha*alpha;
+
+    float G1_L = G1GTR(a2, HdotL, NdotL);
+
+    return G1_L;
+}
+
+float weightVNDFReflectDielectric(vec3 N, vec3 V, vec3 L, float alpha){
+    vec3 H = normalize(V + L);
+    float NdotL = dot(N, L);
+    float HdotL = dot(H, L);
+    float a2 = alpha*alpha;
+
+    float G1_L = G1GTR(a2, HdotL, NdotL);
+
+    return G1_L;
 }
 
 void glass(inout RaycastData data){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
-
-    if (hit.inside){
-        vec3 absorption = exp(-(vec3(1) - hit.mat.color) * absorptionFactor(hit.mat) * hit.t); // Beer-Lambert
-        ray.throughput *= absorption;
-    }
-
     float n = 1 / glassIndex(hit.mat);
-    vec3 normal = hit.normal;
+    vec3 N = hit.normal;
     if (hit.inside){
         n = 1 / n;
-        normal *= -1;
+        N *= -1;
+    }
+
+    Primitive light;
+    if (numLights > 0)
+        light = primitives[lightIndicies[int(rand(seed) * numLights)]];
+    updateData(data);
+    vec4 lightInfos = sampleLight(data, light);
+    unwrapData(data);
+    vec3 lightDir = lightInfos.xyz;
+    float pdirect = lightInfos.w;
+
+    //Scatter
+    float sigma_s = scatteringFactor(hit.mat);
+    float sigma_a = absorptionFactor(hit.mat);
+    if (hit.inside && sigma_s > EPS){
+        float scatterDistance = -log(1 - rand(seed) * (1 - EPS)) / sigma_s;
+        if (scatterDistance < hit.t - EPS){
+            ray.origin += ray.dir * scatterDistance;
+            ray.dir = randomOnUnitSphere(seed);
+            vec3 absorption = exp(-(vec3(1) - hit.mat.color) * sigma_a * scatterDistance); // Beer-Lambert
+            ray.throughput *= absorption;
+            updateData(data);
+            russianRoulette(data);
+            return;
+        }
+    }
+
+    if (hit.inside){
+        vec3 absorption = exp(-(vec3(1) - hit.mat.color) * sigma_a * hit.t); // Beer-Lambert
+        ray.throughput *= absorption;
     }
     
     float fuzz = pbrFuzz(hit.mat);
     float alpha = fuzz * fuzz;
-    vec3 wm = randomGGXHemisphere(seed, normal, alpha);
-    vec3 wo = -ray.dir;
+    vec3 V = -ray.dir;
+    vec3 H = randomGGX_VNDFHemisphere(seed, V, N, alpha);
 
-    vec3 wi = refract(ray.dir, wm, n);
-    float cos1 = dot(wm, wo);
-    float cos2 = dot(-wm, wi);
+    vec3 L = refract(ray.dir, H, n);
+    float cos1 = dot(H, V);
+    float cos2 = dot(-H, L);
     bool totalReflection = n * n * (1 - cos1 * cos1) > 1;
 
     float reflectance = fresnel(cos1, cos2, n);
     reflectance = min(reflectance, 0.995);
     if (totalReflection || rand(seed) < reflectance){
-        hit.mat.data = mData(fuzz, hit.mat.data[1]);
-        updateData(data);
-        metal(data);
-        unwrapData(data);
-        if (fuzz > EPS && n - 1 > EPS) ray.throughput /= max(reflectance, EPS);
-    }
-    else{
-        ray.origin += hit.t * ray.dir - 0.001 * normal;
-        ray.dir = wi;
-
-        if (hit.inside && fuzz > EPS && n - 1 > EPS){
-            Primitive light;
-            if (numLights > 0)
-                light = primitives[lightIndicies[int(rand(seed) * numLights)]];
+        ray.origin += hit.t * ray.dir + 0.001 * N;
+        if (fuzz <= EPS || abs(n - 1) < EPS){
+            vec3 newDir = reflect(ray.dir, N);
+            ray.dir = newDir;
+            ray.pbsdf = -1;
             updateData(data);
-            vec4 lightInfos = sampleLight(data, light);
-            unwrapData(data);
-            vec3 lightDir = lightInfos.xyz;
-            float pdirect = lightInfos.w;
+            return;
+        }
 
+        if (!hit.inside){
             Ray lightRay = ray;
             lightRay.dir = lightDir;
             if (shadow_hit(light, lightRay) > 0){
-                vec3 wm_light = normalize(lightDir + wo / n);
-                if (dot(wo, wm_light) * dot(lightDir, wm_light) < 0.0){
-                    float pGGX = p_GGX_refract(normal, wm_light, lightDir, wo, alpha, n);
+                float pGGX = p_VNDF_reflect(N, lightDir, V, alpha);
+                float weight = computeWeight(pdirect, pGGX);
+
+                float f_r = cookTorranceReflectDielectric(N, V, lightDir, alpha);
+                float NdotL = max(dot(N, lightDir), 0.0);
+                vec3 Le = light.mat.color * emitIntensity(light.mat);
+
+                ray.radiance += clamp(ray.throughput * f_r * weight * NdotL / (pdirect), 0.0, 1.3) * Le;
+            }
+        }
+
+        // BSDF sampling
+        vec3 L = reflect(-V, H);
+        ray.throughput *= weightVNDFReflectDielectric(N, V, L, alpha);
+        ray.dir = L;
+        ray.pbsdf = -1;
+        if (!hit.inside) ray.pbsdf = p_VNDF_reflect(N, L, V, alpha);
+    }
+    else{
+        ray.origin += hit.t * ray.dir - 0.001 * N;
+        if (fuzz <= EPS || abs(n - 1) <= EPS){
+            ray.dir = L;
+            ray.pbsdf = -1;
+            updateData(data);
+            return;
+        }
+
+        if (hit.inside){
+            Ray lightRay = ray;
+            lightRay.dir = lightDir;
+            if (shadow_hit(light, lightRay) > 0){
+                vec3 H_light = normalize(lightDir + V / n);
+                if (dot(V, H_light) * dot(lightDir, H_light) < 0.0){
+                    float pGGX = p_GGX_refract(N, H_light, lightDir, V, alpha, n);
                     float weight = computeWeight(pdirect, pGGX);
 
-                    float f_r = cookTorranceDielectrics(normal, wo, wm_light, lightDir, alpha, n);
-                    float NdotL = abs(dot(lightDir, normal));
+                    float f_r = cookTorranceRefractDielectric(N, V, lightDir, alpha, n);
+                    float NdotL = abs(dot(lightDir, N));
                     vec3 Le = light.mat.color * emitIntensity(light.mat);
 
-                    ray.radiance += clamp(ray.throughput * f_r * weight * NdotL * n * n / (pdirect * (1 - reflectance)), 0.0, 1.3) * Le;
+                    ray.radiance += clamp(ray.throughput * f_r * weight * NdotL / pdirect, 0.0, 1.3) * Le;
                 }
             }
         }
         
-        if (fuzz > EPS && n - 1 > EPS){
-            float pGGX = p_GGX_refract(normal, wm, wi, wo, alpha, n);
-            float f_r = cookTorranceDielectrics(normal, wo, wm, wi, alpha, n);
-            float NdotL = abs(dot(wi, normal));
-            ray.throughput *= f_r * NdotL * n * n / (pGGX * (1 - reflectance));
-            ray.pbsdf = pGGX;
-        }
+        ray.throughput *= weightVNDFRefractDielectric(N, H, L, alpha);
+        ray.dir = L;
+        ray.pbsdf = -1;
+        if (hit.inside) ray.pbsdf = p_GGX_refract(N, H, L, V, alpha, n);
     }
 
-    if (fuzz <= EPS) ray.pbsdf = -1;
-
     updateData(data);
+    if (fuzz > EPS && abs(n - 1) > EPS) russianRoulette(data);
 }

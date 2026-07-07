@@ -4,4 +4,4 @@ Sampling of GGX : https://www.cs.cornell.edu/~srm/publications/EGSR07-btdf.pdf
 Rough Dielectrics : https://pbr-book.org/4ed/Reflection_Models/Rough_Dielectric_BSDF 
 SAH : https://alexsabourindev.wordpress.com/2020/08/31/diary-of-a-path-tracer-bvh-construction-using-sah/
 
-VNDF sampling : https://gpuopen.com/download/Bounded_VNDF_Sampling_for_Smith-GGX_Reflections.pdf
+VNDF sampling : https://www.jcgt.org/published/0007/04/01/paper.pdf (Sampling the GGX Distribution of Visible Normals)

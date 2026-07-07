@@ -14,12 +14,16 @@ enum MatType : int {
 struct Material {
     glm::vec3 color;
     MatType type;
-    glm::vec3 data;
-    float pad;
+    glm::vec4 data;
 
     static Material diffuseMaterial(glm::vec3 color, float roughness);
     static Material metalMaterial(glm::vec3 color, float fuzziness);
-    static Material glassMaterial(glm::vec3 color, float fuzziness, float refractionIndex, float absorptionFactor);
+    static Material glassMaterial(
+        glm::vec3 color, 
+        float fuzziness, 
+        float refractionIndex = 1.3f, 
+        float absorptionFactor = 1.0f, 
+        float scatteringFactor = 0.0f);
     static Material glossyMaterial(glm::vec3 color, float fuzziness, float metallic);
     static Material emitMaterial(glm::vec3 color, float intensity);
 
@@ -27,8 +31,7 @@ struct Material {
         return {
             color + other.color,
             type,
-            data + other.data,
-            pad
+            data + other.data
         };
     }
 
@@ -36,8 +39,7 @@ struct Material {
         return {
             color * t,
             type,
-            data * t,
-            pad
+            data * t
         };
     }
 };

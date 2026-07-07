@@ -133,9 +133,9 @@ void UI::renderPopupData(Object* selectedObject){
             break;
         case MatType::GLASS:
             Label("Fuzziness", "Controls how unpolished the glass will be.\nUsed in the Cook-Torrance model with the GGX microfacets distribution.");
-            selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.8f);
-            if (ImGui::SliderFloat("##Fuzziness", &selectedObject->mat.data.x, 0.0f, 0.8f)){
-                selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.8f);
+            selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.5f);
+            if (ImGui::SliderFloat("##Fuzziness", &selectedObject->mat.data.x, 0.0f, 0.5f)){
+                selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.5f);
                 m_scene->updateScene();
             }
             Label("Refraction Index", "Refraction index of the dielectric. If 1.3 <= n <= 2.3, Schlick-Fresnel's approximation is used.");
@@ -148,6 +148,12 @@ void UI::renderPopupData(Object* selectedObject){
             selectedObject->mat.data.z = glm::clamp(selectedObject->mat.data.z, 0.0f, 10.0f);
             if (ImGui::SliderFloat("##Absorption Factor", &selectedObject->mat.data.z, 0.0f, 10.0f)){
                 selectedObject->mat.data.z = glm::clamp(selectedObject->mat.data.z, 0.0f, 10.0f);
+                m_scene->updateScene();
+            }
+            Label("Scattering Factor", "How much light is scattered in the dielectric.");
+            selectedObject->mat.data.w = glm::clamp(selectedObject->mat.data.w, 0.0f, 2.0f);
+            if (ImGui::SliderFloat("##Scattering Factor", &selectedObject->mat.data.w, 0.0f, 2.0f)){
+                selectedObject->mat.data.w = glm::clamp(selectedObject->mat.data.w, 0.0f, 2.0f);
                 m_scene->updateScene();
             }
             break;
@@ -194,6 +200,11 @@ void UI::renderPopup(){
         Label("Scale");
         if (ImGui::DragFloat("##Scale", &selectedObject->scale, 0.001f))
             m_scene->updateScene();
+        
+        Label("Shape Type");
+        if (ImGui::Combo("##Shape Type", (int*)(&selectedObject->type), Scene::primLabels, IM_ARRAYSIZE(Scene::primLabels))){
+            m_scene->updateScene();
+        }
 
         if (selectedObject->type == PrimType::MESH_){
             Label("Model");

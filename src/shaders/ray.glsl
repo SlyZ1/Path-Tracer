@@ -8,8 +8,7 @@ struct Camera {
 struct Mat {
     vec3 color;
     int type;
-    float[3] data;
-    float pad;
+    vec4 data;
 };
 
 struct Primitive {
@@ -132,18 +131,13 @@ in vec4 vClipPos;
 #define updateData(data) data = RaycastData(hit, ray, seed)
 #define unwrapData(data) ray = data.ray; hit = data.hit; seed = data.seed
 
-#define mData(d0, d1) float[3](d0, d1, 0.0)
-#define mData0(d) float[3](d, 0, 0)
-#define mData1(d) float[3](0, d, 0)
-#define mData2(d) float[3](0, 0, d)
-#define mNoData() float[3](0, 0, 0)
-
-#define diffuseRoughness(m) m.data[0]
-#define pbrFuzz(m) m.data[0]              
-#define pbrMetallic(m) m.data[1]
-#define emitIntensity(m) m.data[0]          
-#define glassIndex(m) m.data[1]
-#define absorptionFactor(m) m.data[2]
+#define diffuseRoughness(m) m.data.x
+#define pbrFuzz(m) m.data.x
+#define pbrMetallic(m) m.data.y
+#define emitIntensity(m) m.data.x          
+#define glassIndex(m) m.data.y
+#define absorptionFactor(m) m.data.z
+#define scatteringFactor(m) m.data.w
 
 #define MAT_DIFF 0
 #define MAT_METAL 1

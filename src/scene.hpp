@@ -28,7 +28,7 @@ enum PrimType : int {
     SPHERE = 0,
     PLANE = 1,
     CUBE = 2,
-    MESH_ = 3
+    MESH_ = 3,
 };
 
 struct PrimitiveObject {
@@ -146,6 +146,8 @@ public:
     static SceneState stateFromJson(const string& path);
     static void stateToJson(SceneState sceneState, const string& path);
     static shared_ptr<Object> getObjectFromId(SceneState sceneState, unsigned int ID);
+
+    static const char* primLabels[4];
 
     void loadFromState(const SceneState& sceneState, bool verbose = true);
     SceneState getState();

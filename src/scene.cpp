@@ -6,6 +6,13 @@ using namespace glm;
 glm::vec3 Scene::m_cameraDirection = glm::vec3(0, 0, -1);
 glm::vec3 Scene::m_cameraPosition  = glm::vec3(0, 0, 0);
 
+const char* Scene::primLabels[4] = {
+  "Sphere",
+  "Plane",
+  "Cube",
+  "Mesh",
+};
+
 shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, function<void()> resetFrame){
     shared_ptr<Scene> scene = make_shared<Scene>(app, camera, resetFrame);
     scene->initGPU();

@@ -94,3 +94,30 @@ vec3 randomGGXHemisphere(inout uint seed, vec3 normal, float alpha){
 
     return H;
 }
+
+vec3 randomGGX_VNDFHemisphere(inout uint seed, vec3 wo, vec3 wn, float alpha){
+    vec3 T, B;
+    createTangentBasis(wn, T, B);
+    vec3 wo_local = vec3(dot(wo, T), dot(wo, B), dot(wo, wn));
+    
+    vec3 wo_t = normalize(vec3(alpha * wo_local.x, alpha * wo_local.y, wo_local.z));
+    
+    float lengthXY = length(vec2(wo_t.x, wo_t.y));
+    vec3 T1 = lengthXY > EPS ? vec3(-wo_t.y, wo_t.x, 0.0) / lengthXY : vec3(1.0, 0.0, 0.0);
+    vec3 T2 = cross(wo_t, T1);
+
+    float x1 = rand(seed);
+    float x2 = rand(seed);
+    float r = sqrt(x1);
+    float phi = 2.0 * PI * x2;
+    float t1 = r * cos(phi);
+    float t2 = r * sin(phi);
+    float s = 0.5 * (1.0 + wo_t.z);
+    t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;
+
+    vec3 wm_t = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1*t1 - t2*t2)) * wo_t;
+    vec3 wm_local = normalize(vec3(alpha * wm_t.x, alpha * wm_t.y, max(0.0, wm_t.z)));
+    
+    vec3 wm = normalize(wm_local.x * T + wm_local.y * B + wm_local.z * wn);
+    return wm;
+}
