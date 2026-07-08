@@ -131,6 +131,7 @@ private:
     
     float intersectSphere(const Ray& ray, const Object& sphere);
     float intersectPlane(const Ray& ray, const Object& plane);
+    float intersectCube(const Ray& ray, const Object& cube);
     float intersectAABB(const Ray& ray, const AABB& aabb, float tMin, float tMax);
     float intersectTriangle(const Ray& ray, const Triangle& triangle);
     float intersectMesh(const Ray& ray, const Object& obj);

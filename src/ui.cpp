@@ -207,7 +207,7 @@ void UI::renderPopup(){
         }
 
         if (selectedObject->type == PrimType::MESH_){
-            Label("Model");
+            Label("Mesh Used");
             vector<const char*> meshes = m_scene->getMeshNames();
             if (ImGui::Combo("##Model", &selectedObject->meshIndex, meshes.data(), (int)meshes.size())){
                 m_scene->updateScene();

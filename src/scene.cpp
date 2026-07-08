@@ -220,6 +220,23 @@ float Scene::intersectPlane(const Ray& ray, const Object& plane){
     return t;
 }
 
+float Scene::intersectCube(const Ray& ray, const Object& cube){
+    vec3 minP = cube.pos - vec3(1.0f) * cube.scale;
+    vec3 maxP = cube.pos + vec3(1.0f) * cube.scale;
+
+    vec3 t0 = (minP - ray.origin) / ray.direction;
+    vec3 t1 = (maxP - ray.origin) / ray.direction;
+
+    vec3 tNear = min(t0, t1);
+    vec3 tFar  = max(t0, t1);
+
+    float tmin = glm::max(glm::max(tNear.x, tNear.y), glm::max(tNear.z, 0.0f));
+    float tmax = glm::min(glm::min(tFar.x,  tFar.y),  glm::min(tFar.z,  1e6f));
+
+    if (tmax < tmin) return -1;
+    return tmin;
+}
+
 float Scene::intersectAABB(const Ray& invRay, const AABB& aabb, float tMin, float tMax){
     vec3 t0 = (vec3(aabb.min) - invRay.origin) * invRay.direction;
     vec3 t1 = (vec3(aabb.max) - invRay.origin) * invRay.direction;
@@ -332,6 +349,9 @@ int Scene::intersectObject(const Ray& ray){
                 break;
             case PrimType::PLANE:
                 dist = intersectPlane(ray, obj);
+                break;
+            case PrimType::CUBE:
+                dist = intersectCube(ray, obj);
                 break;
             case PrimType::MESH_:
                 dist = intersectMesh(ray, obj);
@@ -449,9 +469,10 @@ void Scene::updateGPU(){
         triangles.insert(triangles.end(), meshTriangles.begin(), meshTriangles.end());
         nodes.insert(nodes.end(), meshNodes.begin(), meshNodes.end());
     }
-    for (const Object& obj : m_objects){
+    for (Object& obj : m_objects){
         if (obj.type == PrimType::MESH_){
             MeshInfos meshInfo;
+            obj.meshIndex = std::clamp(obj.meshIndex, 0, (int)m_meshes.size() - 1);
             meshInfo.triangleOffset = triangleOffsets[obj.meshIndex];
             meshInfo.nodeOffset = nodeOffsets[obj.meshIndex];
             meshInfo.numberOfNodes = numberOfNodes[obj.meshIndex];

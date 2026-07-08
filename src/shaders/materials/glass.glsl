@@ -84,25 +84,25 @@ void glass(inout RaycastData data){
     float pdirect = lightInfos.w;
 
     //Scatter
-    float sigma_s = scatteringFactor(hit.mat);
-    float sigma_a = absorptionFactor(hit.mat);
-    if (hit.inside && sigma_s > EPS){
-        float scatterDistance = -log(1 - rand(seed) * (1 - EPS)) / sigma_s;
-        if (scatterDistance < hit.t - EPS){
-            ray.origin += ray.dir * scatterDistance;
-            ray.dir = randomOnUnitSphere(seed);
-            vec3 absorption = exp(-(vec3(1) - hit.mat.color) * sigma_a * scatterDistance); // Beer-Lambert
-            ray.throughput *= absorption;
-            updateData(data);
-            russianRoulette(data);
-            return;
-        }
-    }
+    // float sigma_s = scatteringFactor(hit.mat);
+    // float sigma_a = absorptionFactor(hit.mat);
+    // if (hit.inside && sigma_s > EPS){
+    //     float scatterDistance = -log(1 - rand(seed) * (1 - EPS)) / sigma_s;
+    //     if (scatterDistance < hit.t - EPS){
+    //         ray.origin += ray.dir * scatterDistance;
+    //         ray.dir = randomOnUnitSphere(seed);
+    //         vec3 absorption = exp(-(vec3(1) - hit.mat.color) * sigma_a * scatterDistance); // Beer-Lambert
+    //         ray.throughput *= absorption;
+    //         updateData(data);
+    //         russianRoulette(data);
+    //         return;
+    //     }
+    // }
 
-    if (hit.inside){
-        vec3 absorption = exp(-(vec3(1) - hit.mat.color) * sigma_a * hit.t); // Beer-Lambert
-        ray.throughput *= absorption;
-    }
+    // if (hit.inside){
+    //     vec3 absorption = exp(-(vec3(1) - hit.mat.color) * sigma_a * hit.t); // Beer-Lambert
+    //     ray.throughput *= absorption;
+    // }
     
     float fuzz = pbrFuzz(hit.mat);
     float alpha = fuzz * fuzz;

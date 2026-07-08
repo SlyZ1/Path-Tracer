@@ -102,6 +102,48 @@ Hit intersectAABB(Ray invRay, AABB box, float tMin, float tMax)
     return hit;
 }
 
+Hit intersectCube(Primitive cube, Ray ray)
+{
+    Hit hit;
+    hit.t = -1.0f;
+
+    vec3 minP = cube.pos - vec3(1.0) * cube.scale;
+    vec3 maxP = cube.pos + vec3(1.0) * cube.scale;
+    
+    vec3 t0 = (minP - ray.origin) / ray.dir;
+    vec3 t1 = (maxP - ray.origin) / ray.dir;
+
+    vec3 tNear = min(t0, t1);
+    vec3 tFar = max(t0, t1);
+
+    float tmin = max(tNear.x, max(tNear.y, tNear.z));
+    float tmax = min(tFar.x,  min(tFar.y,  tFar.z));
+
+    if (tmax < tmin || tmax < 0.0) return hit;
+
+    bool inside = tmin < 0.0;
+    float t = inside ? tmax : tmin;
+
+    vec3 normal;
+    vec3 hitPoint = ray.origin + ray.dir * t;
+    vec3 center = cube.pos;
+    vec3 d = (hitPoint - center) / cube.scale;
+
+    vec3 absD = abs(d);
+    if (absD.x > absD.y && absD.x > absD.z)
+        normal = vec3(sign(d.x), 0.0, 0.0);
+    else if (absD.y > absD.z)
+        normal = vec3(0.0, sign(d.y), 0.0);
+    else
+        normal = vec3(0.0, 0.0, sign(d.z));
+
+    hit.t = t;
+    hit.mat = cube.mat;
+    hit.normal = normal;
+    hit.inside = inside;
+    return hit;
+}
+
 AABB scaleAABB(AABB box, float scale){
     box.min.xyz *= scale;
     box.max.xyz *= scale;
@@ -186,7 +228,9 @@ Hit bvhIntersect(inout Ray ray, MeshInfos info, bool isShadow)
 
 Hit rayIntersection(inout Ray ray, bool isShadow){
     Hit hit;
-    hit.t = 100000;
+    hit.t = 1e6;
+    Ray invRay = ray;
+    invRay.dir = 1.0 / invRay.dir;
     for(int i = 0; i < numPrimitives; i += 1){
         Primitive prim = primitives[i];
         Hit newHit;
@@ -196,6 +240,9 @@ Hit rayIntersection(inout Ray ray, bool isShadow){
         else if (prim.type == PRIM_PLANE){
             newHit = planeIntersect(prim, ray);
         }
+        else if (prim.type == PRIM_CUBE){
+            newHit = intersectCube(prim, ray);
+        }
         if (newHit.t > 0 && newHit.t < hit.t) hit = newHit;
     }
     for (int j = 0; j < numMeshes; j += 1){
@@ -204,7 +251,7 @@ Hit rayIntersection(inout Ray ray, bool isShadow){
         if (bvhHit.t > 0 && bvhHit.t < hit.t) hit = bvhHit;
     }
 
-    if(hit.t >= 100000) hit.t = -1;
+    if(hit.t >= 1e6) hit.t = -1;
 
     return hit;
 }
