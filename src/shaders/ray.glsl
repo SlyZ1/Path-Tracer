@@ -67,6 +67,7 @@ struct Hit {
     vec3 normal;
     Mat mat;
     bool inside;
+    int primIndex;
 };
 
 
@@ -262,7 +263,6 @@ void emit(inout RaycastData data);
 void volume(inout RaycastData data, inout Hit previousHit);
 #pragma FEND
 
-
 void computeLighting(inout Hit hit, inout Hit previousHit, inout Ray ray, inout uint seed){
     if (hit.t < 0) return;
 
@@ -411,7 +411,8 @@ void main()
         camera.lookDir, 
         vec3(1),
         vec3(0),
-        -1
+        -1,
+        0
     );
 
     vec4 radiance = vec4(0);

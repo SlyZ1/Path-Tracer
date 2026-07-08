@@ -60,6 +60,7 @@ void metal(inout RaycastData data){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
     ray.origin += hit.t * ray.dir + hit.normal * EPS;
+    ray.pbsdf = -1;
     
     if (pbrFuzz(hit.mat) < EPS){
         vec3 newDir = reflect(ray.dir, hit.normal);
@@ -67,15 +68,17 @@ void metal(inout RaycastData data){
         vec3 f_r = schlickFresnel(VdotN, hit.mat.color);
         ray.throughput *= f_r;
         ray.dir = newDir;
-        ray.pbsdf = -1;
         updateData(data);
         return;
     }
 
     // MIS
     Primitive light;
-    if (numLights > 0)
-        light = primitives[lightIndicies[int(rand(seed) * numLights)]];
+    int lightIndex = -1;
+    if (numLights > 0){
+        lightIndex = lightIndicies[int(rand(seed) * numLights)];
+        light = primitives[lightIndex];
+    }
     float fuzz = pbrFuzz(hit.mat);
     float alpha = fuzz * fuzz;
     vec3 V = -ray.dir;

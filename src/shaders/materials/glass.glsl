@@ -75,13 +75,17 @@ void glass(inout RaycastData data){
     }
 
     Primitive light;
-    if (numLights > 0)
-        light = primitives[lightIndicies[int(rand(seed) * numLights)]];
+    int lightIndex = -1;
+    if (numLights > 0){
+        lightIndex = lightIndicies[int(rand(seed) * numLights)];
+        light = primitives[lightIndex];
+    }
     updateData(data);
     vec4 lightInfos = sampleLight(data, light);
     unwrapData(data);
     vec3 lightDir = lightInfos.xyz;
     float pdirect = lightInfos.w;
+    ray.pbsdf = -1;
 
     //Scatter
     // float sigma_s = scatteringFactor(hit.mat);
@@ -121,7 +125,6 @@ void glass(inout RaycastData data){
         if (fuzz <= EPS || abs(n - 1) < EPS){
             vec3 newDir = reflect(ray.dir, N);
             ray.dir = newDir;
-            ray.pbsdf = -1;
             updateData(data);
             return;
         }
@@ -145,14 +148,14 @@ void glass(inout RaycastData data){
         vec3 L = reflect(-V, H);
         ray.throughput *= weightVNDFReflectDielectric(N, V, L, alpha);
         ray.dir = L;
-        ray.pbsdf = -1;
-        if (!hit.inside) ray.pbsdf = p_VNDF_reflect(N, L, V, alpha);
+        if (!hit.inside){
+            ray.pbsdf = p_VNDF_reflect(N, L, V, alpha);
+        }
     }
     else{
         ray.origin += hit.t * ray.dir - 0.001 * N;
         if (fuzz <= EPS || abs(n - 1) <= EPS){
             ray.dir = L;
-            ray.pbsdf = -1;
             updateData(data);
             return;
         }
@@ -177,8 +180,9 @@ void glass(inout RaycastData data){
         
         ray.throughput *= weightVNDFRefractDielectric(N, H, L, alpha);
         ray.dir = L;
-        ray.pbsdf = -1;
-        if (hit.inside) ray.pbsdf = p_GGX_refract(N, H, L, V, alpha, n);
+        if (hit.inside){
+            ray.pbsdf = p_GGX_refract(N, H, L, V, alpha, n);
+        }
     }
 
     updateData(data);

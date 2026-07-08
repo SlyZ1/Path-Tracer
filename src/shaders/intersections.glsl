@@ -23,7 +23,13 @@ Hit sphereIntersect(Primitive sphere, Ray ray){
 
     vec3 pos = ray.origin + t * ray.dir;
     vec3 normal = normalize(pos - sphere.pos);
-    return Hit(t, normal, sphere.mat, inside);
+
+    Hit newHit;
+    newHit.t = t;
+    newHit.normal = normal;
+    newHit.mat = sphere.mat;
+    newHit.inside = inside;
+    return newHit;
 }
 
 Hit planeIntersect(Primitive plane, Ray ray){
@@ -37,10 +43,12 @@ Hit planeIntersect(Primitive plane, Ray ray){
     if (t <= 0 || dot(difference, difference) > 10000) 
         return hit;
 
-    /*if (int((abs(relativePoint.x + 1) * 0.5) + int(abs(relativePoint.z + 1) * 0.5 + 1)) % 2 == 0) 
-        plane.mat = Mat(plane.mat.type, vec3(0.83), mNoData());*/
-
-    return Hit(t, normal, plane.mat, false);
+    Hit newHit;
+    newHit.t = t;
+    newHit.normal = normal;
+    newHit.mat = plane.mat;
+    newHit.inside = false;
+    return newHit;
 }
 
 Hit triangleIntersect(Triangle tri, Ray ray, bool isSmooth, Mat mat){
@@ -78,8 +86,12 @@ Hit triangleIntersect(Triangle tri, Ray ray, bool isSmooth, Mat mat){
     }
     bool isInside = dot(normal, ray.dir) > 0;
     //if (isInside && mat.type != MAT_GLASS) return emptyHit;
-
-    return Hit(t, normal, mat, isInside);
+    Hit newHit;
+    newHit.t = t;
+    newHit.normal = normal;
+    newHit.mat = mat;
+    newHit.inside = isInside;
+    return newHit;
 }
 
 Hit intersectAABB(Ray invRay, AABB box, float tMin, float tMax)
@@ -243,12 +255,18 @@ Hit rayIntersection(inout Ray ray, bool isShadow){
         else if (prim.type == PRIM_CUBE){
             newHit = intersectCube(prim, ray);
         }
-        if (newHit.t > 0 && newHit.t < hit.t) hit = newHit;
+        if (newHit.t > 0 && newHit.t < hit.t){
+            hit = newHit;
+            hit.primIndex = i;
+        }
     }
     for (int j = 0; j < numMeshes; j += 1){
         MeshInfos info = meshInfos[j];
         Hit bvhHit = bvhIntersect(ray, info, isShadow);
-        if (bvhHit.t > 0 && bvhHit.t < hit.t) hit = bvhHit;
+        if (bvhHit.t > 0 && bvhHit.t < hit.t){
+            hit = bvhHit;
+            hit.primIndex = -1;
+        }
     }
 
     if(hit.t >= 1e6) hit.t = -1;

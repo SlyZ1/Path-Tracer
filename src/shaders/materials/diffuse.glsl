@@ -60,8 +60,11 @@ void diffuse(inout RaycastData data){
     
     // MIS
     Primitive light;
-    if (numLights > 0)
-        light = primitives[lightIndicies[int(rand(seed) * numLights)]];
+    int lightIndex = -1;
+    if (numLights > 0){
+        lightIndex = lightIndicies[min(int(rand(seed) * (numLights)), numLights - 1)];
+        light = primitives[lightIndex];
+    }
     float orenNayarRoughness = diffuseRoughness(hit.mat);   
     vec3 viewDir = -ray.dir;
 

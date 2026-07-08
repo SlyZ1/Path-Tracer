@@ -130,12 +130,6 @@ void Scene::loadFromState(const SceneState& sceneState, bool verbose){
 
     deleteScene();
 
-    for (int i = 0; i < (int)sceneState.objectStates.size(); i++){
-        const Object& obj = sceneState.objectStates[i];
-        if (obj.mat.type == MatType::EMIT){
-            m_lightIndices.push_back(i);
-        }
-    }
     m_meshes = meshes;
     m_objects = sceneState.objectStates;
     m_selectedObject = -1;
@@ -384,7 +378,6 @@ void Scene::removeMesh(int index){
 int Scene::addObject(Object& obj){
     obj.ID = m_maxId++;
     int newIndex = (int)m_objects.size();
-    if (obj.mat.type == MatType::EMIT) m_lightIndices.push_back(newIndex);
     m_objects.push_back(obj);
     m_sceneChanged = true;
     m_selectedObject = newIndex;
@@ -401,11 +394,6 @@ void Scene::removeObject(int index){
     if (index < 0 || index >= (int)m_objects.size()) return;
 
     Object obj = m_objects[index];
-    if (obj.mat.type == MatType::EMIT) 
-        m_lightIndices.erase(
-            std::remove(m_lightIndices.begin(), m_lightIndices.end(), index),
-            m_lightIndices.end()
-        );
     m_objects.erase(m_objects.begin() + index);
     m_sceneChanged = true;
     m_selectedObject = -1;
@@ -413,7 +401,6 @@ void Scene::removeObject(int index){
 
 void Scene::copyObject(int index){
     m_copiedObject = index;
-    cout << index << endl;
 }
 
 int Scene::pasteObject(){
@@ -442,6 +429,7 @@ void Scene::updateGPU(){
     vector<MeshInfos> meshInfos;
     vector<Triangle> triangles;
     vector<linBVHNode> nodes;
+    vector<int> lightIndicies;
     vector<int> triangleOffsets;
     vector<int> nodeOffsets;
     vector<int> numberOfNodes;
@@ -489,19 +477,20 @@ void Scene::updateGPU(){
             prim.scale = obj.scale;
             prim.mat = obj.mat;
             prim.type = obj.type;
+            if (prim.mat.type == MatType::EMIT) lightIndicies.push_back((int)primitives.size());
             primitives.push_back(prim);
         }
     }
 
     glUniform1i(ShaderProgram::getVarLoc("numPrimitives"), (int)primitives.size());
-    glUniform1i(ShaderProgram::getVarLoc("numLights"), (int)m_lightIndices.size());
+    glUniform1i(ShaderProgram::getVarLoc("numLights"), (int)lightIndicies.size());
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_sceneBuffer);
     glBufferData(GL_SHADER_STORAGE_BUFFER, (int)primitives.size() * sizeof(PrimitiveObject), primitives.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_sceneBuffer);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_lightIndicesBuffer);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, (int)m_lightIndices.size() * sizeof(int), m_lightIndices.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, (int)lightIndicies.size() * sizeof(int), lightIndicies.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_lightIndicesBuffer);
 
     if (m_numMeshesChanged){
@@ -524,6 +513,5 @@ void Scene::updateGPU(){
 
 void Scene::deleteScene(){
     m_objects.clear();
-    m_lightIndices.clear();
-    m_meshes.clear();
+    m_meshes.clear(); 
 }
