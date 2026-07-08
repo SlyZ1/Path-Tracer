@@ -181,6 +181,8 @@ void Scene::initGPU(){
     glGenBuffers(1, &m_sceneBuffer);
     glDeleteBuffers(1, &m_lightIndicesBuffer);
     glGenBuffers(1, &m_lightIndicesBuffer);
+    glDeleteBuffers(1, &m_volumeIndicesBuffer);
+    glGenBuffers(1, &m_volumeIndicesBuffer);
     glDeleteBuffers(1, &m_meshInfosBuffer);
     glGenBuffers(1, &m_meshInfosBuffer);
     glDeleteBuffers(1, &m_trianglesBuffer);
@@ -425,18 +427,22 @@ void Scene::updateGPU(){
     m_sceneChanged = false;
     m_resetFrame();
 
-    vector<PrimitiveObject> primitives;
-    vector<MeshInfos> meshInfos;
-    vector<Triangle> triangles;
-    vector<linBVHNode> nodes;
-    vector<int> lightIndicies;
-    vector<int> triangleOffsets;
-    vector<int> nodeOffsets;
-    vector<int> numberOfNodes;
+    vector<PrimitiveObject> primitives = {};
+    vector<MeshInfos> meshInfos = {};
+    vector<Triangle> triangles = {};
+    vector<linBVHNode> nodes = {};
+    int numVolumeMeshes = 0;
+    int numVolumePrims = 0;
+    vector<int> volumeIndicies = {};
+    vector<int> lightIndicies = {};
+    vector<int> triangleOffsets = {};
+    vector<int> nodeOffsets = {};
+    vector<int> numberOfNodes = {};
     vector<bool> meshIsUsed = vector<bool>(m_meshes.size(), false);
-    for (const Object& obj : m_objects){
+    for (Object& obj : m_objects){
         if (obj.type != PrimType::MESH_) continue;
-        meshIsUsed[obj.meshIndex] = true;
+        obj.meshIndex = std::clamp(obj.meshIndex, 0, (int)m_meshes.size() - 1);
+        meshIsUsed[obj.meshIndex] = true; 
     }
     for (int i = 0; i < (int)m_meshes.size(); i++){
         if (!meshIsUsed[i]){
@@ -457,10 +463,13 @@ void Scene::updateGPU(){
         triangles.insert(triangles.end(), meshTriangles.begin(), meshTriangles.end());
         nodes.insert(nodes.end(), meshNodes.begin(), meshNodes.end());
     }
-    for (Object& obj : m_objects){
+    for (const Object& obj : m_objects){
         if (obj.type == PrimType::MESH_){
+            if (obj.mat.type == MatType::GLASS && (obj.mat.data.z > 0 || obj.mat.data.w > 0)){
+                volumeIndicies.insert(volumeIndicies.begin() + numVolumeMeshes, (int)meshInfos.size());
+                numVolumeMeshes++;
+            }
             MeshInfos meshInfo;
-            obj.meshIndex = std::clamp(obj.meshIndex, 0, (int)m_meshes.size() - 1);
             meshInfo.triangleOffset = triangleOffsets[obj.meshIndex];
             meshInfo.nodeOffset = nodeOffsets[obj.meshIndex];
             meshInfo.numberOfNodes = numberOfNodes[obj.meshIndex];
@@ -472,6 +481,10 @@ void Scene::updateGPU(){
             if (obj.mat.type == MatType::EMIT) meshInfo.mat.type = MatType::DIFFUSE;
         }
         else{
+            if (obj.mat.type == MatType::GLASS && (obj.mat.data.z > 0 || obj.mat.data.w > 0)){
+                volumeIndicies.push_back((int)primitives.size());
+                numVolumePrims++;
+            }
             PrimitiveObject prim;
             prim.pos = obj.pos;
             prim.scale = obj.scale;
@@ -484,6 +497,8 @@ void Scene::updateGPU(){
 
     glUniform1i(ShaderProgram::getVarLoc("numPrimitives"), (int)primitives.size());
     glUniform1i(ShaderProgram::getVarLoc("numLights"), (int)lightIndicies.size());
+    glUniform1i(ShaderProgram::getVarLoc("numVolumesMeshes"), numVolumeMeshes);
+    glUniform1i(ShaderProgram::getVarLoc("numVolumesPrims"), numVolumePrims);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_sceneBuffer);
     glBufferData(GL_SHADER_STORAGE_BUFFER, (int)primitives.size() * sizeof(PrimitiveObject), primitives.data(), GL_DYNAMIC_DRAW);
@@ -492,6 +507,10 @@ void Scene::updateGPU(){
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_lightIndicesBuffer);
     glBufferData(GL_SHADER_STORAGE_BUFFER, (int)lightIndicies.size() * sizeof(int), lightIndicies.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_lightIndicesBuffer);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_volumeIndicesBuffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, (int)volumeIndicies.size() * sizeof(int), volumeIndicies.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, m_volumeIndicesBuffer);
 
     if (m_numMeshesChanged){
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_trianglesBuffer);

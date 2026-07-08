@@ -112,6 +112,7 @@ private:
 
     GLuint m_sceneBuffer = 0;
     GLuint m_lightIndicesBuffer = 0;
+    GLuint m_volumeIndicesBuffer = 0;
     GLuint m_meshInfosBuffer = 0;
     GLuint m_trianglesBuffer = 0;
     GLuint m_nodesBuffer = 0;
@@ -119,7 +120,6 @@ private:
     bool m_numMeshesChanged = false;
     vector<Object> m_objects = {};
     vector<shared_ptr<Mesh>> m_meshes = {};
-    vector<int> m_lightIndices = {};
     static glm::vec3 m_cameraDirection;
     static glm::vec3 m_cameraPosition;
 

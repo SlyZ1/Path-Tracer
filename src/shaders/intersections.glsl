@@ -273,3 +273,35 @@ Hit rayIntersection(inout Ray ray, bool isShadow){
 
     return hit;
 }
+
+bool isInVolume(inout Ray ray, out Mat mat){
+    Hit hit;
+    hit.t = 1e6;
+    Ray invRay = ray;
+    invRay.dir = 1.0 / invRay.dir;
+    for(int i = 0; i < numVolumesPrims; i += 1){
+        Primitive prim = primitives[volumeIndicies[i + numVolumesMeshes]];
+        Hit newHit;
+        if (prim.type == PRIM_SPHERE){
+            newHit = sphereIntersect(prim, ray);
+        }
+        else if (prim.type == PRIM_PLANE){
+            newHit = planeIntersect(prim, ray);
+        }
+        else if (prim.type == PRIM_CUBE){
+            newHit = intersectCube(prim, ray);
+        }
+        if (newHit.t > 0 && newHit.t < hit.t){
+            hit = newHit;
+        }
+    }
+    for (int j = 0; j < numVolumesMeshes; j += 1){
+        MeshInfos info = meshInfos[volumeIndicies[j]];
+        Hit bvhHit = bvhIntersect(ray, info, false);
+        if (bvhHit.t > 0 && bvhHit.t < hit.t){
+            hit = bvhHit;
+        }
+    }
+    mat = hit.mat;
+    return hit.t < 1e6 && hit.inside;
+}

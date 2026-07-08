@@ -93,6 +93,11 @@ layout(std430, binding = 3) buffer LightIndicesBuffer {
     int lightIndicies[];
 };
 uniform int numLights;
+layout(std430, binding = 5) buffer VolumeIndicesBuffer {
+    int volumeIndicies[];
+};
+uniform int numVolumesMeshes;
+uniform int numVolumesPrims;
 
 struct RaycastData {
     Hit hit;
@@ -174,6 +179,7 @@ float linearToDepth(float depth, float near, float far);
 
 // INTERSECTIONS.GLSL
 Hit rayIntersection(inout Ray ray, bool isShadow);
+bool isInVolume(inout Ray ray, out Mat mat);
 #pragma FEND
 
 vec3 schlickFresnel(float VdotN, vec3 F0)
@@ -260,15 +266,17 @@ void metal(inout RaycastData data);
 void glass(inout RaycastData data);
 void glossy(inout RaycastData data);
 void emit(inout RaycastData data);
-void volume(inout RaycastData data, inout Hit previousHit);
+void volume(inout RaycastData data, inout Mat volumeMat);
 #pragma FEND
 
-void computeLighting(inout Hit hit, inout Hit previousHit, inout Ray ray, inout uint seed){
+void computeLighting(inout Hit hit, inout Ray ray, inout uint seed){
     if (hit.t < 0) return;
 
     RaycastData data = RaycastData(hit, ray, seed);
-    if (previousHit.t >= 0) volume(data, previousHit); // TODO : hit from non volume to another non volume inside a volume
-    if (previousHit.t == SCATTERED){
+    Mat volumeMat;
+    bool inVolume = isInVolume(ray, volumeMat);
+    if (inVolume) volume(data, volumeMat);
+    if (volumeMat.data == vec4(SCATTERED)){
         unwrapData(data);
         return;
     }
@@ -358,7 +366,6 @@ void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out 
     albedo = vec4(0);
     color = vec4(0);
     depth = 1e2;
-    Hit previousHit; previousHit.t = -1;
     for (int i = 0; i < maxBounces; i++){
 
         Hit hit = rayIntersection(tracedRay, false);
@@ -368,8 +375,7 @@ void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out 
             albedo = vec4(hit.mat.color, 1);
             depth = hit.t;
         }
-        computeLighting(hit, previousHit, tracedRay, seed);
-        previousHit = hit;
+        computeLighting(hit, tracedRay, seed);
 
         if (hit.t < 0){
             if (hit.t > -2) tracedRay.radiance += tracedRay.throughput * sky(tracedRay.dir);

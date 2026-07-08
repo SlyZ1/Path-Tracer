@@ -320,7 +320,7 @@ void UI::render(int frameAccumulator) {
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.5f, 0.2f, 1.0f, 0.3f));
     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.5f, 0.2f, 1.0f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.5f, 0.2f, 1.0f, 0.8f));
-
+    
     if (ImGui::CollapsingHeader("Camera Settings")){
         BeginTwoColumnLayout();
         CameraProperties* camProps = m_camera->getCameraProperties();
@@ -499,7 +499,7 @@ void UI::render(int frameAccumulator) {
         
         EndTwoColumnLayout();
     }
-
+    
     ImGui::PopStyleColor(3);
     ImGui::EndDisabled();
     ImGui::End();
