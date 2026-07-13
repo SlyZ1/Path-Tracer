@@ -31,6 +31,10 @@ class UI {
         // Stats
         void renderStats(int frameAccumulator);
         float m_lastTime = 0.0f;
+        float m_fpsUpdateTimer = 0.0f;
+        int m_fpsFrameCount = 0;
+        int m_displayedFps = 0;
+        float m_displayedFrameTimeMs = 0.0f;
         
         bool m_popupOpened = false;
         void renderToolTip(const string& tip) const;

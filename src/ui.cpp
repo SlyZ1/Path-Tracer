@@ -82,8 +82,19 @@ void UI::renderGizmos(){
 }
 
 void UI::renderStats(int frameAccumulator){
-    float currentTime = (float)glfwGetTime(); 
+    float currentTime = (float)glfwGetTime();
     float deltaTime = currentTime - m_lastTime;
+    m_lastTime = currentTime;
+
+    m_fpsFrameCount++;
+    m_fpsUpdateTimer += deltaTime;
+    constexpr float fpsUpdateInterval = 0.25f;
+    if (m_fpsUpdateTimer >= fpsUpdateInterval && m_fpsFrameCount > 0) {
+        m_displayedFps = (int)round((double)m_fpsFrameCount / (double)m_fpsUpdateTimer);
+        m_displayedFrameTimeMs = ((double)m_fpsUpdateTimer / (double)m_fpsFrameCount) * 1000.0;
+        m_fpsUpdateTimer = 0.0f;
+        m_fpsFrameCount = 0;
+    }
 
     ImGuiIO& io = ImGui::GetIO();
     ImGuiWindowFlags flags =  ImGuiWindowFlags_AlwaysAutoResize
@@ -100,16 +111,14 @@ void UI::renderStats(int frameAccumulator){
         ImGui::Text("%d", frameAccumulator);
 
         Label("FPS:");
-        ImGui::Text("%d", deltaTime > 0.0f ? (int)floor(1.0f / deltaTime) : 0);
+        ImGui::Text("%d", m_displayedFps);
 
         Label("Frame Time:");
-        ImGui::Text("%.2fms", deltaTime * 100.0f);
+        ImGui::Text("%.2fms", m_displayedFrameTimeMs);
 
         EndTwoColumnLayout();
     }
     ImGui::End();
-
-    m_lastTime = currentTime;
 }
 
 void UI::renderPopupData(Object* selectedObject){
