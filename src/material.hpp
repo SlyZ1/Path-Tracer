@@ -32,7 +32,8 @@ struct Material {
         float refractionIndex = 1.3f,
         float dispertionFactor = 0.0f,
         float absorptionFactor = 1.0f, 
-        float scatteringFactor = 0.0f);
+        float scatteringFactor = 0.0f,
+        float anisotropy = 0.0f);
     static Material glossyMaterial(vec3 color, float fuzziness, float metallic);
     static Material emitMaterial(vec3 color, float intensity);
     static vec3 rgbToSigmoidCoeffs(vec3 rgb);

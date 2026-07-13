@@ -77,6 +77,7 @@ in vec4 vClipPos;
 #define scatteringFactor(m) m.data.w
 #define filmIOR(m) m.data2.x
 #define filmDepth(m) m.data2.y
+#define anisotropy(m) m.data2.y
 
 #define MAT_DIFF 0
 #define MAT_METAL 1
@@ -233,7 +234,7 @@ vec3 horizon(vec3 lookingAt)
         sky = mix(middle, top, (a - 0.5) / 0.5);
     }
 
-    return sky * skyIntensity;
+    return sky;
 }
 
 vec3 sky(vec3 lookingAt){
@@ -259,7 +260,7 @@ void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out 
 
         if (hit.t < 0){
 #ifdef SPECTRAL
-            if (hit.t > -2) tracedRay.radiance += tracedRay.throughput * 0.4; // * sky(tracedRay.dir);
+            if (hit.t > -2) tracedRay.radiance += tracedRay.throughput * sampleSpectrum(tracedRay.lambda, sky(tracedRay.dir)) * skyIntensity;
 
             result = vec4(wavelengthToXYZ(tracedRay.lambda.x) * tracedRay.radiance.x, 1);
             result += vec4(wavelengthToXYZ(tracedRay.lambda.y) * tracedRay.radiance.y, 1);
@@ -267,7 +268,7 @@ void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out 
             result += vec4(wavelengthToXYZ(tracedRay.lambda.w) * tracedRay.radiance.w, 1);
             result /= 4.0;
 #else
-            if (hit.t > -2) tracedRay.radiance += tracedRay.throughput * sky(tracedRay.dir);
+            if (hit.t > -2) tracedRay.radiance += tracedRay.throughput * sky(tracedRay.dir) * skyIntensity;
             if (firstHit) albedo = vec4(sky(tracedRay.dir), 1);
             result = vec4(tracedRay.radiance, 1);
             color = result / (albedo + vec4(EPS));

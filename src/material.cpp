@@ -25,13 +25,14 @@ Material Material::glassMaterial(
     float refractionIndex, 
     float dispertionFactor, 
     float absorptionFactor, 
-    float scatteringFactor)
+    float scatteringFactor,
+    float anisotropy)
 {
     Material mat;
     mat.type = MatType::GLASS;
     mat.color = color;
     mat.data = vec4(fuzziness, glm::max(refractionIndex, 0.0f), absorptionFactor, scatteringFactor);
-    mat.data2 = vec4(dispertionFactor, 0.0f, 0.0f, 0.0f);
+    mat.data2 = vec4(dispertionFactor, anisotropy, 0.0f, 0.0f);
     return mat;
 }
 

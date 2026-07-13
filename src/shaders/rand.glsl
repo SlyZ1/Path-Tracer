@@ -44,6 +44,14 @@ vec2 randomInDisk(inout uint seed) {
     return vec2(x, y);
 }
 
+vec2 randomOnUnitCircle(inout uint seed){
+    float u = rand(seed);
+    float theta = 2.0 * PI * u;
+    float x = cos(theta);
+    float y = sin(theta);
+    return vec2(x, y);
+}
+
 vec3 randomOnUnitSphere(inout uint seed) {
     float u = rand(seed);
     float v = rand(seed);
@@ -75,6 +83,27 @@ void createTangentBasis(in vec3 N, out vec3 T, out vec3 B) {
 
     T = normalize(cross(up, N));
     B = cross(N, T);
+}
+
+vec3 sampleHG(inout uint seed, vec3 dir, float g){
+    float s = rand(seed) * 2.0 - 1.0;
+    float cosTheta;
+    if (abs(g) < 1e-3){
+        cosTheta = s;
+    }
+    else{
+        float sqrTerm = (1 - g*g) / (1 + g * s);
+        cosTheta = (1 + g*g - sqrTerm * sqrTerm) / (2 * g);
+    }
+    float sinTheta = sqrt(1 - cosTheta * cosTheta);
+
+    vec2 circle = randomOnUnitCircle(seed);
+
+    vec3 up = abs(dir.z) < 0.999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
+    vec3 right = normalize(cross(dir, up));
+    up = normalize(cross(right, dir));
+
+    return cosTheta * dir + sinTheta * (circle.x * right + circle.y * up);
 }
 
 vec3 randomGGXHemisphere(inout uint seed, vec3 normal, float alpha){

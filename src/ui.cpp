@@ -123,6 +123,7 @@ void UI::renderStats(int frameAccumulator){
 
 void UI::renderPopupData(Object* selectedObject){
     ImGui::Spacing();
+    ImGui::Spacing();
     MatType matType = selectedObject->mat.type;
     switch(matType){
         case MatType::DIFFUSE:
@@ -177,6 +178,7 @@ void UI::renderPopupData(Object* selectedObject){
                 }
             }
             ImGui::Spacing();
+            ImGui::Spacing();
             Label("Absorption Factor", "How much light is absorbed in the dielectric, using Beer-Lambert's law.");
             selectedObject->mat.data.z = glm::clamp(selectedObject->mat.data.z, 0.0f, 2.0f);
             if (ImGui::SliderFloat("##Absorption Factor", &selectedObject->mat.data.z, 0.0f, 2.0f)){
@@ -187,6 +189,12 @@ void UI::renderPopupData(Object* selectedObject){
             selectedObject->mat.data.w = glm::clamp(selectedObject->mat.data.w, 0.0f, 2.0f);
             if (ImGui::SliderFloat("##Scattering Factor", &selectedObject->mat.data.w, 0.0f, 2.0f)){
                 selectedObject->mat.data.w = glm::clamp(selectedObject->mat.data.w, 0.0f, 2.0f);
+                m_scene->updateScene();
+            }
+            Label("Anisotropy", "How much the ray's direction is taken into account when scattering.\ng=1: forward scattering\ng=0: isotropic scattering\ng=-1: backward scattering");
+            selectedObject->mat.data2.y = glm::clamp(selectedObject->mat.data2.y, -1.0f, 1.0f);
+            if (ImGui::SliderFloat("##Anisotropy", &selectedObject->mat.data2.y, -1.0f, 1.0f)){
+                selectedObject->mat.data2.y = glm::clamp(selectedObject->mat.data2.y, -1.0f, 1.0f);
                 m_scene->updateScene();
             }
             break;
@@ -241,6 +249,9 @@ void UI::renderPopup(){
             selectedObject->rotation = mod(mod(selectedObject->rotation, 360.0f) + 360.0f, 360.0f);
             m_scene->updateScene();
         }
+
+        ImGui::Spacing();
+        ImGui::Spacing();
         
         Label("Shape Type");
         if (ImGui::Combo("##Shape Type", (int*)(&selectedObject->type), Scene::primLabels, IM_ARRAYSIZE(Scene::primLabels))){
@@ -541,14 +552,16 @@ void UI::render(int frameAccumulator) {
         EndTwoColumnLayout();
     }
 
-    BeginTwoColumnLayout();
-    Label("Is Spectral");
-    bool spectral = m_scene->getSpectral();
-    if (ImGui::Checkbox("##Is Spectral", &spectral)){
-        m_scene->setSpectral(spectral);
+    float padding = ImGui::GetStyle().WindowPadding.y;
+    float buttonHeight = 40;
+    ImGui::SetCursorPosY(ImGui::GetWindowHeight() - buttonHeight - padding);
+
+    bool isSpectral = m_scene->getSpectral();
+    string spectralButtonLabel = "Toggle Spectral : " + string(isSpectral ? "ON" : "OFF");
+    if (ImGui::Button(spectralButtonLabel.c_str(), ImVec2(-FLT_MIN, buttonHeight))){
+        m_scene->setSpectral(!isSpectral);
         m_reloadShader();
     }
-    EndTwoColumnLayout();
     
     ImGui::PopStyleColor(3);
     ImGui::EndDisabled();
@@ -561,9 +574,17 @@ void UI::updateGPU() const {
     glUniform1i(ShaderProgram::getVarLoc("debugBVH"), m_debugBVH ? 1 : 0);
 
     glUniform1f(ShaderProgram::getVarLoc("skyIntensity"), m_skyIntensity);
-    glUniform3f(ShaderProgram::getVarLoc("skyBottomColor"), m_skyBottomColor.x, m_skyBottomColor.y, m_skyBottomColor.z);
-    glUniform3f(ShaderProgram::getVarLoc("skyMiddleColor"), m_skyMiddleColor.x, m_skyMiddleColor.y, m_skyMiddleColor.z);
-    glUniform3f(ShaderProgram::getVarLoc("skyTopColor"), m_skyTopColor.x, m_skyTopColor.y, m_skyTopColor.z);
+    vec3 skyBottomColor = m_skyBottomColor;
+    vec3 skyMiddleColor = m_skyMiddleColor;
+    vec3 skyTopColor = m_skyTopColor;
+    if (m_scene->getSpectral()){
+        skyBottomColor = Material::rgbToSigmoidCoeffs(skyBottomColor);
+        skyMiddleColor = Material::rgbToSigmoidCoeffs(skyMiddleColor);
+        skyTopColor = Material::rgbToSigmoidCoeffs(skyTopColor);
+    }
+    glUniform3f(ShaderProgram::getVarLoc("skyBottomColor"), skyBottomColor.x, skyBottomColor.y, skyBottomColor.z);
+    glUniform3f(ShaderProgram::getVarLoc("skyMiddleColor"), skyMiddleColor.x, skyMiddleColor.y, skyMiddleColor.z);
+    glUniform3f(ShaderProgram::getVarLoc("skyTopColor"), skyTopColor.x, skyTopColor.y, skyTopColor.z);
 }
 
 bool UI::isInteracting(){
