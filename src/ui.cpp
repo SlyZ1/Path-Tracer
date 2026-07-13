@@ -113,6 +113,7 @@ void UI::renderStats(int frameAccumulator){
 }
 
 void UI::renderPopupData(Object* selectedObject){
+    ImGui::Spacing();
     MatType matType = selectedObject->mat.type;
     switch(matType){
         case MatType::DIFFUSE:
@@ -130,6 +131,20 @@ void UI::renderPopupData(Object* selectedObject){
                 selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.8f);
                 m_scene->updateScene();
             }
+            if (m_scene->getSpectral()){
+                Label("Film IOR", "Index of refraction of the thin film on the surface.");
+                selectedObject->mat.data2.x = glm::clamp(selectedObject->mat.data2.x, 1.0f, 2.0f);
+                if (ImGui::SliderFloat("##IOR", &selectedObject->mat.data2.x, 1.0f, 2.0f)){
+                    selectedObject->mat.data2.x = glm::clamp(selectedObject->mat.data2.x, 1.0f, 2.0f);
+                    m_scene->updateScene();
+                }
+                Label("Film Depth", "Depth of the thin film on the surface.");
+                selectedObject->mat.data2.y = glm::clamp(selectedObject->mat.data2.y, 0.0f, 1000.0f);
+                if (ImGui::SliderFloat("##Film Depth", &selectedObject->mat.data2.y, 0.0f, 1000.0f)){
+                    selectedObject->mat.data2.y = glm::clamp(selectedObject->mat.data2.y, 0.0f, 1000.0f);
+                    m_scene->updateScene();
+                }
+            }
             break;
         case MatType::GLASS:
             Label("Fuzziness", "Controls how unpolished the glass will be.\nUsed in the Cook-Torrance model with the GGX microfacets distribution.");
@@ -138,16 +153,25 @@ void UI::renderPopupData(Object* selectedObject){
                 selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.5f);
                 m_scene->updateScene();
             }
-            Label("Refraction Index", "Refraction index of the dielectric. If 1.3 <= n <= 2.3, Schlick-Fresnel's approximation is used.");
-            selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 1.0f, 4.0f);
-            if (ImGui::SliderFloat("##Refraction Index", &selectedObject->mat.data.y, 1.0f, 4.0f)){
-                selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 1.0f, 4.0f);
+            Label("IOR", "Index of refraction of the dielectric.");
+            selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 1.0f, 2.0f);
+            if (ImGui::SliderFloat("##IOR", &selectedObject->mat.data.y, 1.0f, 2.0f)){
+                selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 1.0f, 2.0f);
                 m_scene->updateScene();
             }
+            if (m_scene->getSpectral()){
+                Label("Dispertion Factor", "How much the IOR varies based on wavelength, using Cauchy's approximation.");
+                selectedObject->mat.data2.x = glm::clamp(selectedObject->mat.data2.x, 0.0f, 0.05f);
+                if (ImGui::SliderFloat("##Dispertion Factor", &selectedObject->mat.data2.x, 0.0f, 0.05f)){
+                    selectedObject->mat.data2.x = glm::clamp(selectedObject->mat.data2.x, 0.0f, 0.05f);
+                    m_scene->updateScene();
+                }
+            }
+            ImGui::Spacing();
             Label("Absorption Factor", "How much light is absorbed in the dielectric, using Beer-Lambert's law.");
-            selectedObject->mat.data.z = glm::clamp(selectedObject->mat.data.z, 0.0f, 10.0f);
-            if (ImGui::SliderFloat("##Absorption Factor", &selectedObject->mat.data.z, 0.0f, 10.0f)){
-                selectedObject->mat.data.z = glm::clamp(selectedObject->mat.data.z, 0.0f, 10.0f);
+            selectedObject->mat.data.z = glm::clamp(selectedObject->mat.data.z, 0.0f, 2.0f);
+            if (ImGui::SliderFloat("##Absorption Factor", &selectedObject->mat.data.z, 0.0f, 2.0f)){
+                selectedObject->mat.data.z = glm::clamp(selectedObject->mat.data.z, 0.0f, 2.0f);
                 m_scene->updateScene();
             }
             Label("Scattering Factor", "How much light is scattered in the dielectric.");
@@ -499,6 +523,15 @@ void UI::render(int frameAccumulator) {
         
         EndTwoColumnLayout();
     }
+
+    BeginTwoColumnLayout();
+    Label("Is Spectral");
+    bool spectral = m_scene->getSpectral();
+    if (ImGui::Checkbox("##Is Spectral", &spectral)){
+        m_scene->setSpectral(spectral);
+        m_reloadShader();
+    }
+    EndTwoColumnLayout();
     
     ImGui::PopStyleColor(3);
     ImGui::EndDisabled();

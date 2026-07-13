@@ -4,6 +4,8 @@ void volume(inout RaycastData data, inout Mat volumeMat){ // TODO : hit from non
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
 
+    Spectrum spectrumValue = getSpectrumValue(volumeMat);
+
     float sigma_s = scatteringFactor(volumeMat);
     float sigma_a = absorptionFactor(volumeMat);
     if (sigma_s > EPS){
@@ -11,7 +13,7 @@ void volume(inout RaycastData data, inout Mat volumeMat){ // TODO : hit from non
         if (scatterDistance < hit.t - EPS){
             ray.origin += ray.dir * scatterDistance;
             ray.dir = randomOnUnitSphere(seed);
-            vec3 absorption = exp(-(vec3(1) - volumeMat.color) * sigma_a * scatterDistance);
+            Spectrum absorption = exp(-(Spectrum(1) - spectrumValue) * sigma_a * scatterDistance);
             ray.throughput *= absorption;
             volumeMat.data = vec4(SCATTERED);
             updateData(data);
@@ -20,7 +22,7 @@ void volume(inout RaycastData data, inout Mat volumeMat){ // TODO : hit from non
         }
     }
 
-    vec3 absorption = exp(-(vec3(1) - volumeMat.color) * sigma_a * hit.t);
+    Spectrum absorption = exp(-(Spectrum(1) - spectrumValue) * sigma_a * hit.t);
     ray.throughput *= absorption;
 
     updateData(data);

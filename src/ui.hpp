@@ -19,6 +19,7 @@ class UI {
         shared_ptr<Scene> m_scene;
         shared_ptr<Camera> m_camera;
         function<void()> m_resetFrame;
+        function<void()> m_reloadShader;
 
         void Label(const char* label, const string& desc = "") const;
         void BeginTwoColumnLayout() const;
@@ -92,4 +93,5 @@ class UI {
         };
         int textureDisplay = TexType::Result;
         int getResolutionMultiplier() const { return m_resMultiplier; }
+        void setReloadShaderFunction(function<void()> reloadFunction) { m_reloadShader = reloadFunction; };
 };

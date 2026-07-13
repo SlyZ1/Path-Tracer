@@ -16,30 +16,30 @@ const char* Scene::primLabels[4] = {
 shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, function<void()> resetFrame){
     shared_ptr<Scene> scene = make_shared<Scene>(app, camera, resetFrame);
     scene->initGPU();
+    
+    Object plane;
+    plane.type = PrimType::PLANE;
+    plane.pos = vec3(0.0f);
+    plane.scale = 1.0f;
+    plane.mat = Material::glossyMaterial(vec3(1.0f), 0.0f, 0.2f);
+    scene->addObject(plane);
 
     Object light;
     light.type = PrimType::SPHERE;
-    light.pos = vec3(0, 5, 2);
-    light.scale = 1;
-    light.mat = Material::emitMaterial(vec3(1), 20.0f);
+    light.pos = vec3(0.0f, 5.0f, 2.0f);
+    light.scale = 1.0f;
+    light.mat = Material::emitMaterial(vec3(1.0f), 20.0f);
     scene->addObject(light);
-
-    Object plane;
-    plane.type = PrimType::PLANE;
-    plane.pos = vec3(0);
-    plane.scale = 1;
-    plane.mat = Material::glossyMaterial(vec3(1), 0.0f, 0.2f);
-    scene->addObject(plane);
 
     shared_ptr<Mesh> bunnyMesh = make_shared<Mesh>();
     bunnyMesh->loadFromModel("models/bunny.obj");
-    int bunnyIndex = scene->addMesh(bunnyMesh);
+    int bunnyIndex = scene->addMesh(bunnyMesh); 
 
     Object meshObject;
-    meshObject.pos = vec3(0, 1, 0);
-    meshObject.scale = 3;
+    meshObject.pos = vec3(0.0f, 1.29f, 0.0f);
+    meshObject.scale = 3.0f;
     meshObject.type = PrimType::MESH_;
-    meshObject.mat = Material::glossyMaterial(vec3(0.9f, 0.6f, 0.2f), 0, 0.3f);
+    meshObject.mat = Material::diffuseMaterial(vec3(0.9f, 0.6f, 0.2f), 0.0f);
     meshObject.meshIndex = bunnyIndex;
     meshObject.isSmooth = true;
     scene->addObject(meshObject);
@@ -179,6 +179,8 @@ glm::vec2 Scene::worldToScreen(glm::vec3 worldPos){
 void Scene::initGPU(){
     glDeleteBuffers(1, &m_sceneBuffer);
     glGenBuffers(1, &m_sceneBuffer);
+    glDeleteBuffers(1, &m_materialsBuffer);
+    glGenBuffers(1, &m_materialsBuffer);
     glDeleteBuffers(1, &m_lightIndicesBuffer);
     glGenBuffers(1, &m_lightIndicesBuffer);
     glDeleteBuffers(1, &m_volumeIndicesBuffer);
@@ -377,7 +379,7 @@ void Scene::removeMesh(int index){
     m_meshes.erase(m_meshes.begin() + index);
 }
 
-int Scene::addObject(Object& obj){
+int Scene::addObject(Object obj){
     obj.ID = m_maxId++;
     int newIndex = (int)m_objects.size();
     m_objects.push_back(obj);
@@ -394,7 +396,6 @@ Object* Scene::getObject(int index){
 
 void Scene::removeObject(int index){
     if (index < 0 || index >= (int)m_objects.size()) return;
-
     Object obj = m_objects[index];
     m_objects.erase(m_objects.begin() + index);
     m_sceneChanged = true;
@@ -422,6 +423,16 @@ void Scene::updateScene(){
     m_sceneChanged = true;
 }
 
+int Scene::addMaterial(vector<Material>& materials, Material mat){
+    for (int i = 0; i < (int)materials.size(); i++){
+        const Material& material = materials[i];
+        if (mat == material) return i;
+    }
+    if (m_spectral) mat.color = Material::rgbToSigmoidCoeffs(mat.color);
+    materials.push_back(mat);
+    return (int)materials.size() - 1;
+}
+
 void Scene::updateGPU(){
     if (!m_sceneChanged) return;
     m_sceneChanged = false;
@@ -433,6 +444,7 @@ void Scene::updateGPU(){
     vector<linBVHNode> nodes = {};
     int numVolumeMeshes = 0;
     int numVolumePrims = 0;
+    vector<Material> materials = {};
     vector<int> volumeIndicies = {};
     vector<int> lightIndicies = {};
     vector<int> triangleOffsets = {};
@@ -464,8 +476,9 @@ void Scene::updateGPU(){
         nodes.insert(nodes.end(), meshNodes.begin(), meshNodes.end());
     }
     for (const Object& obj : m_objects){
+        int matIndex = addMaterial(materials, obj.mat);
         if (obj.type == PrimType::MESH_){
-            if (obj.mat.type == MatType::GLASS && (obj.mat.data.z > 0 || obj.mat.data.w > 0)){
+            if (obj.mat.type == MatType::GLASS && (obj.mat.data.w > 0)){
                 volumeIndicies.insert(volumeIndicies.begin() + numVolumeMeshes, (int)meshInfos.size());
                 numVolumeMeshes++;
             }
@@ -475,22 +488,21 @@ void Scene::updateGPU(){
             meshInfo.numberOfNodes = numberOfNodes[obj.meshIndex];
             meshInfo.pos = obj.pos;
             meshInfo.scale = obj.scale;
-            meshInfo.mat = obj.mat;
+            meshInfo.matIndex = matIndex;
             meshInfo.isSmooth = obj.isSmooth;
             meshInfos.push_back(meshInfo);
-            if (obj.mat.type == MatType::EMIT) meshInfo.mat.type = MatType::DIFFUSE;
         }
         else{
-            if (obj.mat.type == MatType::GLASS && (obj.mat.data.z > 0 || obj.mat.data.w > 0)){
+            if (obj.mat.type == MatType::GLASS && (obj.mat.data.w > 0)){
                 volumeIndicies.push_back((int)primitives.size());
                 numVolumePrims++;
             }
+            if (obj.mat.type == MatType::EMIT) lightIndicies.push_back((int)primitives.size());
             PrimitiveObject prim;
             prim.pos = obj.pos;
             prim.scale = obj.scale;
-            prim.mat = obj.mat;
+            prim.matIndex = matIndex;
             prim.type = obj.type;
-            if (prim.mat.type == MatType::EMIT) lightIndicies.push_back((int)primitives.size());
             primitives.push_back(prim);
         }
     }
@@ -511,6 +523,10 @@ void Scene::updateGPU(){
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_volumeIndicesBuffer);
     glBufferData(GL_SHADER_STORAGE_BUFFER, (int)volumeIndicies.size() * sizeof(int), volumeIndicies.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, m_volumeIndicesBuffer);
+    
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_materialsBuffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, (int)materials.size() * sizeof(Material), materials.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, m_materialsBuffer);
 
     if (m_numMeshesChanged){
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_trianglesBuffer);
@@ -532,5 +548,5 @@ void Scene::updateGPU(){
 
 void Scene::deleteScene(){
     m_objects.clear();
-    m_meshes.clear(); 
+    m_meshes.clear();
 }

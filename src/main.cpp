@@ -24,6 +24,7 @@ GLuint VBO, VAO, EBO = 0;
 GLuint FBO = 0;
 GLuint texture = 0;
 GLuint oldTexture = 0;
+GLuint finalTexture = 0;
 GLuint normalTexture = 0;
 GLuint albedoTexture = 0;
 GLuint colorTexture = 0;
@@ -56,6 +57,7 @@ void resetFrame(){
 void genTextures(unsigned int width, unsigned int height){
     glDeleteTextures(1, &texture);
     glDeleteTextures(1, &oldTexture);
+    glDeleteTextures(1, &finalTexture);
     glDeleteTextures(1, &normalTexture);
     glDeleteTextures(1, &albedoTexture);
     glDeleteTextures(1, &colorTexture);
@@ -71,6 +73,13 @@ void genTextures(unsigned int width, unsigned int height){
 
     glGenTextures(1, &oldTexture);
     glBindTexture(GL_TEXTURE_2D, oldTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glGenTextures(1, &finalTexture);
+    glBindTexture(GL_TEXTURE_2D, finalTexture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -114,9 +123,22 @@ void genTextures(unsigned int width, unsigned int height){
     resetFrame();
     texWidth = width;
     texHeight = height;
-    vector<GLuint> textures = {oldTexture, albedoTexture, colorTexture, normalTexture, depthTexture};
+    vector<GLuint> textures = {finalTexture, albedoTexture, colorTexture, normalTexture, depthTexture};
     vector<string> texturesNames = {"reference", "albedo", "color", "normal", "depth"};
     renderer->setRenderingTextures(textures, texturesNames);
+}
+
+void initRayTraceShader(){
+    rayTracingShader.use();
+    glUniform2f(ShaderProgram::getVarLoc("winSize"), (float)app->width(), (float)app->height());
+}
+
+void reloadShaders(){
+    rayTracingShader.reload(scene->getSpectral());
+    initRayTraceShader();
+    scene->updateScene();
+    resetFrame();
+    cout << "Shaders reloaded." << endl;
 }
 
 void init(bool headless = false){
@@ -151,8 +173,7 @@ void init(bool headless = false){
     tie(VBO, VAO, EBO) = ShaderProgram::addData(vertices, indices);
     ShaderProgram::linkData(3, sizeof(float), 0);
     
-    rayTracingShader.use();
-    glUniform2f(ShaderProgram::getVarLoc("winSize"), (float)app->width(), (float)app->height());
+    initRayTraceShader();
     
     glGenFramebuffers(1, &FBO);
     genTextures(app->width(), app->height());
@@ -162,6 +183,7 @@ void init(bool headless = false){
     scene = Scene::defaultScene(app, camera, resetFrame);
     animator = make_shared<Animator>(renderer, scene, resetFrame);
     ui = make_shared<UI>(app, renderer, animator, scene, camera, resetFrame);
+    ui->setReloadShaderFunction(reloadShaders);
     // denoiser->init(albedoTexture, colorTexture, normalTexture, denoisedTexture);
 
     cout << "Program started." << endl;
@@ -189,18 +211,20 @@ void render(){
     //Current frame
     glBindFramebuffer(GL_FRAMEBUFFER, FBO);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, normalTexture, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, albedoTexture, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, colorTexture, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, depthTexture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, finalTexture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, normalTexture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, albedoTexture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, colorTexture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT5, GL_TEXTURE_2D, depthTexture, 0);
     GLenum drawBuffers[] = {
         GL_COLOR_ATTACHMENT0,
         GL_COLOR_ATTACHMENT1,
         GL_COLOR_ATTACHMENT2,
         GL_COLOR_ATTACHMENT3,
         GL_COLOR_ATTACHMENT4,
+        GL_COLOR_ATTACHMENT5,
     };
-    glDrawBuffers(5, drawBuffers);
+    glDrawBuffers(6, drawBuffers);
     rayTracingShader.use();
     
     ui->updateGPU();
@@ -251,7 +275,7 @@ void render(){
             renderTex = denoisedTexture;
             break;
         case UI::TexType::Result:
-            renderTex = oldTexture;
+            renderTex = finalTexture;
             break;
     }
     glBindTexture(GL_TEXTURE_2D, renderTex);
@@ -283,7 +307,7 @@ void inputs(){
         newObj.type = PrimType::SPHERE;
         newObj.pos = glm::vec3(rand() / (float)RAND_MAX * 10, 1, rand() / (float)RAND_MAX * 10);
         newObj.scale = rand() / (float)RAND_MAX + 0.5f;
-        newObj.mat = Material::glassMaterial(glm::vec3(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX, rand() / (float)RAND_MAX), 0.0f, rand() / (float)RAND_MAX*2 + 1, 0.0f);
+        newObj.mat = Material::glassMaterial(glm::vec3(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX, rand() / (float)RAND_MAX), 0.0f, rand() / (float)RAND_MAX*2 + 1);
         scene->addObject(newObj);
     }
 
@@ -293,6 +317,10 @@ void inputs(){
         if (!cancel){
             app->exportImage(res);
         }
+    }
+
+    if (app->keyPressedOnce(GLFW_KEY_R, frameCount)){
+        reloadShaders();
     }
 
     if (app->mousePressedOnce(GLFW_MOUSE_BUTTON_LEFT, frameCount) && ui->isShowing() && !ui->isHovered()){

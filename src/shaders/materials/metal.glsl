@@ -27,30 +27,40 @@ float p_VNDF_reflect(vec3 N, vec3 L, vec3 V, float alpha){
     return D / max(4.0 * HdotV, EPS);
 }
 
-vec3 cookTorranceMetals(Hit hit, vec3 viewDir, vec3 lightDir, float alpha){
+#ifdef SPECTRAL
+Spectrum fresnelTerm(float HdotV, FresnelParams params){
+    return airy(HdotV, filmIOR(params.mat), filmDepth(params.mat), params.lambda, params.spectrumValue);
+}
+#else
+Spectrum fresnelTerm(float HdotV, FresnelParams params){
+    return schlickFresnel(HdotV, params.spectrumValue);
+}
+#endif
+
+Spectrum cookTorranceMetals(FresnelParams params, vec3 N, vec3 V, vec3 L, float alpha){
     float a2 = alpha * alpha;
-    vec3 h = normalize(lightDir + viewDir);
-    float NdotL = dot(hit.normal, lightDir);
-    float NdotV = dot(hit.normal, viewDir);
-    float HdotL = dot(h, lightDir);
-    float HdotV = dot(h, viewDir);
-    float NdotH = max(dot(hit.normal, h), 0);
+    vec3 h = normalize(L + V);
+    float NdotL = dot(N, L);
+    float NdotV = dot(N, V);
+    float HdotL = dot(h, L);
+    float HdotV = dot(h, V);
+    float NdotH = max(dot(N, h), 0);
 
     float D = DGTR(a2, NdotH);
     float G = G1GTR(a2, HdotV, NdotV) * G1GTR(a2, HdotL, NdotL);
-    vec3 F = schlickFresnel(HdotV, hit.mat.color);
+    Spectrum F = fresnelTerm(HdotV, params);
 
     return F * D * G / max(4 * NdotV * NdotL, PROBA_EPS);
 }
 
-vec3 weight_VNDF_reflect(vec3 N, vec3 V, vec3 L, float alpha, vec3 albedo){
+Spectrum weight_VNDF_reflect(FresnelParams params, vec3 N, vec3 V, vec3 L, float alpha){
     vec3 H = normalize(V + L);
     float HdotV = dot(H, V);
     float NdotL = dot(N, L);
     float HdotL = dot(H, L);
     float a2 = alpha*alpha;
 
-    vec3 F = schlickFresnel(max(HdotV,0.0), albedo);
+    Spectrum F = fresnelTerm(max(HdotV,0.0), params);
     float G1_wi = G1GTR(a2, HdotL, NdotL);
 
     return F * G1_wi;
@@ -61,11 +71,14 @@ void metal(inout RaycastData data){
     unwrapData(data);
     ray.origin += hit.t * ray.dir + hit.normal * EPS;
     ray.pbsdf = -1;
+
+    Spectrum spectrumValue = getSpectrumValue(hit.mat);
+    FresnelParams fresnelParams = newFresnelParams(spectrumValue);
     
     if (pbrFuzz(hit.mat) < EPS){
         vec3 newDir = reflect(ray.dir, hit.normal);
         float VdotN = max(dot(-ray.dir, hit.normal), 0.0);
-        vec3 f_r = schlickFresnel(VdotN, hit.mat.color);
+        Spectrum f_r = fresnelTerm(VdotN, fresnelParams);
         ray.throughput *= f_r;
         ray.dir = newDir;
         updateData(data);
@@ -74,10 +87,12 @@ void metal(inout RaycastData data){
 
     // MIS
     Primitive light;
+    Mat lightMat;
     int lightIndex = -1;
     if (numLights > 0){
-        lightIndex = lightIndicies[int(rand(seed) * numLights)];
+        lightIndex = lightIndicies[min(int(rand(seed) * numLights), numLights - 1)];
         light = primitives[lightIndex];
+        lightMat = matBuffer[light.matIndex];
     }
     float fuzz = pbrFuzz(hit.mat);
     float alpha = fuzz * fuzz;
@@ -96,18 +111,18 @@ void metal(inout RaycastData data){
     if (shadow_hit(light, lightRay) > 0){
         float pGGX = p_VNDF_reflect(N, L, V, alpha);
         float weight = computeWeight(pdirect, pGGX);
-
-        vec3 f_r = cookTorranceMetals(hit, V, L, alpha);
         float NdotL = max(dot(N, L), 0);
-        vec3 Le = light.mat.color * emitIntensity(light.mat);
 
-        ray.radiance += clamp(ray.throughput * f_r * weight * NdotL / pdirect, 0.0, 1.3) * Le;
+        Spectrum f_r = cookTorranceMetals(fresnelParams, N, V, L, alpha);
+        Spectrum Le = getSpectrumValue(lightMat) * emitIntensity(lightMat);
+
+        ray.radiance += clamp(ray.throughput * f_r * weight * NdotL / pdirect, 0.0, CLAMP_VAL) * Le;
     }
 
     // BSDF sampling
     vec3 H = randomGGX_VNDFHemisphere(seed, V, N, alpha);
     L = reflect(-V, H);
-    ray.throughput *= weight_VNDF_reflect(N, V, L, alpha, hit.mat.color);
+    ray.throughput *= weight_VNDF_reflect(fresnelParams, N, V, L, alpha);
     ray.dir = L;
     ray.pbsdf = p_VNDF_reflect(N, L, V, alpha);
 

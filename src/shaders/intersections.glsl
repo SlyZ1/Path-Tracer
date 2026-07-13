@@ -27,7 +27,6 @@ Hit sphereIntersect(Primitive sphere, Ray ray){
     Hit newHit;
     newHit.t = t;
     newHit.normal = normal;
-    newHit.mat = sphere.mat;
     newHit.inside = inside;
     return newHit;
 }
@@ -46,12 +45,11 @@ Hit planeIntersect(Primitive plane, Ray ray){
     Hit newHit;
     newHit.t = t;
     newHit.normal = normal;
-    newHit.mat = plane.mat;
     newHit.inside = false;
     return newHit;
 }
 
-Hit triangleIntersect(Triangle tri, Ray ray, bool isSmooth, Mat mat){
+Hit triangleIntersect(Triangle tri, Ray ray, bool isSmooth){
     Hit emptyHit; emptyHit.t = -2;
     
     vec3 edge1 = tri.v1 - tri.v0;
@@ -89,7 +87,6 @@ Hit triangleIntersect(Triangle tri, Ray ray, bool isSmooth, Mat mat){
     Hit newHit;
     newHit.t = t;
     newHit.normal = normal;
-    newHit.mat = mat;
     newHit.inside = isInside;
     return newHit;
 }
@@ -150,7 +147,6 @@ Hit intersectCube(Primitive cube, Ray ray)
         normal = vec3(0.0, 0.0, sign(d.z));
 
     hit.t = t;
-    hit.mat = cube.mat;
     hit.normal = normal;
     hit.inside = inside;
     return hit;
@@ -204,7 +200,7 @@ Hit bvhIntersect(inout Ray ray, MeshInfos info, bool isShadow)
 
         if (node.triangle >= 0) {
             bool isSmooth = info.isSmooth > 0;
-            Hit triHit = triangleIntersect(scaleTri(triangles[node.triangle + triangleOffset], scale), newRay, isSmooth, info.mat);
+            Hit triHit = triangleIntersect(scaleTri(triangles[node.triangle + triangleOffset], scale), newRay, isSmooth);
             if (triHit.t >= 0) {
                 if (isShadow) return triHit;
                 if (triHit.t < hitT) {
@@ -257,6 +253,7 @@ Hit rayIntersection(inout Ray ray, bool isShadow){
         }
         if (newHit.t > 0 && newHit.t < hit.t){
             hit = newHit;
+            hit.mat = matBuffer[prim.matIndex];
             hit.primIndex = i;
         }
     }
@@ -265,6 +262,7 @@ Hit rayIntersection(inout Ray ray, bool isShadow){
         Hit bvhHit = bvhIntersect(ray, info, isShadow);
         if (bvhHit.t > 0 && bvhHit.t < hit.t){
             hit = bvhHit;
+            hit.mat = matBuffer[info.matIndex];
             hit.primIndex = -1;
         }
     }
@@ -293,6 +291,7 @@ bool isInVolume(inout Ray ray, out Mat mat){
         }
         if (newHit.t > 0 && newHit.t < hit.t){
             hit = newHit;
+            hit.mat = matBuffer[prim.matIndex];
         }
     }
     for (int j = 0; j < numVolumesMeshes; j += 1){
@@ -300,6 +299,7 @@ bool isInVolume(inout Ray ray, out Mat mat){
         Hit bvhHit = bvhIntersect(ray, info, false);
         if (bvhHit.t > 0 && bvhHit.t < hit.t){
             hit = bvhHit;
+            hit.mat = matBuffer[info.matIndex];
         }
     }
     mat = hit.mat;

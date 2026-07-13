@@ -64,10 +64,65 @@ float weightVNDFReflectDielectric(vec3 N, vec3 V, vec3 L, float alpha){
     return G1_L;
 }
 
+#ifdef SPECTRAL
+bool checkReflection(inout Ray ray, inout uint seed, inout SpectralParam n, vec3 H, float cos1, float dispertionFactor){
+    vec3 LX = refract(ray.dir, H, n.x);
+    vec3 LY = refract(ray.dir, H, n.y);
+    vec3 LZ = refract(ray.dir, H, n.z);
+    vec3 LW = refract(ray.dir, H, n.w);
+    Spectrum cos2 = vec4(dot(-H, LX), dot(-H, LY), dot(-H, LZ), dot(-H, LW));
+    bool totalReflectionX = n.x * n.x * (1 - cos1 * cos1) > 1;
+    bool totalReflectionY = n.y * n.y * (1 - cos1 * cos1) > 1;
+    bool totalReflectionZ = n.z * n.z * (1 - cos1 * cos1) > 1;
+    bool totalReflectionW = n.w * n.w * (1 - cos1 * cos1) > 1;
+
+    SpectralParam reflectance = fresnel(cos1, cos2, n);
+    reflectance = min(reflectance, Spectrum(0.995));
+    float randomReflectance = rand(seed);
+    bool reflectX = totalReflectionX || randomReflectance < reflectance.x;
+    bool reflectY = totalReflectionY || randomReflectance < reflectance.y;
+    bool reflectZ = totalReflectionZ || randomReflectance < reflectance.z;
+    bool reflectW = totalReflectionW || randomReflectance < reflectance.w;
+    if (!(reflectX && reflectY && reflectZ && reflectW) 
+    && (ray.throughput.y > 0 || ray.throughput.z > 0 || ray.throughput.w > 0)
+    && dispertionFactor > EPS)
+    {
+        ray.throughput *= Spectrum(4, 0, 0, 0);
+        ray.lambda = Spectrum(ray.lambda.x);
+        n = SpectralParam(n.x);
+    }
+    return reflectX;
+}
+bool IORcloseToOne(SpectralParam n){
+    return abs(min(min(n.x, n.y), min(n.z, n.w)) - 1) < EPS;
+}
+#else
+bool checkReflection(inout Ray ray, inout uint seed, SpectralParam n, vec3 H, float cos1, float dispertionFactor){
+    vec3 L = refract(ray.dir, H, n);
+    float cos2 = dot(-H, L);
+    bool totalReflection = n * n * (1 - cos1 * cos1) > 1;
+
+    SpectralParam reflectance = fresnel(cos1, cos2, n);
+    reflectance = min(reflectance, 0.995);
+    return totalReflection || rand(seed) < reflectance;
+}
+bool IORcloseToOne(SpectralParam n){
+    return abs(n - 1) < EPS;
+}
+#endif
+
 void glass(inout RaycastData data){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
-    float n = 1 / glassIndex(hit.mat);
+    ray.pbsdf = -1;
+
+    Spectrum spectrumValue = getSpectrumValue(hit.mat);
+    SpectralParam glassN = SpectralParam(glassIndex(hit.mat));
+#ifdef SPECTRAL
+    vec4 scaledLambda = ray.lambda / 1000.0;
+    glassN += SpectralParam(dispertionFactor(hit.mat)) / (scaledLambda * scaledLambda);
+#endif
+    SpectralParam n = 1.0 / glassN;
     vec3 N = hit.normal;
     if (hit.inside){
         n = 1 / n;
@@ -75,60 +130,42 @@ void glass(inout RaycastData data){
     }
 
     Primitive light;
+    Mat lightMat;
     int lightIndex = -1;
     if (numLights > 0){
         lightIndex = lightIndicies[int(rand(seed) * numLights)];
         light = primitives[lightIndex];
+        lightMat = matBuffer[light.matIndex];
     }
     updateData(data);
     vec4 lightInfos = sampleLight(data, light);
     unwrapData(data);
     vec3 lightDir = lightInfos.xyz;
     float pdirect = lightInfos.w;
-    ray.pbsdf = -1;
-
-    //Scatter
-    // float sigma_s = scatteringFactor(hit.mat);
-    // float sigma_a = absorptionFactor(hit.mat);
-    // if (hit.inside && sigma_s > EPS){
-    //     float scatterDistance = -log(1 - rand(seed) * (1 - EPS)) / sigma_s;
-    //     if (scatterDistance < hit.t - EPS){
-    //         ray.origin += ray.dir * scatterDistance;
-    //         ray.dir = randomOnUnitSphere(seed);
-    //         vec3 absorption = exp(-(vec3(1) - hit.mat.color) * sigma_a * scatterDistance); // Beer-Lambert
-    //         ray.throughput *= absorption;
-    //         updateData(data);
-    //         russianRoulette(data);
-    //         return;
-    //     }
-    // }
-
-    // if (hit.inside){
-    //     vec3 absorption = exp(-(vec3(1) - hit.mat.color) * sigma_a * hit.t); // Beer-Lambert
-    //     ray.throughput *= absorption;
-    // }
+    
+    float sigma_s = scatteringFactor(hit.mat);
+    float sigma_a = absorptionFactor(hit.mat);
+    if (hit.inside && sigma_s < EPS){
+        Spectrum absorption = exp(-(Spectrum(1.0) - spectrumValue) * sigma_a * hit.t); // Beer-Lambert
+        ray.throughput *= absorption;
+    }
     
     float fuzz = pbrFuzz(hit.mat);
     float alpha = fuzz * fuzz;
     vec3 V = -ray.dir;
     vec3 H = randomGGX_VNDFHemisphere(seed, V, N, alpha);
+    float cos1 = dot(V, H);
 
-    vec3 L = refract(ray.dir, H, n);
-    float cos1 = dot(H, V);
-    float cos2 = dot(-H, L);
-    bool totalReflection = n * n * (1 - cos1 * cos1) > 1;
-
-    float reflectance = fresnel(cos1, cos2, n);
-    reflectance = min(reflectance, 0.995);
-    if (totalReflection || rand(seed) < reflectance){
+    bool reflects = checkReflection(ray, seed, n, H, cos1, dispertionFactor(hit.mat));
+    if (reflects){
         ray.origin += hit.t * ray.dir + 0.001 * N;
-        if (fuzz <= EPS || abs(n - 1) < EPS){
+        if (fuzz <= EPS || IORcloseToOne(n)){
             vec3 newDir = reflect(ray.dir, N);
             ray.dir = newDir;
             updateData(data);
             return;
         }
-
+        
         if (!hit.inside){
             Ray lightRay = ray;
             lightRay.dir = lightDir;
@@ -138,9 +175,9 @@ void glass(inout RaycastData data){
 
                 float f_r = cookTorranceReflectDielectric(N, V, lightDir, alpha);
                 float NdotL = max(dot(N, lightDir), 0.0);
-                vec3 Le = light.mat.color * emitIntensity(light.mat);
+                Spectrum Le = getSpectrumValue(lightMat) * emitIntensity(lightMat);
 
-                ray.radiance += clamp(ray.throughput * f_r * weight * NdotL / (pdirect), 0.0, 1.3) * Le;
+                ray.radiance += clamp(ray.throughput * f_r * weight * NdotL / (pdirect), 0.0, CLAMP_VAL) * Le;
             }
         }
 
@@ -154,8 +191,9 @@ void glass(inout RaycastData data){
     }
     else{
         ray.origin += hit.t * ray.dir - 0.001 * N;
-        if (fuzz <= EPS || abs(n - 1) <= EPS){
-            ray.dir = L;
+        float IOR = paramToFloat(n);
+        if (fuzz <= EPS || IORcloseToOne(n)){
+            ray.dir = refract(ray.dir, N, IOR);
             updateData(data);
             return;
         }
@@ -164,27 +202,26 @@ void glass(inout RaycastData data){
             Ray lightRay = ray;
             lightRay.dir = lightDir;
             if (shadow_hit(light, lightRay) > 0){
-                vec3 H_light = normalize(lightDir + V / n);
+                vec3 H_light = normalize(lightDir + V / IOR);
                 if (dot(V, H_light) * dot(lightDir, H_light) < 0.0){
-                    float pGGX = p_GGX_refract(N, H_light, lightDir, V, alpha, n);
+                    float pGGX = p_GGX_refract(N, H_light, lightDir, V, alpha, IOR);
                     float weight = computeWeight(pdirect, pGGX);
-
-                    float f_r = cookTorranceRefractDielectric(N, V, lightDir, alpha, n);
+                    float f_r = cookTorranceRefractDielectric(N, V, lightDir, alpha, IOR);
                     float NdotL = abs(dot(lightDir, N));
-                    vec3 Le = light.mat.color * emitIntensity(light.mat);
+                    Spectrum Le = getSpectrumValue(lightMat) * emitIntensity(lightMat);
 
-                    ray.radiance += clamp(ray.throughput * f_r * weight * NdotL / pdirect, 0.0, 1.3) * Le;
+                    ray.radiance += clamp(ray.throughput * f_r * weight * NdotL / pdirect, 0.0, CLAMP_VAL) * Le;
                 }
             }
         }
         
+        vec3 L = refract(ray.dir, H, IOR);
         ray.throughput *= weightVNDFRefractDielectric(N, H, L, alpha);
         ray.dir = L;
         if (hit.inside){
-            ray.pbsdf = p_GGX_refract(N, H, L, V, alpha, n);
+            ray.pbsdf = p_GGX_refract(N, H, L, V, alpha, IOR);
         }
     }
-
     updateData(data);
-    if (fuzz > EPS && abs(n - 1) > EPS) russianRoulette(data);
+    if (fuzz > EPS && IORcloseToOne(n)) russianRoulette(data);
 }

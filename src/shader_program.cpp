@@ -16,7 +16,7 @@ fs::path ShaderProgram::extractPath(const string& line){
     return fs::path(line.substr(start, end - start));
 }
 
-string ShaderProgram::getShaderSource(const char* path) {
+string ShaderProgram::getShaderSource(const char* path, bool spectral) {
     ifstream file(path, std::ios::ate | std::ios::binary);
     if (!file.is_open()) {
         cerr << "Erreur: impossible d'ouvrir le fichier " << path << endl;
@@ -36,8 +36,8 @@ string ShaderProgram::getShaderSource(const char* path) {
 
     const char* cur = raw.data();
     const char* end = cur + size;
-
     while (cur < end) {
+        if (spectral && cur > raw.data()) result.append("#define SPECTRAL\n");
         const char* lineEnd = static_cast<const char*>(memchr(cur, '\n', end - cur));
         if (!lineEnd) lineEnd = end;
 
@@ -47,7 +47,7 @@ string ShaderProgram::getShaderSource(const char* path) {
 
         if (line.find("#pragma include") != string_view::npos) {
             fs::path includePath = fs::path(path).parent_path() / extractPath(string(line));
-            result += getShaderSource(includePath.string().c_str());
+            result += getShaderSource(includePath.string().c_str(), false);
         } else if (line == "#pragma FDECLARE") {
             isForwardDeclaration = true;
         } else if (line == "#pragma FEND") {
@@ -63,7 +63,7 @@ string ShaderProgram::getShaderSource(const char* path) {
     return result;
 }
 
-void ShaderProgram::load(int type, const char *path){
+void ShaderProgram::load(int type, const char *path, bool spectral){
     m_types.push_back(type);
     m_paths.push_back(path);
 
@@ -76,7 +76,7 @@ void ShaderProgram::load(int type, const char *path){
     m_shaders.push_back(shader);
     
     //Compile shader
-    string shaderSourceString = getShaderSource(path);
+    string shaderSourceString = getShaderSource(path, spectral);
     const char *shaderSource = shaderSourceString.c_str();
     glShaderSource(shader, 1, &shaderSource, NULL);
     glCompileShader(shader);
@@ -97,7 +97,7 @@ void ShaderProgram::load(int type, const char *path){
     cout << "Compiling " << m_name << ".glsl..." << endl;
 }
 
-void ShaderProgram::reload(){
+void ShaderProgram::reload(bool spectral){
     destroy();
 
     create();
@@ -109,7 +109,7 @@ void ShaderProgram::reload(){
         m_shaders.push_back(shader);
         
         //Compile shader
-        string shaderSourceString = getShaderSource(m_paths[i]); 
+        string shaderSourceString = getShaderSource(m_paths[i], spectral); 
         const char *shaderSource = shaderSourceString.c_str();
         glShaderSource(shader, 1, &shaderSource, NULL);
         glCompileShader(shader);
@@ -146,6 +146,9 @@ void ShaderProgram::link(){
     }
     
     //Delete shaders
+    for(const int shader : m_shaders){
+        glDetachShader(m_shaderProgram, shader);
+    }
     for(const int shader : m_shaders){
         glDeleteShader(shader);
     }

@@ -32,55 +32,61 @@ enum PrimType : int {
 };
 
 struct PrimitiveObject {
-    glm::vec3 pos;
+    vec3 pos;
     float scale;
-    Material mat;
-    glm::vec3 pad;
+    vec2 pad;
+    int matIndex = -1;
     PrimType type;
 };
 
 struct MeshInfos {
-    glm::vec3 pos;
+    vec3 pos;
     float scale;
     int triangleOffset;
     int nodeOffset;
     int numberOfNodes;
     int isSmooth; 
-    Material mat;
+    vec3 pad;
+    int matIndex = -1;
 };
 
 struct Object {
-    glm::vec3 pos;
+    vec3 pos;
     float scale;
     Material mat;
-    glm::vec2 pad;
     unsigned int ID;
     PrimType type;
     int meshIndex;
     bool isSmooth;
 
     Object operator+(const Object& other){
-        return {
-            pos + other.pos,
-            scale + other.scale,
-            mat + other.mat,
-            pad, ID, type, meshIndex, isSmooth
-        };
+        Object newObj;
+        newObj.pos = pos + other.pos;
+        newObj.scale = scale + other.scale;
+        newObj.mat = mat + other.mat;
+        newObj.ID = ID;
+        newObj.type = type;
+        newObj.meshIndex = meshIndex;
+        newObj.isSmooth = isSmooth;
+        return newObj;
     }
 
     Object operator*(float t){
-        return {
-            pos * t,
-            scale * t,
-            mat * t,
-            pad, ID, type, meshIndex, isSmooth
-        };
+        Object newObj;
+        newObj.pos = pos * t;
+        newObj.scale = scale * t;
+        newObj.mat = mat * t;
+        newObj.ID = ID;
+        newObj.type = type;
+        newObj.meshIndex = meshIndex;
+        newObj.isSmooth = isSmooth;
+        return newObj;
     }
 };
 
 struct Ray {
-    glm::vec3 origin;
-    glm::vec3 direction;
+    vec3 origin;
+    vec3 direction;
 };
 
 struct SceneState {
@@ -101,7 +107,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(PrimType, {
     { PrimType::CUBE,       "cube"      },
     { PrimType::MESH_,      "mesh"      }
 })
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Material, color, type, data)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Material, color, type, data, data2)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Object, pos, scale, mat, ID, type, meshIndex, isSmooth)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SceneState, modelPaths, objectStates)
 
@@ -111,6 +117,7 @@ private:
     shared_ptr<Camera> m_camera = {};
 
     GLuint m_sceneBuffer = 0;
+    GLuint m_materialsBuffer = 0;
     GLuint m_lightIndicesBuffer = 0;
     GLuint m_volumeIndicesBuffer = 0;
     GLuint m_meshInfosBuffer = 0;
@@ -120,12 +127,14 @@ private:
     bool m_numMeshesChanged = false;
     vector<Object> m_objects = {};
     vector<shared_ptr<Mesh>> m_meshes = {};
-    static glm::vec3 m_cameraDirection;
-    static glm::vec3 m_cameraPosition;
+    static vec3 m_cameraDirection;
+    static vec3 m_cameraPosition;
 
     int m_copiedObject = -1;
     int m_selectedObject = -1;
     unsigned int m_maxId = 0;
+
+    bool m_spectral = false;
     
     function<void()> m_resetFrame = {};
     
@@ -136,6 +145,8 @@ private:
     float intersectTriangle(const Ray& ray, const Triangle& triangle);
     float intersectMesh(const Ray& ray, const Object& obj);
 
+    int addMaterial(vector<Material>& materials, Material mat);
+
     shared_ptr<Mesh> findMesh(const string& path);
 
 public:
@@ -143,21 +154,23 @@ public:
     Scene(shared_ptr<App> app, shared_ptr<Camera> camera, function<void()> resetFrame) 
     : m_app(app), m_camera(camera), m_resetFrame(resetFrame) {}
     static shared_ptr<Scene> defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, function<void()> resetFrame = nullptr);
-    static Ray rayFromClick(shared_ptr<Camera> camera, glm::vec2 screenPos);
+    static Ray rayFromClick(shared_ptr<Camera> camera, vec2 screenPos);
     static SceneState stateFromJson(const string& path);
     static void stateToJson(SceneState sceneState, const string& path);
     static shared_ptr<Object> getObjectFromId(SceneState sceneState, unsigned int ID);
 
     static const char* primLabels[4];
 
+    void setSpectral(bool spectral) { m_spectral = spectral; }
+    bool getSpectral() const { return m_spectral; }
     void loadFromState(const SceneState& sceneState, bool verbose = true);
     SceneState getState();
-    glm::vec2 worldToScreen(glm::vec3 worldPos);
+    vec2 worldToScreen(vec3 worldPos);
     void initGPU();
     int intersectObject(const Ray& ray);
     int addMesh(shared_ptr<Mesh> newMesh);
     void removeMesh(int index);
-    int addObject(Object& prim);
+    int addObject(Object prim);
     Object* getObject(int index);
     void removeObject(int index);
     void copyObject(int index);

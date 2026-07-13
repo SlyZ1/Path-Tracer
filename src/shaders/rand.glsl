@@ -96,6 +96,8 @@ vec3 randomGGXHemisphere(inout uint seed, vec3 normal, float alpha){
 }
 
 vec3 randomGGX_VNDFHemisphere(inout uint seed, vec3 wo, vec3 wn, float alpha){
+    if (alpha < EPS) return wn;
+    
     vec3 T, B;
     createTangentBasis(wn, T, B);
     vec3 wo_local = vec3(dot(wo, T), dot(wo, B), dot(wo, wn));
@@ -121,3 +123,13 @@ vec3 randomGGX_VNDFHemisphere(inout uint seed, vec3 wo, vec3 wn, float alpha){
     vec3 wm = normalize(wm_local.x * T + wm_local.y * B + wm_local.z * wn);
     return wm;
 }
+
+#ifdef SPECTRAL
+void sampleLambda(inout Ray ray, inout uint seed){
+    ray.lambda.x = mix(380.0, 780.0, rand(seed));
+    ray.lambda.y = mix(380.0, 780.0, rand(seed));
+    ray.lambda.z = mix(380.0, 780.0, rand(seed));
+    ray.lambda.w = mix(380.0, 780.0, rand(seed));
+    ray.throughput *= 780.0 - 380.0;   
+}
+#endif

@@ -22,14 +22,14 @@ class ShaderProgram {
         string m_name;
 
         fs::path extractPath(const string& line);
-        string getShaderSource(const char *path);
+        string getShaderSource(const char *path, bool spectral = false);
 
     public:
         ShaderProgram();
         GLuint id();
         void create();
-        void load(int type, const char *path);
-        void reload();
+        void load(int type, const char *path, bool spectral = false);
+        void reload(bool spectral = false);
         void link();
         void use();
         void dispatch(GLuint x = 1, GLuint y = 1, GLuint z = 1);

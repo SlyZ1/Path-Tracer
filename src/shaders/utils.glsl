@@ -1,9 +1,29 @@
+#define Y_INTEGRAL 106.85
+#ifdef SPECTRAL
+    #define CLAMP_VAL (Y_INTEGRAL * 1.3 * 300)
+#else
+    #define CLAMP_VAL 1.3
+#endif
+
 vec2 ratio(vec2 vec){
     return vec2(vec.x * texSize.x / texSize.y, vec.y);
 }
 
 vec3 reflect(vec3 I, vec3 N) {
     return I - 2.0 * dot(I, N) * N;
+}
+
+Ray makeRay(vec3 origin, vec3 dir){
+    return Ray(
+        origin, 
+        dir, 
+        Spectrum(1),
+        Spectrum(0),
+        -1
+#ifdef SPECTRAL
+        ,Spectrum(0)
+#endif
+    );
 }
 
 vec3 refract(vec3 I, vec3 N, float n) {
@@ -25,4 +45,75 @@ void stop(inout Hit hit, bool touchedLight){
 float linearToDepth(float depth, float near, float far){
     float temp = (far + near) / (far - near) - (2.0 * far * near) / (depth * (far - near));
     return (temp + 1) / 2;
+}
+
+float sigmoid(float x){
+    return 0.5 + 0.5 * x / sqrt(1 + x * x);
+}
+
+float sampleSpectrum(float lambda, vec3 c){
+    float x = lambda * lambda * c.x + lambda * c.y + c.z;
+    return sigmoid(x);
+}
+
+vec4 sampleSpectrum(vec4 lambda, vec3 c){
+    vec4 result;
+    result.x = sampleSpectrum(lambda.x, c);
+    result.y = sampleSpectrum(lambda.y, c);
+    result.z = sampleSpectrum(lambda.z, c);
+    result.w = sampleSpectrum(lambda.w, c);
+    return result;
+}
+
+float sampleVisibleWavelengths(float u){
+    return 538.0 - 138.888889 * atanh(0.85691062 - 1.82750197 * u);
+}
+
+float visibleWavelengthsPDF(float lambda){
+    if (lambda < 360.0 || lambda > 830.0) return 0.0;
+    float x = 0.0072 * (lambda - 538.0);
+    float sech = 1.0 / cosh(x);
+    return 0.0039398042 * sech * sech;
+}
+
+// Approximation analytique des CIE 1931 color matching functions
+
+float gaussian(float x, float alpha, float mu, float sigma1, float sigma2){
+    float sigma = (x < mu) ? sigma1 : sigma2;
+    float t = (x - mu) / sigma;
+    return alpha * exp(-0.5 * t * t);
+}
+
+vec3 wavelengthToXYZ(float lambda){
+    float x = gaussian(lambda, 1.056, 599.8, 37.9, 31.0)
+            + gaussian(lambda, 0.362, 442.0, 16.0, 26.7)
+            + gaussian(lambda, -0.065, 501.1, 20.4, 26.2);
+
+    float y = gaussian(lambda, 0.821, 568.8, 46.9, 40.5)
+            + gaussian(lambda, 0.286, 530.9, 16.3, 31.1);
+
+    float z = gaussian(lambda, 1.217, 437.0, 11.8, 36.0)
+            + gaussian(lambda, 0.681, 459.0, 26.0, 13.8);
+
+    return vec3(x, y, z) / Y_INTEGRAL;
+}
+
+vec3 XYZToLinearSRGB(vec3 xyz){
+    mat3 adaptE_to_D65 = transpose(mat3(
+        0.95315, -0.02655,  0.02385,
+        -0.03821,  1.02890,  0.00940,
+        0.00260, -0.00303,  1.08937
+    ));
+    mat3 M = transpose(mat3(
+         3.240479, -1.537150, -0.498535,
+        -0.969256,  1.875991,  0.041556,
+         0.055648, -0.204043,  1.057311
+    ));
+    return M * adaptE_to_D65 * xyz;
+}
+
+vec3 wavelengthToRGB(float lambda){
+    vec3 xyz = wavelengthToXYZ(lambda);
+    vec3 rgb = XYZToLinearSRGB(xyz);
+    return max(rgb, vec3(0.0));
 }

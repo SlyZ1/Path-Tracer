@@ -1,75 +1,6 @@
 #version 430 core
 
-struct Camera {
-    vec3 pos;
-    vec3 lookDir;
-};
-
-struct Mat {
-    vec3 color;
-    int type;
-    vec4 data;
-};
-
-struct Primitive {
-    vec3 pos;
-    float scale;
-    Mat mat;
-    vec3 pad;
-    int type;
-};
-
-struct Triangle {
-    vec3 v0;
-    vec3 v1;
-    vec3 v2;
-    vec3 n0;
-    vec3 n1;
-    vec3 n2;
-};
-
-struct AABB {
-    vec4 min;
-    vec4 max;
-};
-
-struct BVHNode {
-    int left;
-    int right;
-    int triangle;
-    int pad;
-    AABB aabb;
-    AABB leftAabb;
-    AABB rightAabb;
-};
-
-struct MeshInfos {
-    vec3 pos;
-    float scale;
-    int triangleOffset;
-    int nodeOffset;
-    int numberOfNodes;
-    int isSmooth; 
-    Mat mat;
-};
-
-struct Ray {
-    vec3 origin;
-    vec3 dir;
-    vec3 throughput;
-    vec3 radiance;
-    float pbsdf;
-    float lambda;
-};
-
-struct Hit {
-    float t;
-    vec3 normal;
-    Mat mat;
-    bool inside;
-    int primIndex;
-};
-
+#pragma include "structs.glsl"
 
 layout(std430, binding = 0) buffer TrianglesBuffer {
     Triangle triangles[];
@@ -80,11 +11,6 @@ layout(std430, binding = 1) buffer BVHBuffer {
 };
 uniform int numBVHNodes;
 uniform int debugBVH;
-layout(std430, binding = 4) buffer MeshBuffer {
-    MeshInfos meshInfos[];
-};
-uniform int numMeshes;
-
 layout(std430, binding = 2) buffer PrimitiveBuffer {
     Primitive primitives[];
 };
@@ -93,16 +19,18 @@ layout(std430, binding = 3) buffer LightIndicesBuffer {
     int lightIndicies[];
 };
 uniform int numLights;
+layout(std430, binding = 4) buffer MeshBuffer {
+    MeshInfos meshInfos[];
+};
+uniform int numMeshes;
 layout(std430, binding = 5) buffer VolumeIndicesBuffer {
     int volumeIndicies[];
 };
 uniform int numVolumesMeshes;
 uniform int numVolumesPrims;
 
-struct RaycastData {
-    Hit hit;
-    Ray ray;
-    uint seed;
+layout(std430, binding = 6) buffer MaterialBuffer {
+    Mat matBuffer[];
 };
 
 uniform Camera camera;
@@ -123,10 +51,11 @@ uniform vec2 winSize;
 uniform int maxBounces;
 
 layout (location = 0) out vec4 FragColor;
-layout (location = 1) out vec4 NormalOut;
-layout (location = 2) out vec4 AlbedoOut;
-layout (location = 3) out vec4 ColorOut;
-layout (location = 4) out vec4 DepthOut;
+layout (location = 1) out vec4 ResultColor;
+layout (location = 2) out vec4 NormalOut;
+layout (location = 3) out vec4 AlbedoOut;
+layout (location = 4) out vec4 ColorOut;
+layout (location = 5) out vec4 DepthOut;
 in vec4 vClipPos;
 
 //#define SAMPLES 1
@@ -141,10 +70,13 @@ in vec4 vClipPos;
 #define diffuseRoughness(m) m.data.x
 #define pbrFuzz(m) m.data.x
 #define pbrMetallic(m) m.data.y
-#define emitIntensity(m) m.data.x          
+#define emitIntensity(m) m.data.x
 #define glassIndex(m) m.data.y
+#define dispertionFactor(m) m.data2.x
 #define absorptionFactor(m) m.data.z
 #define scatteringFactor(m) m.data.w
+#define filmIOR(m) m.data2.x
+#define filmDepth(m) m.data2.y
 
 #define MAT_DIFF 0
 #define MAT_METAL 1
@@ -156,8 +88,9 @@ in vec4 vClipPos;
 
 #pragma include "./rand.glsl"
 #pragma include "./utils.glsl"
+#pragma include "./reflections.glsl"
 #pragma include "./intersections.glsl"
-
+#pragma include "./mis-nee.glsl"
 #pragma FDECLARE
 // RAND.GLSL
 uint initSeed(uvec2 pos, uint frame);
@@ -176,80 +109,28 @@ vec3 refract(vec3 I, vec3 N, float n);
 void stop(inout Hit hit, bool touchedLight);
 float luminanceMean(vec3 c);
 float linearToDepth(float depth, float near, float far);
+float sampleSpectrum(float lambda, vec3 c);
+vec3 wavelengthToRGB(float lambda);
+
+// REFLECTIONS.GLSL
+vec4 schlickFresnel(float VdotN, vec4 F0);
+vec3 schlickFresnel(float VdotN, vec3 F0);
+float schlickFresnel(float VdotN, float F0);
+vec4 fresnel(float cos1, vec4 cos2, vec4 n);
+float fresnel(float cos1, float cos2, float n);
+vec4 airy(float cosI, float filmN, float filmL, vec4 lambda, vec4 spectrumValue);
 
 // INTERSECTIONS.GLSL
 Hit rayIntersection(inout Ray ray, bool isShadow);
 bool isInVolume(inout Ray ray, out Mat mat);
+
+// MIS-NEE.GLSL
+float computeWeight(float p1, float p2);
+float p_direct(Primitive light, float distance, float cosLight);
+float shadow_hit(Primitive light, Ray ray);
+void russianRoulette(inout RaycastData data);
+vec4 sampleLight(inout RaycastData data, Primitive light);
 #pragma FEND
-
-vec3 schlickFresnel(float VdotN, vec3 F0)
-{
-    float minusDot = clamp(1 - VdotN, 0, 1);
-    float dot2 = minusDot * minusDot;
-    float dot5 = dot2 * dot2 * minusDot;
-    return F0 + (vec3(1) - F0) * dot5;
-}
-
-float fresnel(float cos1, float cos2, float n){
-    if (n < 2.3 && n > 1.3){ // validity on schlickFresnel
-        float f0 = (1 - n)/(1 + n);
-        f0 *= f0;
-        return schlickFresnel(cos1, vec3(f0)).x;
-    }
-    float Fp = (n * cos1 - cos2) / (n * cos1 + cos2);
-    float Fs = (cos1 - n * cos2) / (cos1 + n * cos2);
-    return 0.5 * (Fp * Fp + Fs * Fs);
-}
-
-// pdfs
-
-float computeWeight(float p1, float p2){
-    float n1 = p1 * p1;
-    float n2 = p2 * p2;
-    return n1 / (n1 + n2);
-}
-
-float p_direct(Primitive light, float distance, float cosLight){
-    return distance * distance / (cosLight * 2 * PI * light.scale * light.scale * numLights + 1e-4);
-}
-
-float shadow_hit(Primitive light, Ray ray){
-    Hit hit = rayIntersection(ray, true);
-    vec3 hitPos = ray.origin + ray.dir * hit.t;
-    if (hit.t >= 0 && length(hitPos - light.pos) > light.scale + sqrt(EPS)) return 0;
-    return 1;
-}
-
-// lighting functions
-
-void russianRoulette(inout RaycastData data){
-    Ray ray; Hit hit; uint seed;
-    unwrapData(data);
-    
-    float prob = max(max(ray.throughput.r, ray.throughput.g), ray.throughput.b);
-    if (rand(seed) > prob) {
-        stop(hit, true);
-    }  
-    else { ray.throughput /= max(min(prob, 1), EPS); }
-
-    updateData(data);
-}
-
-vec4 sampleLight(inout RaycastData data, Primitive light){
-    Ray ray; Hit hit; uint seed;
-    unwrapData(data);
-
-    vec3 nLight = randomOnUnitHemiphere(seed, ray.origin - light.pos);
-    vec3 lightPoint = light.pos + nLight * light.scale;
-    vec3 lightDir = normalize(lightPoint - ray.origin);
-    float LdotNl = max(dot(-lightDir, nLight), 0);
-    
-    float distance = length(lightPoint - ray.origin);
-    float pdirect = p_direct(light, distance, LdotNl);
-
-    updateData(data);
-    return vec4(lightDir, pdirect);
-}
 
 // -------------------- MATERIALS
 
@@ -367,7 +248,6 @@ void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out 
     color = vec4(0);
     depth = 1e2;
     for (int i = 0; i < maxBounces; i++){
-
         Hit hit = rayIntersection(tracedRay, false);
         if (hit.t > 0 && firstHit){
             firstHit = false;
@@ -378,31 +258,24 @@ void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out 
         computeLighting(hit, tracedRay, seed);
 
         if (hit.t < 0){
+#ifdef SPECTRAL
+            if (hit.t > -2) tracedRay.radiance += tracedRay.throughput * 0.4; // * sky(tracedRay.dir);
+
+            result = vec4(wavelengthToXYZ(tracedRay.lambda.x) * tracedRay.radiance.x, 1);
+            result += vec4(wavelengthToXYZ(tracedRay.lambda.y) * tracedRay.radiance.y, 1);
+            result += vec4(wavelengthToXYZ(tracedRay.lambda.z) * tracedRay.radiance.z, 1);
+            result += vec4(wavelengthToXYZ(tracedRay.lambda.w) * tracedRay.radiance.w, 1);
+            result /= 4.0;
+#else
             if (hit.t > -2) tracedRay.radiance += tracedRay.throughput * sky(tracedRay.dir);
             if (firstHit) albedo = vec4(sky(tracedRay.dir), 1);
             result = vec4(tracedRay.radiance, 1);
             color = result / (albedo + vec4(EPS));
+#endif
             return;
-        }// Cas ou on tombe sur une light ou sur rien
+        }
     }
 }
-
-// vec4 rayColor(in out uint seed, Ray ray){
-//     Ray tracedRay = ray;
-//     for (int i = 0; i < maxBounces; i++){
-
-//         Hit hit = rayIntersection(tracedRay, false);
-//         //if (hit.t > 0) tracedRay.throughput *= exp(-hit.t * 0.015);
-//         computeLighting(hit, tracedRay, seed);
-
-//         if (hit.t < 0){
-//             if (hit.t > -2) tracedRay.radiance += tracedRay.throughput * sky(tracedRay.dir);
-//             return vec4(tracedRay.radiance, 1);
-//         }// Cas ou on tombe sur une light ou sur rien
-//     }
-
-//     return vec4(0);
-// }
 
 void main()
 {
@@ -412,14 +285,10 @@ void main()
     vec2 offset = resolutionFactor * vec2(rand(seed), rand(seed)) / winSize;
     vec2 uv = (vClipPos.xy + vec2(1)) * 0.5;
 
-    Ray ray = Ray(
-        camera.pos, 
-        camera.lookDir, 
-        vec3(1),
-        vec3(0),
-        -1,
-        0
-    );
+    Ray ray = makeRay(camera.pos, camera.lookDir);
+#ifdef SPECTRAL
+    sampleLambda(ray, seed);
+#endif
 
     vec4 radiance = vec4(0);
     vec4 normal = vec4(0);
@@ -435,9 +304,14 @@ void main()
         radiance += max(result, vec4(0));
     }
 
-    vec4 finalResult = radiance + max(frameCount, 0) * texture(screenTex, uv);
-    finalResult /= frameCount + samples;
-    FragColor = finalResult;
+    vec4 accumulation = radiance + max(frameCount, 0) * texture(screenTex, uv);
+    accumulation /= frameCount + samples;
+    FragColor = accumulation;
+#ifdef SPECTRAL
+    ResultColor = vec4(XYZToLinearSRGB(accumulation.xyz), 1.0);
+#else
+    ResultColor = accumulation;
+#endif
     NormalOut = normal;
     AlbedoOut = albedo;
     ColorOut = color;

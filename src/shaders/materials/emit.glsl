@@ -8,8 +8,9 @@ void emit(inout RaycastData data){
         float pdirect = p_direct(primitives[hit.primIndex], hit.t, LdotNl);
         weight = computeWeight(ray.pbsdf, pdirect);
     }
-    vec3 Le = hit.mat.color * emitIntensity(hit.mat);
-    ray.radiance += clamp(data.ray.throughput * weight, 0.0, 1.3) * Le;
+
+    Spectrum Le = getSpectrumValue(hit.mat) * emitIntensity(hit.mat);
+    ray.radiance += clamp(ray.throughput * weight, 0.0, CLAMP_VAL) * Le;
     stop(hit, true);
 
     updateData(data);
