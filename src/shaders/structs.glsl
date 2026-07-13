@@ -12,9 +12,8 @@ struct Mat {
 
 struct Primitive {
     vec3 pos;
-    float scale;
-    vec2 pad;
     int matIndex;
+    vec3 scale;
     int type;
 };
 
@@ -44,13 +43,13 @@ struct BVHNode {
 
 struct MeshInfos {
     vec3 pos;
-    float scale;
     int triangleOffset;
+    vec3 scale;
     int nodeOffset;
     int numberOfNodes;
     int isSmooth;
-    vec3 pad;
     int matIndex;
+    int pad;
 };
 
 #ifdef SPECTRAL

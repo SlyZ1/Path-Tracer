@@ -36,6 +36,7 @@ float fresnel(float cos1, float cos2, float n){
 
 vec4 airy(float cosI, float filmN, float filmL, vec4 lambda, vec4 spectrumValue){
     float sinT2 = (1.0 - cosI*cosI) / (filmN*filmN);
+    if (sinT2 > 1 - EPS) return schlickFresnel(0, spectrumValue);
     float cosT = sqrt(max(1.0 - sinT2, 0.0));
 
     vec4 r12 = vec4(sqrt(fresnel(cosI, cosT, filmN)));
@@ -46,5 +47,5 @@ vec4 airy(float cosI, float filmN, float filmL, vec4 lambda, vec4 spectrumValue)
     vec4 num = r12*r12 + r23*r23 + 2.0*r12*r23*cos(phi);
     vec4 denom = 1 + r12*r12*r23*r23 + 2.0*r12*r23*cos(phi);
 
-    return clamp(num / (denom + vec4(EPS)), 0.0, 1.0);
+    return clamp(num / (denom), 0.0, 1.0);
 }

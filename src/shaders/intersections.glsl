@@ -3,10 +3,14 @@
 #define PRIM_CUBE 2
 
 Hit sphereIntersect(Primitive sphere, Ray ray){
-    vec3 oc = ray.origin - sphere.pos;
-    float b = dot(oc, ray.dir);
-    float c = dot(oc, oc) - sphere.scale * sphere.scale;
-    float h = b*b - c;
+    vec3 dir = ray.dir / sphere.scale;
+    vec3 oc = (ray.origin - sphere.pos) / sphere.scale;
+
+    float a = dot(dir, dir);
+    float b = dot(oc, dir);
+    float c = dot(oc, oc) - 1;
+
+    float h = b*b - a*c;
 
     Hit hit;
     hit.t = -1;
@@ -14,15 +18,15 @@ Hit sphereIntersect(Primitive sphere, Ray ray){
 
     bool inside = false;
     float sqrtH = sqrt(h);
-    float t = -b - sqrtH;
+    float t = (-b - sqrtH) / a;
     if (t <= 0){
-        t = -b + sqrtH;
+        t = (-b + sqrtH) / a;
         inside = true;
         if (t <= 0) return hit;
     }
 
-    vec3 pos = ray.origin + t * ray.dir;
-    vec3 normal = normalize(pos - sphere.pos);
+    vec3 localHit = oc + t * dir;
+    vec3 normal = normalize(localHit / sphere.scale);
 
     Hit newHit;
     newHit.t = t;
@@ -36,10 +40,11 @@ Hit planeIntersect(Primitive plane, Ray ray){
     vec3 normal = vec3(0,1,0);
     float t = dot(rp, normal) / dot(ray.dir, normal);
     vec3 relativePoint = ray.origin + t * ray.dir;
-    vec3 difference = relativePoint - plane.pos;
+    vec3 difference = abs(relativePoint - plane.pos);
     Hit hit;
     hit.t = -1;
-    if (t <= 0 || dot(difference, difference) > 10000) 
+    vec3 scale = plane.scale;
+    if (t <= 0 || difference.x > scale.x || difference.y > scale.y || difference.z > scale.z) 
         return hit;
 
     Hit newHit;
@@ -152,13 +157,13 @@ Hit intersectCube(Primitive cube, Ray ray)
     return hit;
 }
 
-AABB scaleAABB(AABB box, float scale){
+AABB scaleAABB(AABB box, vec3 scale){
     box.min.xyz *= scale;
     box.max.xyz *= scale;
     return box;
 }
 
-Triangle scaleTri(Triangle tri, float scale){
+Triangle scaleTri(Triangle tri, vec3 scale){
     tri.v0 *= scale;
     tri.v1 *= scale;
     tri.v2 *= scale;
@@ -168,7 +173,7 @@ Triangle scaleTri(Triangle tri, float scale){
 Hit bvhIntersect(inout Ray ray, MeshInfos info, bool isShadow)
 {
     vec3 pos = info.pos;
-    float scale = info.scale;
+    vec3 scale = info.scale;
 
     float hitT = 1e6;
     Hit hit;

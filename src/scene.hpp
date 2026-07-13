@@ -33,26 +33,25 @@ enum PrimType : int {
 
 struct PrimitiveObject {
     vec3 pos;
-    float scale;
-    vec2 pad;
     int matIndex = -1;
+    vec3 scale;
     PrimType type;
 };
 
 struct MeshInfos {
     vec3 pos;
-    float scale;
     int triangleOffset;
+    vec3 scale;
     int nodeOffset;
     int numberOfNodes;
-    int isSmooth; 
-    vec3 pad;
+    int isSmooth;
     int matIndex = -1;
+    int pad;
 };
 
 struct Object {
     vec3 pos;
-    float scale;
+    vec3 scale;
     Material mat;
     unsigned int ID;
     PrimType type;

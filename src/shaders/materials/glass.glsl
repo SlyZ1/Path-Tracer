@@ -158,7 +158,7 @@ void glass(inout RaycastData data){
 
     bool reflects = checkReflection(ray, seed, n, H, cos1, dispertionFactor(hit.mat));
     if (reflects){
-        ray.origin += hit.t * ray.dir + 0.001 * N;
+        ray.origin += hit.t * ray.dir + 10 * EPS * N;
         if (fuzz <= EPS || IORcloseToOne(n)){
             vec3 newDir = reflect(ray.dir, N);
             ray.dir = newDir;
@@ -190,7 +190,7 @@ void glass(inout RaycastData data){
         }
     }
     else{
-        ray.origin += hit.t * ray.dir - 0.001 * N;
+        ray.origin += hit.t * ray.dir - 10 * EPS * N;
         float IOR = paramToFloat(n);
         if (fuzz <= EPS || IORcloseToOne(n)){
             ray.dir = refract(ray.dir, N, IOR);

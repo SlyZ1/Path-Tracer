@@ -302,15 +302,6 @@ void inputs(){
         camera->resetMousePos(app->mouseX(), app->mouseY());
     }
 
-    if (app->keyPressedOnce(GLFW_KEY_ENTER, frameCount) && !ui->isShowing()){
-        Object newObj;
-        newObj.type = PrimType::SPHERE;
-        newObj.pos = glm::vec3(rand() / (float)RAND_MAX * 10, 1, rand() / (float)RAND_MAX * 10);
-        newObj.scale = rand() / (float)RAND_MAX + 0.5f;
-        newObj.mat = Material::glassMaterial(glm::vec3(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX, rand() / (float)RAND_MAX), 0.0f, rand() / (float)RAND_MAX*2 + 1);
-        scene->addObject(newObj);
-    }
-
     if (app->keyPressed(GLFW_KEY_LEFT_ALT) && app->keyPressedOnce(GLFW_KEY_S, frameCount)){
         bool cancel;
         string res = app->saveFileDialog(cancel, "output.png");

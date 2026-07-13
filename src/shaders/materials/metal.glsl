@@ -69,7 +69,7 @@ Spectrum weight_VNDF_reflect(FresnelParams params, vec3 N, vec3 V, vec3 L, float
 void metal(inout RaycastData data){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
-    ray.origin += hit.t * ray.dir + hit.normal * EPS;
+    ray.origin += hit.t * ray.dir + 10 * hit.normal * EPS;
     ray.pbsdf = -1;
 
     Spectrum spectrumValue = getSpectrumValue(hit.mat);

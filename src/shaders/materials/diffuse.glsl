@@ -57,7 +57,7 @@ Spectrum oren_nayar(Spectrum spectrumValue, vec3 normal, vec3 lightDir, vec3 vie
 void diffuse(inout RaycastData data){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
-    ray.origin += hit.t * ray.dir + EPS * hit.normal;
+    ray.origin += hit.t * ray.dir + 10 * EPS * hit.normal;
 
     Spectrum spectrumValue = getSpectrumValue(hit.mat);
     

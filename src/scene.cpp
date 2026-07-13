@@ -20,14 +20,14 @@ shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> ca
     Object plane;
     plane.type = PrimType::PLANE;
     plane.pos = vec3(0.0f);
-    plane.scale = 1.0f;
+    plane.scale = vec3(30.0f);
     plane.mat = Material::glossyMaterial(vec3(1.0f), 0.0f, 0.2f);
     scene->addObject(plane);
 
     Object light;
     light.type = PrimType::SPHERE;
     light.pos = vec3(0.0f, 5.0f, 2.0f);
-    light.scale = 1.0f;
+    light.scale = vec3(1.0f);
     light.mat = Material::emitMaterial(vec3(1.0f), 20.0f);
     scene->addObject(light);
 
@@ -37,7 +37,7 @@ shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> ca
 
     Object meshObject;
     meshObject.pos = vec3(0.0f, 1.29f, 0.0f);
-    meshObject.scale = 3.0f;
+    meshObject.scale = vec3(3.0f);
     meshObject.type = PrimType::MESH_;
     meshObject.mat = Material::diffuseMaterial(vec3(0.9f, 0.6f, 0.2f), 0.0f);
     meshObject.meshIndex = bunnyIndex;
@@ -196,7 +196,7 @@ void Scene::initGPU(){
 float Scene::intersectSphere(const Ray& ray, const Object& sphere){
     vec3 oc = ray.origin - sphere.pos;
     float b = dot(oc, ray.direction);
-    float c = dot(oc, oc) - sphere.scale * sphere.scale;
+    float c = dot(oc, oc) - sphere.scale.x * sphere.scale.x;
     float h = b*b - c;
 
     float distance = -1;
@@ -287,7 +287,7 @@ float Scene::intersectMesh(const Ray& ray, const Object& obj){
     stack[stackPtr++] = (int)nodes.size() - 1;
 
     vec3 pos = obj.pos;
-    float scale = obj.scale;
+    float scale = obj.scale.x;
 
     float hitT = FLT_MAX;
     Ray newRay = ray;

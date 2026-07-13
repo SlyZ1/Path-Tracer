@@ -13,6 +13,13 @@ vec3 reflect(vec3 I, vec3 N) {
     return I - 2.0 * dot(I, N) * N;
 }
 
+bool isEqual(Primitive prim1, Primitive prim2){
+    return prim1.type == prim2.type
+    && prim1.pos == prim2.pos
+    && prim1.scale == prim2.scale
+    && prim1.matIndex == prim2.matIndex;
+}
+
 Ray makeRay(vec3 origin, vec3 dir){
     return Ray(
         origin, 

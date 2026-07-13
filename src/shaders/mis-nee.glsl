@@ -4,14 +4,23 @@ float computeWeight(float p1, float p2){
     return n1 / (n1 + n2);
 }
 
+float ellipsoidVisibleAreaApprox(vec3 scale){
+    const float p = 1.6075;
+    float ap = pow(scale.x, p);
+    float bp = pow(scale.y, p);
+    float cp = pow(scale.z, p);
+    float totalArea = 4.0 * PI * pow((ap*bp + bp*cp + cp*ap) / 3.0, 1.0/p);
+    return totalArea * 0.5;
+}
+
 float p_direct(Primitive light, float distance, float cosLight){
-    return distance * distance / (cosLight * 2 * PI * light.scale * light.scale * numLights + 1e-4);
+    float area = ellipsoidVisibleAreaApprox(light.scale);
+    return distance * distance / (cosLight * area * numLights + 1e-4);
 }
 
 float shadow_hit(Primitive light, Ray ray){
     Hit hit = rayIntersection(ray, true);
-    vec3 hitPos = ray.origin + ray.dir * hit.t;
-    if (hit.t >= 0 && length(hitPos - light.pos) < light.scale + sqrt(EPS)) return 1;
+    if (hit.t >= 0 && isEqual(primitives[hit.primIndex], light)) return 1;
     return 0;
 }
 

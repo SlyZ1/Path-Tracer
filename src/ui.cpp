@@ -90,8 +90,8 @@ void UI::renderStats(int frameAccumulator){
     m_fpsUpdateTimer += deltaTime;
     constexpr float fpsUpdateInterval = 0.25f;
     if (m_fpsUpdateTimer >= fpsUpdateInterval && m_fpsFrameCount > 0) {
-        m_displayedFps = (int)round((double)m_fpsFrameCount / (double)m_fpsUpdateTimer);
-        m_displayedFrameTimeMs = ((double)m_fpsUpdateTimer / (double)m_fpsFrameCount) * 1000.0;
+        m_displayedFps = (int)round(m_fpsFrameCount / m_fpsUpdateTimer);
+        m_displayedFrameTimeMs = (m_fpsUpdateTimer / m_fpsFrameCount) * 1000.0f;
         m_fpsUpdateTimer = 0.0f;
         m_fpsFrameCount = 0;
     }
@@ -197,7 +197,6 @@ void UI::renderPopupData(Object* selectedObject){
                 selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.8f);
                 m_scene->updateScene();
             }
-
             Label("Metallic");
             selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 0.05f, 1.0f);
             if (ImGui::SliderFloat("##Metallic", &selectedObject->mat.data.y, 0.05f, 1.0f)){
@@ -208,7 +207,7 @@ void UI::renderPopupData(Object* selectedObject){
         case MatType::EMIT:
             Label("Intensity");
             selectedObject->mat.data.x = glm::max(selectedObject->mat.data.x, 0.0f);
-            if (ImGui::InputFloat("##Intensity", &selectedObject->mat.data.x)){
+            if (ImGui::DragFloat("##Intensity", &selectedObject->mat.data.x)){
                 selectedObject->mat.data.x = glm::max(selectedObject->mat.data.x, 0.0f);
                 m_scene->updateScene();
             }
@@ -231,8 +230,11 @@ void UI::renderPopup(){
             m_scene->updateScene();
         
         Label("Scale");
-        if (ImGui::DragFloat("##Scale", &selectedObject->scale, 0.001f))
+        selectedObject->scale = max(selectedObject->scale, vec3(0.0f));
+        if (ImGui::DragFloat3("##Scale", &selectedObject->scale.x, 0.001f)){
+            selectedObject->scale = max(selectedObject->scale, vec3(0.0f));
             m_scene->updateScene();
+        }
         
         Label("Shape Type");
         if (ImGui::Combo("##Shape Type", (int*)(&selectedObject->type), Scene::primLabels, IM_ARRAYSIZE(Scene::primLabels))){
