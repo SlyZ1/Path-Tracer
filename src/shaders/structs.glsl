@@ -15,6 +15,8 @@ struct Primitive {
     int matIndex;
     vec3 scale;
     int type;
+    vec3 rotation;
+    int pad;
 };
 
 struct Triangle {
@@ -46,10 +48,11 @@ struct MeshInfos {
     int triangleOffset;
     vec3 scale;
     int nodeOffset;
+    vec3 rotation;
     int numberOfNodes;
     int isSmooth;
     int matIndex;
-    int pad;
+    vec2 pad;
 };
 
 #ifdef SPECTRAL

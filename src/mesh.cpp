@@ -8,13 +8,13 @@ using namespace std;
 
 Mesh::Mesh() {}
 
-AABB Mesh::scaleAABB(AABB box, float scale){
-    box.min *= scale;
-    box.max *= scale;
+AABB Mesh::scaleAABB(AABB box, vec3 scale){
+    box.min *= vec4(scale, 1.0);
+    box.max *= vec4(scale, 1.0);
     return box;
 }
 
-Triangle Mesh::scaleTri(Triangle tri, float scale){
+Triangle Mesh::scaleTri(Triangle tri, vec3 scale){
     tri.v1 *= scale;
     tri.v2 *= scale;
     tri.v3 *= scale;

@@ -93,8 +93,8 @@ struct linBVHNode {
 class Mesh {
 public:
     Mesh();
-    static AABB scaleAABB(AABB box, float scale);
-    static Triangle scaleTri(Triangle tri, float scale);
+    static AABB scaleAABB(AABB box, vec3 scale);
+    static Triangle scaleTri(Triangle tri, vec3 scale);
 
     string modelPath = "";
     string modelName = "";

@@ -21,6 +21,7 @@ shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> ca
     plane.type = PrimType::PLANE;
     plane.pos = vec3(0.0f);
     plane.scale = vec3(30.0f);
+    plane.rotation = vec3(0.0f);
     plane.mat = Material::glossyMaterial(vec3(1.0f), 0.0f, 0.2f);
     scene->addObject(plane);
 
@@ -28,6 +29,7 @@ shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> ca
     light.type = PrimType::SPHERE;
     light.pos = vec3(0.0f, 5.0f, 2.0f);
     light.scale = vec3(1.0f);
+    light.rotation = vec3(0.0f);
     light.mat = Material::emitMaterial(vec3(1.0f), 20.0f);
     scene->addObject(light);
 
@@ -38,6 +40,7 @@ shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> ca
     Object meshObject;
     meshObject.pos = vec3(0.0f, 1.29f, 0.0f);
     meshObject.scale = vec3(3.0f);
+    meshObject.rotation = vec3(0.0f);
     meshObject.type = PrimType::MESH_;
     meshObject.mat = Material::diffuseMaterial(vec3(0.9f, 0.6f, 0.2f), 0.0f);
     meshObject.meshIndex = bunnyIndex;
@@ -193,46 +196,99 @@ void Scene::initGPU(){
     glGenBuffers(1, &m_nodesBuffer);
 }
 
-float Scene::intersectSphere(const Ray& ray, const Object& sphere){
-    vec3 oc = ray.origin - sphere.pos;
-    float b = dot(oc, ray.direction);
-    float c = dot(oc, oc) - sphere.scale.x * sphere.scale.x;
-    float h = b*b - c;
+mat3 Scene::rotationMatrix(vec3 rotationDegrees){
+    vec3 r = radians(rotationDegrees);
+    float cx = cos(r.x), sx = sin(r.x);
+    float cy = cos(r.y), sy = sin(r.y);
+    float cz = cos(r.z), sz = sin(r.z);
 
-    float distance = -1;
-    if (h < 0) return distance;
+    mat3 rx = transpose(mat3(
+        1,  0,   0,
+        0,  cx, -sx,
+        0,  sx,  cx
+    ));
 
-    float sqrtH = sqrt(h);
-    distance = -b - sqrtH;
-    if (distance <= 0){
-        distance = -b + sqrtH;
-    }
+    mat3 ry = transpose(mat3(
+        cy,  0, sy,
+        0,   1, 0,
+        -sy, 0, cy
+    ));
 
-    return distance;
+    mat3 rz = transpose(mat3(
+        cz, -sz, 0,
+        sz,  cz, 0,
+        0,   0,  1
+    ));
+
+    return rz * ry * rx;
 }
 
-float Scene::intersectPlane(const Ray& ray, const Object& plane){
-    vec3 rp = plane.pos - ray.origin;
-    vec3 normal = vec3(0,1,0);
-    float t = dot(rp, normal) / dot(ray.direction, normal);
+float Scene::intersectSphere(const Ray& ray, const Object& sphere){
+    mat3 rot = rotationMatrix(sphere.rotation);
+    mat3 invRot = transpose(rot);
+
+    vec3 dir = (invRot * ray.direction) / sphere.scale;
+    vec3 oc = (invRot * (ray.origin - sphere.pos)) / sphere.scale;
+
+    float a = dot(dir, dir);
+    float b = dot(oc, dir);
+    float c = dot(oc, oc) - 1.0f;
+
+    float h = b*b - a*c;
+
+    if (h < 0.) return -1.0f;
+
+    float sqrtH = sqrt(h);
+    float t = (-b - sqrtH) / a;
+    if (t <= 0){
+        t = (-b + sqrtH) / a;
+        if (t <= 0) return -1.0f;
+    }
     return t;
 }
 
-float Scene::intersectCube(const Ray& ray, const Object& cube){
-    vec3 minP = cube.pos - vec3(1.0f) * cube.scale;
-    vec3 maxP = cube.pos + vec3(1.0f) * cube.scale;
+float Scene::intersectPlane(const Ray& ray, const Object& plane){
+    mat3 rot = rotationMatrix(plane.rotation);
+    mat3 invRot = transpose(rot);
 
-    vec3 t0 = (minP - ray.origin) / ray.direction;
-    vec3 t1 = (maxP - ray.origin) / ray.direction;
+    vec3 localOrigin = invRot * (ray.origin - plane.pos);
+    vec3 localDir = invRot * ray.direction;
+
+    vec3 normal = vec3(0.0f, 1.0f, 0.0f);
+    float t = -localOrigin.y / localDir.y;
+    vec3 localHit = localOrigin + t * localDir;
+    vec3 difference = abs(localHit);
+    
+    vec3 scale = plane.scale;
+    if (t <= 0 || difference.x > scale.x || difference.y > scale.y || difference.z > scale.z)
+        return -1.0f;
+    return t;
+}
+
+float Scene::intersectCube(const Ray& ray, const Object& cube)
+{
+    mat3 rot = rotationMatrix(cube.rotation);
+    mat3 invRot = transpose(rot);
+
+    vec3 localOrigin = invRot * (ray.origin - cube.pos);
+    vec3 localDir = invRot * ray.direction;
+
+    vec3 minP = -cube.scale;
+    vec3 maxP = cube.scale;
+
+    vec3 t0 = (minP - localOrigin) / localDir;
+    vec3 t1 = (maxP - localOrigin) / localDir;
 
     vec3 tNear = min(t0, t1);
-    vec3 tFar  = max(t0, t1);
+    vec3 tFar = max(t0, t1);
 
-    float tmin = glm::max(glm::max(tNear.x, tNear.y), glm::max(tNear.z, 0.0f));
-    float tmax = glm::min(glm::min(tFar.x,  tFar.y),  glm::min(tFar.z,  1e6f));
+    float tmin = glm::max(tNear.x, glm::max(tNear.y, tNear.z));
+    float tmax = glm::min(tFar.x,  glm::min(tFar.y,  tFar.z));
 
-    if (tmax < tmin) return -1;
-    return tmin;
+    if (tmax < tmin || tmax < 0.0) return -1;
+
+    float t = tmin < 0.0 ? tmax : tmin;
+    return t;
 }
 
 float Scene::intersectAABB(const Ray& invRay, const AABB& aabb, float tMin, float tMax){
@@ -275,59 +331,64 @@ float Scene::intersectTriangle(const Ray& ray, const Triangle& triangle){
     return t;
 }
 
-float Scene::intersectMesh(const Ray& ray, const Object& obj){
-    const int STACK_SIZE = 32;
-
-    int stack[STACK_SIZE];
-    int stackPtr = 0;
+float Scene::intersectMesh(const Ray& ray, const Object& obj)
+{
+    vec3 pos = obj.pos;
+    vec3 scale = obj.scale;
+    mat3 rot = rotationMatrix(obj.rotation);
+    mat3 invRot = transpose(rot);
 
     shared_ptr<Mesh> mesh = m_meshes[obj.meshIndex];
     const vector<linBVHNode>& nodes = mesh->getLinNodes();
     const vector<Triangle>& triangles = mesh->getTriangles();
-    stack[stackPtr++] = (int)nodes.size() - 1;
 
-    vec3 pos = obj.pos;
-    float scale = obj.scale.x;
-
-    float hitT = FLT_MAX;
+    float hitT = 1e6f;
     Ray newRay = ray;
-    newRay.origin -= pos;
+    newRay.origin = invRot * (ray.origin - pos);
+    newRay.direction = invRot * ray.direction;
     Ray invRay = newRay;
     invRay.direction = 1.0f / invRay.direction;
 
+    float initialT = intersectAABB(invRay, Mesh::scaleAABB(nodes[(int)nodes.size() - 1].bounds, scale), 0.001f, hitT);
+    if (initialT < 0) return -1.0f;
+
+    const int STACK_SIZE = 32;
+
+    int stack[STACK_SIZE];
+    int stackPtr = 0;
+    stack[stackPtr++] = (int)nodes.size() - 1;
+
     while (stackPtr > 0) {
         int nodeIndex = stack[--stackPtr];
-        linBVHNode node = nodes[nodeIndex];
+        const linBVHNode& node = nodes[nodeIndex];
 
-        float boxDist = intersectAABB(invRay, Mesh::scaleAABB(node.bounds, scale), 0.001f, hitT);
-        if (boxDist < 0 || boxDist > hitT) continue;
+        float boxT = intersectAABB(invRay, Mesh::scaleAABB(node.bounds, scale), 0.001f, hitT);
+        if (boxT < 0 || boxT > hitT) continue;
 
         if (node.triangle >= 0) {
-            float triDist = intersectTriangle(newRay, Mesh::scaleTri(triangles[node.triangle], scale));
-            if (triDist >= 0) {
-                if (triDist < hitT) {
-                    hitT = triDist;
-                }
+            float triT = intersectTriangle(newRay, Mesh::scaleTri(triangles[node.triangle], scale));
+            if (triT >= 0 && triT < hitT) {
+                hitT = triT;
             }
         }
         else {
-            float leftDist = -1;
-            float rightDist = -1;
+            float leftT = -1.0f;
+            float rightT = -1.0f;
             if (node.left >= 0)
-                leftDist = intersectAABB(invRay, Mesh::scaleAABB(node.leftBounds, scale), 0.001f, hitT);
+                leftT = intersectAABB(invRay, Mesh::scaleAABB(node.bounds, scale), 0.001f, hitT);
             if (node.right >= 0)
-                rightDist = intersectAABB(invRay, Mesh::scaleAABB(node.rightBounds, scale), 0.001f, hitT);
+                rightT = intersectAABB(invRay, Mesh::scaleAABB(node.bounds, scale), 0.001f, hitT);
 
-            if (leftDist >= 0 && rightDist >= 0){
-                if (leftDist < rightDist) {
+            if (leftT >= 0 && rightT >= 0){
+                if (leftT < rightT) {
                     stack[stackPtr++] = node.right;
                     stack[stackPtr++] = node.left;
                 } else {
                     stack[stackPtr++] = node.left;
                     stack[stackPtr++] = node.right;
                 }
-            } else if (leftDist >= 0) stack[stackPtr++] = node.left;
-            else if (rightDist >= 0) stack[stackPtr++] = node.right;
+            } else if (leftT >= 0) stack[stackPtr++] = node.left;
+            else if (rightT >= 0) stack[stackPtr++] = node.right;
         }
     }
 
@@ -488,6 +549,7 @@ void Scene::updateGPU(){
             meshInfo.numberOfNodes = numberOfNodes[obj.meshIndex];
             meshInfo.pos = obj.pos;
             meshInfo.scale = obj.scale;
+            meshInfo.rotation = obj.rotation;
             meshInfo.matIndex = matIndex;
             meshInfo.isSmooth = obj.isSmooth;
             meshInfos.push_back(meshInfo);
@@ -501,6 +563,7 @@ void Scene::updateGPU(){
             PrimitiveObject prim;
             prim.pos = obj.pos;
             prim.scale = obj.scale;
+            prim.rotation = obj.rotation;
             prim.matIndex = matIndex;
             prim.type = obj.type;
             primitives.push_back(prim);

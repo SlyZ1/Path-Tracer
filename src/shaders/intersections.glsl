@@ -2,9 +2,39 @@
 #define PRIM_PLANE 1
 #define PRIM_CUBE 2
 
+mat3 rotationMatrix(vec3 rotationDegrees){
+    vec3 r = radians(rotationDegrees);
+    float cx = cos(r.x), sx = sin(r.x);
+    float cy = cos(r.y), sy = sin(r.y);
+    float cz = cos(r.z), sz = sin(r.z);
+
+    mat3 rx = transpose(mat3(
+        1,  0,   0,
+        0,  cx, -sx,
+        0,  sx,  cx
+    ));
+
+    mat3 ry = transpose(mat3(
+        cy,  0, sy,
+        0,   1, 0,
+        -sy, 0, cy
+    ));
+
+    mat3 rz = transpose(mat3(
+        cz, -sz, 0,
+        sz,  cz, 0,
+        0,   0,  1
+    ));
+
+    return rz * ry * rx;
+}
+
 Hit sphereIntersect(Primitive sphere, Ray ray){
-    vec3 dir = ray.dir / sphere.scale;
-    vec3 oc = (ray.origin - sphere.pos) / sphere.scale;
+    mat3 rot = rotationMatrix(sphere.rotation);
+    mat3 invRot = transpose(rot);
+
+    vec3 dir = (invRot * ray.dir) / sphere.scale;
+    vec3 oc = (invRot * (ray.origin - sphere.pos)) / sphere.scale;
 
     float a = dot(dir, dir);
     float b = dot(oc, dir);
@@ -26,7 +56,7 @@ Hit sphereIntersect(Primitive sphere, Ray ray){
     }
 
     vec3 localHit = oc + t * dir;
-    vec3 normal = normalize(localHit / sphere.scale);
+    vec3 normal = normalize(rot * (localHit / sphere.scale));
 
     Hit newHit;
     newHit.t = t;
@@ -36,20 +66,25 @@ Hit sphereIntersect(Primitive sphere, Ray ray){
 }
 
 Hit planeIntersect(Primitive plane, Ray ray){
-    vec3 rp = plane.pos - ray.origin;
+    mat3 rot = rotationMatrix(plane.rotation);
+    mat3 invRot = transpose(rot);
+
+    vec3 localOrigin = invRot * (ray.origin - plane.pos);
+    vec3 localDir = invRot * ray.dir;
+
     vec3 normal = vec3(0,1,0);
-    float t = dot(rp, normal) / dot(ray.dir, normal);
-    vec3 relativePoint = ray.origin + t * ray.dir;
-    vec3 difference = abs(relativePoint - plane.pos);
+    float t = -localOrigin.y / localDir.y;
+    vec3 localHit = localOrigin + t * localDir;
+    vec3 difference = abs(localHit);
     Hit hit;
     hit.t = -1;
     vec3 scale = plane.scale;
-    if (t <= 0 || difference.x > scale.x || difference.y > scale.y || difference.z > scale.z) 
+    if (t <= 0 || difference.x > scale.x || difference.y > scale.y || difference.z > scale.z)
         return hit;
 
     Hit newHit;
     newHit.t = t;
-    newHit.normal = normal;
+    newHit.normal = normalize(rot * normal);
     newHit.inside = false;
     return newHit;
 }
@@ -121,11 +156,17 @@ Hit intersectCube(Primitive cube, Ray ray)
     Hit hit;
     hit.t = -1.0f;
 
-    vec3 minP = cube.pos - vec3(1.0) * cube.scale;
-    vec3 maxP = cube.pos + vec3(1.0) * cube.scale;
-    
-    vec3 t0 = (minP - ray.origin) / ray.dir;
-    vec3 t1 = (maxP - ray.origin) / ray.dir;
+    mat3 rot = rotationMatrix(cube.rotation);
+    mat3 invRot = transpose(rot);
+
+    vec3 localOrigin = invRot * (ray.origin - cube.pos);
+    vec3 localDir = invRot * ray.dir;
+
+    vec3 minP = -cube.scale;
+    vec3 maxP = cube.scale;
+
+    vec3 t0 = (minP - localOrigin) / localDir;
+    vec3 t1 = (maxP - localOrigin) / localDir;
 
     vec3 tNear = min(t0, t1);
     vec3 tFar = max(t0, t1);
@@ -139,9 +180,8 @@ Hit intersectCube(Primitive cube, Ray ray)
     float t = inside ? tmax : tmin;
 
     vec3 normal;
-    vec3 hitPoint = ray.origin + ray.dir * t;
-    vec3 center = cube.pos;
-    vec3 d = (hitPoint - center) / cube.scale;
+    vec3 localHitPoint = localOrigin + localDir * t;
+    vec3 d = localHitPoint / cube.scale;
 
     vec3 absD = abs(d);
     if (absD.x > absD.y && absD.x > absD.z)
@@ -152,7 +192,7 @@ Hit intersectCube(Primitive cube, Ray ray)
         normal = vec3(0.0, 0.0, sign(d.z));
 
     hit.t = t;
-    hit.normal = normal;
+    hit.normal = normalize(rot * normal);
     hit.inside = inside;
     return hit;
 }
@@ -174,12 +214,15 @@ Hit bvhIntersect(inout Ray ray, MeshInfos info, bool isShadow)
 {
     vec3 pos = info.pos;
     vec3 scale = info.scale;
+    mat3 rot = rotationMatrix(info.rotation);
+    mat3 invRot = transpose(rot);
 
     float hitT = 1e6;
     Hit hit;
     hit.t = -2;
     Ray newRay = ray;
-    newRay.origin -= pos;
+    newRay.origin = invRot * (ray.origin - pos);
+    newRay.dir = invRot * ray.dir;
     Ray invRay = newRay;
     invRay.dir = 1 / invRay.dir;
 
@@ -207,6 +250,7 @@ Hit bvhIntersect(inout Ray ray, MeshInfos info, bool isShadow)
             bool isSmooth = info.isSmooth > 0;
             Hit triHit = triangleIntersect(scaleTri(triangles[node.triangle + triangleOffset], scale), newRay, isSmooth);
             if (triHit.t >= 0) {
+                triHit.normal = normalize(rot * triHit.normal);
                 if (isShadow) return triHit;
                 if (triHit.t < hitT) {
                     hitT = triHit.t;

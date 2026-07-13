@@ -235,6 +235,12 @@ void UI::renderPopup(){
             selectedObject->scale = max(selectedObject->scale, vec3(0.0f));
             m_scene->updateScene();
         }
+        Label("Rotation");
+        selectedObject->rotation = mod(mod(selectedObject->rotation, 360.0f) + 360.0f, 360.0f);
+        if (ImGui::DragFloat3("##Rotation", &selectedObject->rotation.x, 0.1f)){
+            selectedObject->rotation = mod(mod(selectedObject->rotation, 360.0f) + 360.0f, 360.0f);
+            m_scene->updateScene();
+        }
         
         Label("Shape Type");
         if (ImGui::Combo("##Shape Type", (int*)(&selectedObject->type), Scene::primLabels, IM_ARRAYSIZE(Scene::primLabels))){

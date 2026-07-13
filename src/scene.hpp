@@ -36,6 +36,8 @@ struct PrimitiveObject {
     int matIndex = -1;
     vec3 scale;
     PrimType type;
+    vec3 rotation;
+    int pad;
 };
 
 struct MeshInfos {
@@ -43,15 +45,17 @@ struct MeshInfos {
     int triangleOffset;
     vec3 scale;
     int nodeOffset;
+    vec3 rotation;
     int numberOfNodes;
     int isSmooth;
     int matIndex = -1;
-    int pad;
+    vec2 pad;
 };
 
 struct Object {
     vec3 pos;
     vec3 scale;
+    vec3 rotation;
     Material mat;
     unsigned int ID;
     PrimType type;
@@ -62,6 +66,7 @@ struct Object {
         Object newObj;
         newObj.pos = pos + other.pos;
         newObj.scale = scale + other.scale;
+        newObj.rotation = mod(mod(rotation + other.rotation, 360.0f) + 360.0f, 360.0f);
         newObj.mat = mat + other.mat;
         newObj.ID = ID;
         newObj.type = type;
@@ -74,6 +79,7 @@ struct Object {
         Object newObj;
         newObj.pos = pos * t;
         newObj.scale = scale * t;
+        newObj.rotation = mod(mod(rotation * t, 360.0f) + 360.0f, 360.0f);
         newObj.mat = mat * t;
         newObj.ID = ID;
         newObj.type = type;
@@ -107,7 +113,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(PrimType, {
     { PrimType::MESH_,      "mesh"      }
 })
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Material, color, type, data, data2)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Object, pos, scale, mat, ID, type, meshIndex, isSmooth)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Object, pos, scale, rotation, mat, ID, type, meshIndex, isSmooth)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SceneState, modelPaths, objectStates)
 
 class Scene {
@@ -137,6 +143,7 @@ private:
     
     function<void()> m_resetFrame = {};
     
+    mat3 rotationMatrix(vec3 rotationDegrees);
     float intersectSphere(const Ray& ray, const Object& sphere);
     float intersectPlane(const Ray& ray, const Object& plane);
     float intersectCube(const Ray& ray, const Object& cube);
