@@ -137,7 +137,7 @@ void Scene::loadFromState(const SceneState& sceneState, bool verbose){
     m_objects = sceneState.objectStates;
     m_selectedObject = -1;
     m_copiedObject = -1;
-    m_sceneChanged = true;
+    updateScene();
     if (verbose) cout << "Scene loaded." << endl;
 }
 
@@ -444,7 +444,7 @@ int Scene::addObject(Object obj){
     obj.ID = m_maxId++;
     int newIndex = (int)m_objects.size();
     m_objects.push_back(obj);
-    m_sceneChanged = true;
+    updateScene();
     m_selectedObject = newIndex;
     return newIndex;
 }
@@ -459,7 +459,7 @@ void Scene::removeObject(int index){
     if (index < 0 || index >= (int)m_objects.size()) return;
     Object obj = m_objects[index];
     m_objects.erase(m_objects.begin() + index);
-    m_sceneChanged = true;
+    updateScene();
     m_selectedObject = -1;
 }
 
@@ -484,6 +484,10 @@ void Scene::updateScene(){
     m_sceneChanged = true;
 }
 
+void Scene::updateSceneNextFrame(){
+    m_updateNextFrame = true;
+}
+
 int Scene::addMaterial(vector<Material>& materials, Material mat){
     for (int i = 0; i < (int)materials.size(); i++){
         const Material& material = materials[i];
@@ -495,8 +499,14 @@ int Scene::addMaterial(vector<Material>& materials, Material mat){
 }
 
 void Scene::updateGPU(){
-    if (!m_sceneChanged) return;
+    bool sceneChanged = m_sceneChanged;
     m_sceneChanged = false;
+    if (m_updateNextFrame){
+        m_updateNextFrame = false;
+        m_sceneChanged = true;
+    }
+    if (!sceneChanged) return;
+
     m_resetFrame();
 
     vector<PrimitiveObject> primitives = {};

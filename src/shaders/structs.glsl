@@ -112,3 +112,8 @@ struct FresnelParams {
 };
 #define newFresnelParams(v) FresnelParams(v)
 #endif
+
+struct PointAndDir {
+    vec3 point;
+    vec3 dir;
+};

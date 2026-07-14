@@ -45,7 +45,7 @@ class UI {
 
         // Technical GPU
         int m_resMultiplier = 3;
-        int m_maxBounces = 6;
+        int m_maxBounces = 10;
         
         // Sky Box
         float m_skyIntensity = 0.3f;

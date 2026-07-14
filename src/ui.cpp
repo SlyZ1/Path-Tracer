@@ -131,7 +131,7 @@ void UI::renderPopupData(Object* selectedObject){
             selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 1.0f);
             if (ImGui::SliderFloat("##Roughness", &selectedObject->mat.data.x, 0.0f, 1.0f)){
                 selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 1.0f);
-                m_scene->updateScene();
+                m_scene->updateSceneNextFrame();
             }
             break;
         case MatType::METAL:
@@ -139,20 +139,20 @@ void UI::renderPopupData(Object* selectedObject){
             selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.8f);
             if (ImGui::SliderFloat("##Fuzziness", &selectedObject->mat.data.x, 0.0f, 0.8f)){
                 selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.8f);
-                m_scene->updateScene();
+                m_scene->updateSceneNextFrame();
             }
             if (m_scene->getSpectral()){
                 Label("Film IOR", "Index of refraction of the thin film on the surface.");
                 selectedObject->mat.data2.x = glm::clamp(selectedObject->mat.data2.x, 1.0f, 2.0f);
                 if (ImGui::SliderFloat("##IOR", &selectedObject->mat.data2.x, 1.0f, 2.0f)){
                     selectedObject->mat.data2.x = glm::clamp(selectedObject->mat.data2.x, 1.0f, 2.0f);
-                    m_scene->updateScene();
+                    m_scene->updateSceneNextFrame();
                 }
                 Label("Film Depth", "Depth of the thin film on the surface.");
                 selectedObject->mat.data2.y = glm::clamp(selectedObject->mat.data2.y, 0.0f, 1000.0f);
                 if (ImGui::SliderFloat("##Film Depth", &selectedObject->mat.data2.y, 0.0f, 1000.0f)){
                     selectedObject->mat.data2.y = glm::clamp(selectedObject->mat.data2.y, 0.0f, 1000.0f);
-                    m_scene->updateScene();
+                    m_scene->updateSceneNextFrame();
                 }
             }
             break;
@@ -161,20 +161,20 @@ void UI::renderPopupData(Object* selectedObject){
             selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.5f);
             if (ImGui::SliderFloat("##Fuzziness", &selectedObject->mat.data.x, 0.0f, 0.5f)){
                 selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.5f);
-                m_scene->updateScene();
+                m_scene->updateSceneNextFrame();
             }
             Label("IOR", "Index of refraction of the dielectric.");
             selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 1.0f, 2.0f);
             if (ImGui::SliderFloat("##IOR", &selectedObject->mat.data.y, 1.0f, 2.0f)){
                 selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 1.0f, 2.0f);
-                m_scene->updateScene();
+                m_scene->updateSceneNextFrame();
             }
             if (m_scene->getSpectral()){
                 Label("Dispertion Factor", "How much the IOR varies based on wavelength, using Cauchy's approximation.");
                 selectedObject->mat.data2.x = glm::clamp(selectedObject->mat.data2.x, 0.0f, 0.05f);
                 if (ImGui::SliderFloat("##Dispertion Factor", &selectedObject->mat.data2.x, 0.0f, 0.05f)){
                     selectedObject->mat.data2.x = glm::clamp(selectedObject->mat.data2.x, 0.0f, 0.05f);
-                    m_scene->updateScene();
+                    m_scene->updateSceneNextFrame();
                 }
             }
             ImGui::Spacing();
@@ -183,19 +183,19 @@ void UI::renderPopupData(Object* selectedObject){
             selectedObject->mat.data.z = glm::clamp(selectedObject->mat.data.z, 0.0f, 2.0f);
             if (ImGui::SliderFloat("##Absorption Factor", &selectedObject->mat.data.z, 0.0f, 2.0f)){
                 selectedObject->mat.data.z = glm::clamp(selectedObject->mat.data.z, 0.0f, 2.0f);
-                m_scene->updateScene();
+                m_scene->updateSceneNextFrame();
             }
             Label("Scattering Factor", "How much light is scattered in the dielectric.");
             selectedObject->mat.data.w = glm::clamp(selectedObject->mat.data.w, 0.0f, 2.0f);
             if (ImGui::SliderFloat("##Scattering Factor", &selectedObject->mat.data.w, 0.0f, 2.0f)){
                 selectedObject->mat.data.w = glm::clamp(selectedObject->mat.data.w, 0.0f, 2.0f);
-                m_scene->updateScene();
+                m_scene->updateSceneNextFrame();
             }
             Label("Anisotropy", "How much the ray's direction is taken into account when scattering.\ng=1: forward scattering\ng=0: isotropic scattering\ng=-1: backward scattering");
             selectedObject->mat.data2.y = glm::clamp(selectedObject->mat.data2.y, -1.0f, 1.0f);
             if (ImGui::SliderFloat("##Anisotropy", &selectedObject->mat.data2.y, -1.0f, 1.0f)){
                 selectedObject->mat.data2.y = glm::clamp(selectedObject->mat.data2.y, -1.0f, 1.0f);
-                m_scene->updateScene();
+                m_scene->updateSceneNextFrame();
             }
             break;
         case MatType::GLOSSY:
@@ -203,13 +203,13 @@ void UI::renderPopupData(Object* selectedObject){
             selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.8f);
             if (ImGui::SliderFloat("##Fuzziness", &selectedObject->mat.data.x, 0.0f, 0.8f)){
                 selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.8f);
-                m_scene->updateScene();
+                m_scene->updateSceneNextFrame();
             }
             Label("Metallic");
             selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 0.05f, 1.0f);
             if (ImGui::SliderFloat("##Metallic", &selectedObject->mat.data.y, 0.05f, 1.0f)){
                 selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 0.05f, 1.0f);
-                m_scene->updateScene();
+                m_scene->updateSceneNextFrame();
             }
             break;
         case MatType::EMIT:
@@ -217,7 +217,7 @@ void UI::renderPopupData(Object* selectedObject){
             selectedObject->mat.data.x = glm::max(selectedObject->mat.data.x, 0.0f);
             if (ImGui::DragFloat("##Intensity", &selectedObject->mat.data.x)){
                 selectedObject->mat.data.x = glm::max(selectedObject->mat.data.x, 0.0f);
-                m_scene->updateScene();
+                m_scene->updateSceneNextFrame();
             }
             break;
         default:
@@ -235,19 +235,29 @@ void UI::renderPopup(){
         BeginTwoColumnLayout();
         Label("Position");
         if (ImGui::DragFloat3("##Position", &selectedObject->pos.x, 0.01f))
-            m_scene->updateScene();
+            m_scene->updateSceneNextFrame();
         
-        Label("Scale");
-        selectedObject->scale = max(selectedObject->scale, vec3(0.0f));
-        if (ImGui::DragFloat3("##Scale", &selectedObject->scale.x, 0.001f)){
-            selectedObject->scale = max(selectedObject->scale, vec3(0.0f));
-            m_scene->updateScene();
-        }
         Label("Rotation");
         selectedObject->rotation = mod(mod(selectedObject->rotation, 360.0f) + 360.0f, 360.0f);
         if (ImGui::DragFloat3("##Rotation", &selectedObject->rotation.x, 0.1f)){
             selectedObject->rotation = mod(mod(selectedObject->rotation, 360.0f) + 360.0f, 360.0f);
-            m_scene->updateScene();
+            m_scene->updateSceneNextFrame();
+        }
+        Label("Scale");
+        if (selectedObject->type == PrimType::SPHERE && selectedObject->mat.type == MatType::EMIT){
+
+            selectedObject->scale = max(vec3(selectedObject->scale.x), vec3(0.0f));
+            if (ImGui::DragFloat("##Scale", &selectedObject->scale.x, 0.001f)){
+                selectedObject->scale = max(vec3(selectedObject->scale.x), vec3(0.0f));
+                m_scene->updateSceneNextFrame();
+            }
+        }
+        else{
+            selectedObject->scale = max(selectedObject->scale, vec3(0.0f));
+            if (ImGui::DragFloat3("##Scale", &selectedObject->scale.x, 0.001f)){
+                selectedObject->scale = max(selectedObject->scale, vec3(0.0f));
+                m_scene->updateSceneNextFrame();
+            }
         }
 
         ImGui::Spacing();
@@ -255,19 +265,19 @@ void UI::renderPopup(){
         
         Label("Shape Type");
         if (ImGui::Combo("##Shape Type", (int*)(&selectedObject->type), Scene::primLabels, IM_ARRAYSIZE(Scene::primLabels))){
-            m_scene->updateScene();
+            m_scene->updateSceneNextFrame();
         }
 
         if (selectedObject->type == PrimType::MESH_){
             Label("Mesh Used");
             vector<const char*> meshes = m_scene->getMeshNames();
             if (ImGui::Combo("##Model", &selectedObject->meshIndex, meshes.data(), (int)meshes.size())){
-                m_scene->updateScene();
+                m_scene->updateSceneNextFrame();
             }
 
             Label("Is Smooth");
             if (ImGui::Checkbox("##Is Smooth", &selectedObject->isSmooth))
-                m_scene->updateScene();
+                m_scene->updateSceneNextFrame();
         }
         EndTwoColumnLayout();
         
@@ -278,7 +288,7 @@ void UI::renderPopup(){
         BeginTwoColumnLayout();
         Label("Color");
         if (ImGui::ColorEdit3("##Color", &selectedObject->mat.color.x))
-            m_scene->updateScene();
+            m_scene->updateSceneNextFrame();
 
         const char* items[] = { 
             "Diffuse", 
@@ -289,7 +299,7 @@ void UI::renderPopup(){
         };
         Label("Material type");
         if (ImGui::Combo("##Material type", (int*)&selectedObject->mat.type, items, IM_ARRAYSIZE(items)))
-            m_scene->updateScene();
+            m_scene->updateSceneNextFrame();
 
         renderPopupData(selectedObject);
         EndTwoColumnLayout();

@@ -5,6 +5,33 @@
     #define CLAMP_VAL 1.3
 #endif
 
+mat3 rotationMatrix(vec3 rotationDegrees){
+    vec3 r = radians(rotationDegrees);
+    float cx = cos(r.x), sx = sin(r.x);
+    float cy = cos(r.y), sy = sin(r.y);
+    float cz = cos(r.z), sz = sin(r.z);
+
+    mat3 rx = transpose(mat3(
+        1,  0,   0,
+        0,  cx, -sx,
+        0,  sx,  cx
+    ));
+
+    mat3 ry = transpose(mat3(
+        cy,  0, sy,
+        0,   1, 0,
+        -sy, 0, cy
+    ));
+
+    mat3 rz = transpose(mat3(
+        cz, -sz, 0,
+        sz,  cz, 0,
+        0,   0,  1
+    ));
+
+    return rz * ry * rx;
+}
+
 vec2 ratio(vec2 vec){
     return vec2(vec.x * texSize.x / texSize.y, vec.y);
 }

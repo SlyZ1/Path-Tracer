@@ -129,6 +129,7 @@ private:
     GLuint m_trianglesBuffer = 0;
     GLuint m_nodesBuffer = 0;
     bool m_sceneChanged = false;
+    bool m_updateNextFrame = false;
     bool m_numMeshesChanged = false;
     vector<Object> m_objects = {};
     vector<shared_ptr<Mesh>> m_meshes = {};
@@ -185,6 +186,7 @@ public:
     int getSelectedObject() const {return m_selectedObject; };
     vector<const char*> getMeshNames() const;
     void updateScene();
+    void updateSceneNextFrame();
     void updateGPU();
     void deleteScene();
 };

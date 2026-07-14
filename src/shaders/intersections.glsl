@@ -2,33 +2,6 @@
 #define PRIM_PLANE 1
 #define PRIM_CUBE 2
 
-mat3 rotationMatrix(vec3 rotationDegrees){
-    vec3 r = radians(rotationDegrees);
-    float cx = cos(r.x), sx = sin(r.x);
-    float cy = cos(r.y), sy = sin(r.y);
-    float cz = cos(r.z), sz = sin(r.z);
-
-    mat3 rx = transpose(mat3(
-        1,  0,   0,
-        0,  cx, -sx,
-        0,  sx,  cx
-    ));
-
-    mat3 ry = transpose(mat3(
-        cy,  0, sy,
-        0,   1, 0,
-        -sy, 0, cy
-    ));
-
-    mat3 rz = transpose(mat3(
-        cz, -sz, 0,
-        sz,  cz, 0,
-        0,   0,  1
-    ));
-
-    return rz * ry * rx;
-}
-
 Hit sphereIntersect(Primitive sphere, Ray ray){
     mat3 rot = rotationMatrix(sphere.rotation);
     mat3 invRot = transpose(rot);
@@ -78,8 +51,8 @@ Hit planeIntersect(Primitive plane, Ray ray){
     vec3 difference = abs(localHit);
     Hit hit;
     hit.t = -1;
-    vec3 scale = plane.scale;
-    if (t <= 0 || difference.x > scale.x || difference.y > scale.y || difference.z > scale.z)
+    vec3 scale = plane.scale / 2.0;
+    if (t <= 0 || difference.x > scale.x || difference.z > scale.z)
         return hit;
 
     Hit newHit;
