@@ -12,6 +12,7 @@
 #include "animator.hpp"
 #include "scene.hpp"
 #include "cuda_cpp/denoiser.hpp"
+#include "stats.hpp"
 
 using namespace std;
 
@@ -44,6 +45,12 @@ shared_ptr<Animator> animator;
 shared_ptr<UI> ui;
 shared_ptr<Scene> scene;
 shared_ptr<Denoiser> denoiser;
+
+shared_ptr<Stats> stats;
+FPSCounter fpsCounter = {};
+CPUTimer frameTimer = {};
+CPUTimer cpuFrameTimer = CPUTimer(0.2f);
+GPUTimer gpuFrameTimer = {};
 
 extern "C" {
     __declspec(dllexport) unsigned long NvOptimusEnablement = 1;
@@ -182,8 +189,13 @@ void init(bool headless = false){
     camera->resetMousePos(app->mouseX(), app->mouseY());
     scene = Scene::defaultScene(app, camera, resetFrame);
     animator = make_shared<Animator>(renderer, scene, resetFrame);
-    ui = make_shared<UI>(app, renderer, animator, scene, camera, resetFrame);
-    ui->setReloadShaderFunction(reloadShaders);
+
+    stats = make_shared<Stats>();
+    gpuFrameTimer.init();
+
+    UIContext UICtx = {app, renderer, animator, scene, camera, stats, resetFrame, reloadShaders};
+    ui = make_shared<UI>(UICtx);
+    
     // denoiser->init(albedoTexture, colorTexture, normalTexture, denoisedTexture);
 
     cout << "Program started." << endl;
@@ -241,7 +253,9 @@ void render(){
     glUniform1i(ShaderProgram::getVarLoc("samples"), samples);
 
     glBindVertexArray(VAO);
+    gpuFrameTimer.beginFrame();
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    gpuFrameTimer.endFrame();
 
     // glFinish();
 
@@ -353,6 +367,20 @@ void dynamicResolution(){
     }
 }
 
+void recordStats(){
+    fpsCounter.update();
+    frameTimer.end();
+    frameTimer.begin();
+
+    if (stats->numFrames >= frameAccumulator)
+        stats->timePassed = 0;
+    stats->numFrames = frameAccumulator;
+    stats->frameTime = frameTimer.get();
+    stats->CPUTime = cpuFrameTimer.get();
+    stats->GPUTime = gpuFrameTimer.getLastResultMs();
+    stats->fps = fpsCounter.get();
+}
+
 void end(){
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
@@ -373,8 +401,9 @@ int main(int argc, char* argv[]){
     {
         app->startFrame(frameCount);
         if (!headless){
+            cpuFrameTimer.begin();
             handleCamera();
-            ui->render(frameAccumulator);
+            ui->render();
         } 
         render();
         if (!headless){
@@ -385,7 +414,11 @@ int main(int argc, char* argv[]){
         
         frameAccumulator += samples;
         frameCount++;
-        if (!headless) dynamicResolution();
+        if (!headless){
+            cpuFrameTimer.end();
+            recordStats();
+            dynamicResolution();
+        }
         app->endFrame();
     }
     end();

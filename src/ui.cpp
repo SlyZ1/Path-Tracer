@@ -2,7 +2,7 @@
 
 void UI::toggle(){
     m_show = !m_show;
-    if (!m_show) m_scene->selectObject(-1);
+    if (!m_show) m_context.scene->selectObject(-1);
 }
 
 void UI::drawMarker(ImVec2 minRect, ImVec2 maxRect, float keyPos) const {
@@ -60,7 +60,7 @@ void UI::EndTwoColumnLayout() const
 }
 
 bool UI::BeginCustomHeader(const string& name) const {
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, m_fgColor);
     ImVec2 padding = ImGui::GetStyle().WindowPadding;
     ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
     ImGui::BeginChild((name + "_group").c_str(), ImVec2(-FLT_MIN, 0), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysUseWindowPadding);
@@ -86,14 +86,14 @@ void UI::renderPointer(){
 }
 
 void UI::renderGizmos(){
-    if (m_scene->getSelectedObject() < 0) return;
-    Object* selectedObject = m_scene->getObject(m_scene->getSelectedObject());
+    if (m_context.scene->getSelectedObject() < 0) return;
+    Object* selectedObject = m_context.scene->getObject(m_context.scene->getSelectedObject());
 
     ImDrawList* draw = ImGui::GetBackgroundDrawList();
     ImU32 orange = IM_COL32(255, 150, 100, 255);
 
     // Center point
-    glm::vec2 objectCenter = m_scene->worldToScreen(selectedObject->pos);
+    glm::vec2 objectCenter = m_context.scene->worldToScreen(m_context.camera, selectedObject->pos);
     ImVec2 pos = ImGui::GetIO().DisplaySize * 0.5 + ImVec2(objectCenter.x, objectCenter.y);
     draw->AddCircleFilled(pos, 5, IM_COL32(0, 0, 0, 255));
     draw->AddCircleFilled(pos, 3, orange);
@@ -109,21 +109,7 @@ void UI::renderGizmos(){
     // draw->AddTriangleFilled(pos + ImVec2(0, -60), pos + ImVec2(-7, -50), pos + ImVec2(7, -50), orange);
 }
 
-void UI::renderStats(int frameAccumulator){
-    float currentTime = (float)glfwGetTime();
-    float deltaTime = currentTime - m_lastTime;
-    m_lastTime = currentTime;
-
-    m_fpsFrameCount++;
-    m_fpsUpdateTimer += deltaTime;
-    constexpr float fpsUpdateInterval = 0.25f;
-    if (m_fpsUpdateTimer >= fpsUpdateInterval && m_fpsFrameCount > 0) {
-        m_displayedFps = (int)round(m_fpsFrameCount / m_fpsUpdateTimer);
-        m_displayedFrameTimeMs = (m_fpsUpdateTimer / m_fpsFrameCount) * 1000.0f;
-        m_fpsUpdateTimer = 0.0f;
-        m_fpsFrameCount = 0;
-    }
-
+void UI::renderStats(){
     ImGuiIO& io = ImGui::GetIO();
     ImGuiWindowFlags flags =  ImGuiWindowFlags_AlwaysAutoResize
                             | ImGuiWindowFlags_NoCollapse
@@ -136,13 +122,16 @@ void UI::renderStats(int frameAccumulator){
         BeginTwoColumnLayout();
 
         Label("Accumulation:");
-        ImGui::Text("%d", frameAccumulator);
+        ImGui::Text("%d", m_context.stats->numFrames);
 
         Label("FPS:");
-        ImGui::Text("%d", m_displayedFps);
+        ImGui::Text("%d", m_context.stats->fps);
 
         Label("Frame Time:");
-        ImGui::Text("%.2fms", m_displayedFrameTimeMs);
+        ImGui::Text("%.2fms", m_context.stats->frameTime);
+
+        Label("GPU Time:");
+        ImGui::Text("%.2fms", m_context.stats->GPUTime);
 
         EndTwoColumnLayout();
     }
@@ -159,7 +148,7 @@ void UI::renderPopupData(Object* selectedObject){
             selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 1.0f);
             if (ImGui::SliderFloat("##Roughness", &selectedObject->mat.data.x, 0.0f, 1.0f)){
                 selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 1.0f);
-                m_scene->updateSceneNextFrame();
+                m_context.scene->updateSceneNextFrame();
             }
             break;
         case MatType::METAL:
@@ -167,20 +156,20 @@ void UI::renderPopupData(Object* selectedObject){
             selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.8f);
             if (ImGui::SliderFloat("##Fuzziness", &selectedObject->mat.data.x, 0.0f, 0.8f)){
                 selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.8f);
-                m_scene->updateSceneNextFrame();
+                m_context.scene->updateSceneNextFrame();
             }
-            if (m_scene->getSpectral()){
+            if (m_context.scene->getSpectral()){
                 Label("Film IOR", "Index of refraction of the thin film on the surface.");
                 selectedObject->mat.data2.x = glm::clamp(selectedObject->mat.data2.x, 1.0f, 2.0f);
                 if (ImGui::SliderFloat("##IOR", &selectedObject->mat.data2.x, 1.0f, 2.0f)){
                     selectedObject->mat.data2.x = glm::clamp(selectedObject->mat.data2.x, 1.0f, 2.0f);
-                    m_scene->updateSceneNextFrame();
+                    m_context.scene->updateSceneNextFrame();
                 }
                 Label("Film Depth", "Depth of the thin film on the surface.");
                 selectedObject->mat.data2.y = glm::clamp(selectedObject->mat.data2.y, 0.0f, 1000.0f);
                 if (ImGui::SliderFloat("##Film Depth", &selectedObject->mat.data2.y, 0.0f, 1000.0f)){
                     selectedObject->mat.data2.y = glm::clamp(selectedObject->mat.data2.y, 0.0f, 1000.0f);
-                    m_scene->updateSceneNextFrame();
+                    m_context.scene->updateSceneNextFrame();
                 }
             }
             break;
@@ -189,20 +178,20 @@ void UI::renderPopupData(Object* selectedObject){
             selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.5f);
             if (ImGui::SliderFloat("##Fuzziness", &selectedObject->mat.data.x, 0.0f, 0.5f)){
                 selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.5f);
-                m_scene->updateSceneNextFrame();
+                m_context.scene->updateSceneNextFrame();
             }
             Label("IOR", "Index of refraction of the dielectric.");
             selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 1.0f, 2.0f);
             if (ImGui::SliderFloat("##IOR", &selectedObject->mat.data.y, 1.0f, 2.0f)){
                 selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 1.0f, 2.0f);
-                m_scene->updateSceneNextFrame();
+                m_context.scene->updateSceneNextFrame();
             }
-            if (m_scene->getSpectral()){
+            if (m_context.scene->getSpectral()){
                 Label("Dispertion Factor", "How much the IOR varies based on wavelength, using Cauchy's approximation.");
                 selectedObject->mat.data2.x = glm::clamp(selectedObject->mat.data2.x, 0.0f, 0.05f);
                 if (ImGui::SliderFloat("##Dispertion Factor", &selectedObject->mat.data2.x, 0.0f, 0.05f)){
                     selectedObject->mat.data2.x = glm::clamp(selectedObject->mat.data2.x, 0.0f, 0.05f);
-                    m_scene->updateSceneNextFrame();
+                    m_context.scene->updateSceneNextFrame();
                 }
             }
             ImGui::Spacing();
@@ -211,19 +200,19 @@ void UI::renderPopupData(Object* selectedObject){
             selectedObject->mat.data.z = glm::clamp(selectedObject->mat.data.z, 0.0f, 2.0f);
             if (ImGui::SliderFloat("##Absorption Factor", &selectedObject->mat.data.z, 0.0f, 2.0f)){
                 selectedObject->mat.data.z = glm::clamp(selectedObject->mat.data.z, 0.0f, 2.0f);
-                m_scene->updateSceneNextFrame();
+                m_context.scene->updateSceneNextFrame();
             }
             Label("Scattering Factor", "How much light is scattered in the dielectric.");
             selectedObject->mat.data.w = glm::clamp(selectedObject->mat.data.w, 0.0f, 2.0f);
             if (ImGui::SliderFloat("##Scattering Factor", &selectedObject->mat.data.w, 0.0f, 2.0f)){
                 selectedObject->mat.data.w = glm::clamp(selectedObject->mat.data.w, 0.0f, 2.0f);
-                m_scene->updateSceneNextFrame();
+                m_context.scene->updateSceneNextFrame();
             }
             Label("Anisotropy", "How much the ray's direction is taken into account when scattering.\ng=1: forward scattering\ng=0: isotropic scattering\ng=-1: backward scattering");
             selectedObject->mat.data2.y = glm::clamp(selectedObject->mat.data2.y, -1.0f, 1.0f);
             if (ImGui::SliderFloat("##Anisotropy", &selectedObject->mat.data2.y, -1.0f, 1.0f)){
                 selectedObject->mat.data2.y = glm::clamp(selectedObject->mat.data2.y, -1.0f, 1.0f);
-                m_scene->updateSceneNextFrame();
+                m_context.scene->updateSceneNextFrame();
             }
             break; 
         case MatType::GLOSSY:
@@ -231,13 +220,13 @@ void UI::renderPopupData(Object* selectedObject){
             selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.8f);
             if (ImGui::SliderFloat("##Fuzziness", &selectedObject->mat.data.x, 0.0f, 0.8f)){
                 selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.8f);
-                m_scene->updateSceneNextFrame();
+                m_context.scene->updateSceneNextFrame();
             }
             Label("Metallic");
             selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 0.05f, 1.0f);
             if (ImGui::SliderFloat("##Metallic", &selectedObject->mat.data.y, 0.05f, 1.0f)){
                 selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 0.05f, 1.0f);
-                m_scene->updateSceneNextFrame();
+                m_context.scene->updateSceneNextFrame();
             }
             break;
         case MatType::EMIT:
@@ -245,7 +234,7 @@ void UI::renderPopupData(Object* selectedObject){
             selectedObject->mat.data.x = glm::max(selectedObject->mat.data.x, 0.0f);
             if (ImGui::DragFloat("##Intensity", &selectedObject->mat.data.x)){
                 selectedObject->mat.data.x = glm::max(selectedObject->mat.data.x, 0.0f);
-                m_scene->updateSceneNextFrame();
+                m_context.scene->updateSceneNextFrame();
             }
             break;
         default:
@@ -254,8 +243,8 @@ void UI::renderPopupData(Object* selectedObject){
 }
 
 void UI::renderPopup(){
-    if (m_scene->getSelectedObject() < 0) return;
-    Object* selectedObject = m_scene->getObject(m_scene->getSelectedObject());
+    if (m_context.scene->getSelectedObject() < 0) return;
+    Object* selectedObject = m_context.scene->getObject(m_context.scene->getSelectedObject());
     
     ImGui::SetNextWindowSizeConstraints(ImVec2(300, 0), ImVec2(FLT_MAX, FLT_MAX));
     if (ImGui::Begin("Properties", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -263,13 +252,13 @@ void UI::renderPopup(){
         BeginTwoColumnLayout();
         Label("Position");
         if (ImGui::DragFloat3("##Position", &selectedObject->pos.x, 0.01f))
-            m_scene->updateSceneNextFrame();
+            m_context.scene->updateSceneNextFrame();
         
         Label("Rotation");
         selectedObject->rotation = mod(mod(selectedObject->rotation, 360.0f) + 360.0f, 360.0f);
         if (ImGui::DragFloat3("##Rotation", &selectedObject->rotation.x, 0.1f)){
             selectedObject->rotation = mod(mod(selectedObject->rotation, 360.0f) + 360.0f, 360.0f);
-            m_scene->updateSceneNextFrame();
+            m_context.scene->updateSceneNextFrame();
         }
         Label("Scale");
         if (selectedObject->type == PrimType::SPHERE && selectedObject->mat.type == MatType::EMIT){
@@ -277,14 +266,14 @@ void UI::renderPopup(){
             selectedObject->scale = max(vec3(selectedObject->scale.x), vec3(0.0f));
             if (ImGui::DragFloat("##Scale", &selectedObject->scale.x, 0.001f)){
                 selectedObject->scale = max(vec3(selectedObject->scale.x), vec3(0.0f));
-                m_scene->updateSceneNextFrame();
+                m_context.scene->updateSceneNextFrame();
             }
         }
         else{
             selectedObject->scale = max(selectedObject->scale, vec3(0.0f));
             if (ImGui::DragFloat3("##Scale", &selectedObject->scale.x, 0.001f)){
                 selectedObject->scale = max(selectedObject->scale, vec3(0.0f));
-                m_scene->updateSceneNextFrame();
+                m_context.scene->updateSceneNextFrame();
             }
         }
 
@@ -293,19 +282,19 @@ void UI::renderPopup(){
         
         Label("Shape Type");
         if (ImGui::Combo("##Shape Type", (int*)(&selectedObject->type), Scene::primLabels, IM_ARRAYSIZE(Scene::primLabels))){
-            m_scene->updateSceneNextFrame();
+            m_context.scene->updateSceneNextFrame();
         }
 
         if (selectedObject->type == PrimType::MESH_){
             Label("Mesh Used");
-            vector<const char*> meshes = m_scene->getMeshNames();
+            vector<const char*> meshes = m_context.scene->getMeshNames();
             if (ImGui::Combo("##Model", &selectedObject->meshIndex, meshes.data(), (int)meshes.size())){
-                m_scene->updateSceneNextFrame();
+                m_context.scene->updateSceneNextFrame();
             }
 
             Label("Is Smooth");
             if (ImGui::Checkbox("##Is Smooth", &selectedObject->isSmooth))
-                m_scene->updateSceneNextFrame();
+                m_context.scene->updateSceneNextFrame();
         }
         EndTwoColumnLayout();
         
@@ -316,7 +305,7 @@ void UI::renderPopup(){
         BeginTwoColumnLayout();
         Label("Color");
         if (ImGui::ColorEdit3("##Color", &selectedObject->mat.color.x))
-            m_scene->updateSceneNextFrame();
+            m_context.scene->updateSceneNextFrame();
 
         const char* items[] = { 
             "Diffuse", 
@@ -327,7 +316,7 @@ void UI::renderPopup(){
         };
         Label("Material type");
         if (ImGui::Combo("##Material type", (int*)&selectedObject->mat.type, items, IM_ARRAYSIZE(items)))
-            m_scene->updateSceneNextFrame();
+            m_context.scene->updateSceneNextFrame();
 
         renderPopupData(selectedObject);
         EndTwoColumnLayout();
@@ -340,7 +329,7 @@ void UI::renderPopup(){
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 0.3f, 0.3f, 0.6f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.3f, 0.3f, 0.8f));
         if (ImGui::Button("Remove", ImVec2(-1, 0))){
-            m_scene->removeObject(m_scene->getSelectedObject());
+            m_context.scene->removeObject(m_context.scene->getSelectedObject());
         }
         ImGui::PopStyleColor(3);
     }
@@ -350,7 +339,7 @@ void UI::renderPopup(){
 void UI::renderScene(){
     ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 3.0f));
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.05f, 0.05f, 0.05f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, m_bgColor);
     ImGui::SetNextWindowSizeConstraints(ImVec2(-FLT_MIN, 250.0f), ImVec2(-FLT_MIN, ImGui::GetIO().DisplaySize.y - 250.0f));
     ImGui::BeginChild("SceneContainer", ImVec2(-FLT_MIN, 200.0f), ImGuiChildFlags_ResizeY | ImGuiChildFlags_AlwaysUseWindowPadding);
     ImGui::PopStyleVar(2);
@@ -358,6 +347,35 @@ void UI::renderScene(){
 
     ImGui::BeginChild("Scene", ImVec2(-FLT_MIN, -FLT_MIN), ImGuiChildFlags_Borders);
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 4.0f));
+
+    if (ImGui::BeginTabBar("SceneTabs")){
+        if (ImGui::BeginTabItem("Scene")){
+            ImGui::PushStyleColor(ImGuiCol_Header, m_fgColor);
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(m_fgColor.x, m_fgColor.y, m_fgColor.z, 0.5f));
+            ImGui::PushStyleColor(ImGuiCol_HeaderActive, m_fgColor);
+            ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.04f, 0.5f));
+            float itemHeight = ImGui::GetTextLineHeight() + 4.0f;
+            static int selectedIndex = -1;
+            selectedIndex = m_context.scene->getSelectedObject();
+            vector<string> items = m_context.scene->getObjectNames();
+            for (int i = 0; i < (int)items.size(); i++){
+                bool isSelected = (selectedIndex == i);
+                
+                if (ImGui::Selectable(items[i].c_str(), isSelected, ImGuiSelectableFlags_None, ImVec2(ImGui::GetContentRegionAvail().x, itemHeight))){
+                    selectedIndex = i;
+                    m_context.scene->selectObject(i);
+                }
+            }
+            ImGui::PopStyleVar(1);
+            ImGui::PopStyleColor(3);
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Meshes")){
+
+            ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
+    }
 
     ImGui::PopStyleVar(1);
     ImGui::EndChild();
@@ -367,7 +385,7 @@ void UI::renderScene(){
 void UI::renderParameters(){
     ImGui::BeginChild("Parameters", ImVec2(-FLT_MIN, -FLT_MIN), ImGuiChildFlags_Borders);
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 4.0f));
-    ImGui::BeginDisabled(m_renderer->isRendering() || m_disabled);
+    ImGui::BeginDisabled(m_context.renderer->isRendering() || m_disabled);
 
     float padding = ImGui::GetStyle().WindowPadding.y;
     float buttonHeight = 40;
@@ -379,19 +397,19 @@ void UI::renderParameters(){
 
     if (BeginCustomHeader("Camera Settings")){
         BeginTwoColumnLayout();
-        CameraProperties* camProps = m_camera->getCameraProperties();
+        CameraProperties* camProps = m_context.camera->getCameraProperties();
 
         Label("Fov");
         if (ImGui::SliderFloat("##Fov", &camProps->fov, 20.0f, 90.0f))
-            m_resetFrame();
+            m_context.resetFrame();
         
         Label("Aperture");
         if (ImGui::SliderFloat("##Aperture", &camProps->aperture, 0.0f, 1.0f))
-            m_resetFrame();
+            m_context.resetFrame();
         
         Label("Focal Length");
         if (ImGui::DragFloat("##Focal Length", &camProps->focalLength, 0.1f, -1.0f, FLT_MAX))
-            m_resetFrame();
+            m_context.resetFrame();
 
         EndTwoColumnLayout();
         ImGui::TreePop();
@@ -403,19 +421,19 @@ void UI::renderParameters(){
 
         Label("Sky Intensity");
         if (ImGui::SliderFloat("##Sky Intensity", &m_skyIntensity, 0.0f, 1.0f))
-            m_resetFrame();
+            m_context.resetFrame();
         
         Label("Sky Top Color");
         if (ImGui::ColorEdit3("##Sky Top Color", &m_skyTopColor.x))
-            m_resetFrame();
+            m_context.resetFrame();
             
         Label("Sky Middle Color");
         if (ImGui::ColorEdit3("##Sky Middle Color", &m_skyMiddleColor.x))
-            m_resetFrame();
+            m_context.resetFrame();
             
         Label("Sky Bottom Color");
         if (ImGui::ColorEdit3("##Sky Bottom Color", &m_skyBottomColor.x))
-            m_resetFrame();
+            m_context.resetFrame();
 
         EndTwoColumnLayout();
         ImGui::TreePop();
@@ -427,7 +445,7 @@ void UI::renderParameters(){
 
         Label("Debug BVH");
         if (ImGui::Checkbox("##Debug BVH", &m_debugBVH))
-            m_resetFrame();
+            m_context.resetFrame();
 
         EndTwoColumnLayout();
         ImGui::TreePop();
@@ -456,36 +474,36 @@ void UI::renderParameters(){
 
         ImGui::TableSetColumnIndex(0);
         ImVec2 size = ImVec2(ImGui::GetContentRegionAvail().x, 0);
-        ImGui::BeginDisabled(!m_animator->canGoToPreviousKeyFrame());
+        ImGui::BeginDisabled(!m_context.animator->canGoToPreviousKeyFrame());
         if(ImGui::Button("Previous Key", size)){
-            m_animator->previousKeyFrame();
+            m_context.animator->previousKeyFrame();
         }
         ImGui::EndDisabled();
 
         ImGui::TableSetColumnIndex(1);
-        ImGui::BeginDisabled(!m_animator->canGoToNextKeyFrame());
+        ImGui::BeginDisabled(!m_context.animator->canGoToNextKeyFrame());
         if(ImGui::Button("Next Key", size)){
-            m_animator->nextKeyFrame();
+            m_context.animator->nextKeyFrame();
         }
         ImGui::EndDisabled();
 
         EndTwoColumnLayout();
 
         string keyFrameLabel = "Add Keyframe";
-        if (m_animator->isOnKeyFrame()) keyFrameLabel = "Update Keyframe";
+        if (m_context.animator->isOnKeyFrame()) keyFrameLabel = "Update Keyframe";
         if(ImGui::Button(keyFrameLabel.c_str(), ImVec2(-FLT_MIN, 0))){
-            m_animator->addKeyFrame();
+            m_context.animator->addKeyFrame();
         }
 
         ImGui::Spacing();
         ImGui::SetNextItemWidth(-FLT_MIN);
-        m_animationTime = m_animator->getAnimationTime();
+        m_animationTime = m_context.animator->getAnimationTime();
         if (ImGui::SliderFloat("##Timeline", &m_animationTime, 0, 1, "")) {
-            m_animator->updateCurrentKeyFrame(m_animationTime);
+            m_context.animator->updateCurrentKeyFrame(m_animationTime);
         }
         ImVec2 minRect = ImGui::GetItemRectMin();
         ImVec2 maxRect = ImGui::GetItemRectMax();
-        vector<float> keyPoses = m_animator->getKeyPoses();
+        vector<float> keyPoses = m_context.animator->getKeyPoses();
         for(float pos : keyPoses){
             drawMarker(minRect, maxRect, pos);
         }
@@ -503,20 +521,20 @@ void UI::renderParameters(){
         EndTwoColumnLayout();
        
         if (ImGui::Button("Export Textures", ImVec2(-FLT_MIN, 0))){
-            m_renderer->startRendering(m_renderSamples, "result.png", true, true);
+            m_context.renderer->startRendering(m_renderSamples, "result.png", true, true);
         }
 
         if (ImGui::Button("Render Image", ImVec2(-FLT_MIN, 0))){
-            m_renderer->startRendering(m_renderSamples);
+            m_context.renderer->startRendering(m_renderSamples);
         }
 
         if (ImGui::Button("Render Animation", ImVec2(-FLT_MIN, 0))){
-            m_animator->start(m_renderSamples, m_animationFPS, m_animationDuration);
-            m_resetFrame();
+            m_context.animator->start(m_renderSamples, m_animationFPS, m_animationDuration);
+            m_context.resetFrame();
         }
        
-        if (m_renderer->isRendering()) {
-            int progress = m_renderer->getProgress();
+        if (m_context.renderer->isRendering()) {
+            int progress = m_context.renderer->getProgress();
             ImGui::ProgressBar((float)progress / m_renderSamples, ImVec2(-FLT_MIN, 0));
 
             string text = to_string(progress) + " / " + to_string(m_renderSamples);
@@ -533,7 +551,7 @@ void UI::renderParameters(){
         BeginTwoColumnLayout();
         
         Label("Max Bounces");
-        if (ImGui::InputInt("##Max Bounces", &m_maxBounces)) m_resetFrame();
+        if (ImGui::InputInt("##Max Bounces", &m_maxBounces)) m_context.resetFrame();
         
         Label("Resolution Divider");
         ImGui::InputInt("##Resolution Divider", &m_resMultiplier);
@@ -552,11 +570,11 @@ void UI::renderParameters(){
     ImGui::PopStyleVar(2);
     
     ImGui::SetCursorPosY(ImGui::GetWindowHeight() - buttonHeight - padding);
-    bool isSpectral = m_scene->getSpectral();
+    bool isSpectral = m_context.scene->getSpectral();
     string spectralButtonLabel = "Toggle Spectral : " + string(isSpectral ? "ON" : "OFF");
     if (ImGui::Button(spectralButtonLabel.c_str(), ImVec2(-FLT_MIN, buttonHeight))){
-        m_scene->setSpectral(!isSpectral);
-        m_reloadShader();
+        m_context.scene->setSpectral(!isSpectral);
+        m_context.reloadShader();
     }
 
     ImGui::EndDisabled();
@@ -564,7 +582,9 @@ void UI::renderParameters(){
     ImGui::EndChild();
 }
 
-void UI::render(int frameAccumulator) {
+void UI::render() {
+    ImGui::PushStyleColor(ImGuiCol_MenuBarBg, m_bgColor);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Import Model (.obj)"))  {
@@ -576,22 +596,22 @@ void UI::render(int frameAccumulator) {
                 };
                 args.filterList = filters;
                 args.filterCount = 2;
-                string path = m_app->openFileDialog(cancel, args);
+                string path = m_context.app->openFileDialog(cancel, args);
                 shared_ptr<Mesh> newMesh = make_shared<Mesh>();
                 newMesh->loadFromModel(path.c_str());
-                m_scene->addMesh(newMesh);
+                m_context.scene->addMesh(newMesh);
             }
             ImGui::Separator();
             if (ImGui::MenuItem("Quit"))  {
-                glfwSetWindowShouldClose(m_app->getWindow(), true);
+                glfwSetWindowShouldClose(m_context.app->getWindow(), true);
             }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Scene")) {
             if (ImGui::MenuItem("Save")) {
                 bool cancel;
-                string path = m_app->saveFileDialog(cancel, "scene.json");
-                m_scene->stateToJson(m_scene->getState(), path);
+                string path = m_context.app->saveFileDialog(cancel, "scene.json");
+                m_context.scene->stateToJson(m_context.scene->getState(), path);
             }
             if (ImGui::MenuItem("Load"))  {
                 bool cancel;
@@ -602,30 +622,33 @@ void UI::render(int frameAccumulator) {
                 };
                 args.filterList = filters;
                 args.filterCount = 1;
-                string path = m_app->openFileDialog(cancel, args);
-                m_scene->loadFromState(m_scene->stateFromJson(path));
-                m_animator->clear();
+                string path = m_context.app->openFileDialog(cancel, args);
+                m_context.scene->loadFromState(m_context.scene->stateFromJson(path));
+                m_context.animator->clear();
             }
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
     }
+    ImGui::PopStyleColor(1);
+    ImGui::PopStyleVar(1);
 
     float menuBarHeight = ImGui::GetMainViewport()->WorkPos.y;
     float workingFrameHeight = ImGui::GetMainViewport()->WorkSize.y;
 
-    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_Header, m_mgColor);
+    ImGui::PushStyleColor(ImGuiCol_TitleBg, m_mgColor);
+    ImGui::PushStyleColor(ImGuiCol_TitleBgActive, m_mgColor);
+    ImGui::PushStyleColor(ImGuiCol_PopupBg, m_mgColor);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
     
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, m_fgColor);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 6.0f);
         
-            renderStats(frameAccumulator);
+            renderStats();
             if (!m_show){
                 renderPointer();
-                ImGui::PopStyleColor(4);
+                ImGui::PopStyleColor(5);
                 ImGui::PopStyleVar(2);
                 return;
             }
@@ -637,8 +660,8 @@ void UI::render(int frameAccumulator) {
         ImGui::PopStyleVar(1);
 
         
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.05f, 0.05f, 0.05f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, m_bgColor);
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, m_mgColor);
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.1f, 0.1f, 0.1f, 0.0f));
         ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.1f, 0.1f, 0.1f, 0.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 6.0f);
@@ -653,9 +676,11 @@ void UI::render(int frameAccumulator) {
                                                     | ImGuiWindowFlags_NoTitleBar 
                                                     | ImGuiWindowFlags_NoBringToFrontOnFocus);
                                                     
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+            renderScene();
+            ImGui::PopStyleVar(1);
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
-                renderScene();
-                renderParameters();
+            renderParameters();
             ImGui::PopStyleVar(1);
 
             ImGui::End();
@@ -663,7 +688,7 @@ void UI::render(int frameAccumulator) {
         ImGui::PopStyleVar(3);
         ImGui::PopStyleColor(4);
 
-    ImGui::PopStyleColor(3);
+    ImGui::PopStyleColor(4);
     ImGui::PopStyleVar(1);
 }
 
@@ -676,7 +701,7 @@ void UI::updateGPU() const {
     vec3 skyBottomColor = m_skyBottomColor;
     vec3 skyMiddleColor = m_skyMiddleColor;
     vec3 skyTopColor = m_skyTopColor;
-    if (m_scene->getSpectral()){
+    if (m_context.scene->getSpectral()){
         skyBottomColor = Material::rgbToSigmoidCoeffs(skyBottomColor);
         skyMiddleColor = Material::rgbToSigmoidCoeffs(skyMiddleColor);
         skyTopColor = Material::rgbToSigmoidCoeffs(skyTopColor);

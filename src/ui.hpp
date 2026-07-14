@@ -6,20 +6,30 @@
 #include "animator.hpp"
 #include "scene.hpp"
 #include "camera.hpp"
+#include "stats.hpp"
 
 using namespace glm;
+
+struct UIContext {
+    shared_ptr<App> app;
+    shared_ptr<Renderer> renderer;
+    shared_ptr<Animator> animator;
+    shared_ptr<Scene> scene;
+    shared_ptr<Camera> camera;
+    shared_ptr<Stats> stats;
+    function<void()> resetFrame;
+    function<void()> reloadShader;
+};
 
 class UI {
     private:
         bool m_show = false;
         bool m_disabled = false;
-        shared_ptr<App> m_app;
-        shared_ptr<Renderer> m_renderer;
-        shared_ptr<Animator> m_animator;
-        shared_ptr<Scene> m_scene;
-        shared_ptr<Camera> m_camera;
-        function<void()> m_resetFrame;
-        function<void()> m_reloadShader;
+        UIContext m_context = {};
+        ImGuiStyle m_defaultStyle;
+        const ImVec4 m_bgColor = ImVec4(0.05f, 0.05f, 0.05f, 1.0f);
+        const ImVec4 m_mgColor = ImVec4(0.1f, 0.1f, 0.1f, 1.0f);
+        const ImVec4 m_fgColor = ImVec4(0.15f, 0.15f, 0.15f, 1.0f);
 
         void Label(const char* label, const string& desc = "") const;
         void BeginTwoColumnLayout() const;
@@ -32,12 +42,7 @@ class UI {
         void renderGizmos();
 
         // Stats
-        void renderStats(int frameAccumulator);
-        float m_lastTime = 0.0f;
-        float m_fpsUpdateTimer = 0.0f;
-        int m_fpsFrameCount = 0;
-        int m_displayedFps = 0;
-        float m_displayedFrameTimeMs = 0.0f;
+        void renderStats();
         
         bool m_popupOpened = false;
         void renderToolTip(const string& tip) const;
@@ -75,13 +80,12 @@ class UI {
         
     public:
         UI() = default;
-        UI(shared_ptr<App> app, shared_ptr<Renderer> renderer, shared_ptr<Animator> animator, shared_ptr<Scene> scene, 
-            shared_ptr<Camera> camera, function<void()> resetFrame)
-            : m_app(app), m_renderer(renderer), m_animator(animator), m_scene(scene), m_camera(camera), 
-            m_resetFrame(resetFrame) 
+        UI(UIContext context)
+            : m_context(std::move(context)) 
         { 
             ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
             ImGui::SetNextWindowSize(ImVec2(300.0f, ImGui::GetIO().DisplaySize.y));
+            ImGui::StyleColorsDark(&m_defaultStyle);
         };
             
         static bool isInteracting();
@@ -90,7 +94,7 @@ class UI {
         bool isShowing() const { return m_show; }
         void toggle();
         void setDisabled(bool disabled) { m_disabled = disabled; }
-        void render(int frameAccumulator);
+        void render();
         void updateGPU() const;
         
         enum TexType : int {
@@ -103,5 +107,4 @@ class UI {
         };
         int textureDisplay = TexType::Result;
         int getResolutionMultiplier() const { return m_resMultiplier; }
-        void setReloadShaderFunction(function<void()> reloadFunction) { m_reloadShader = reloadFunction; };
 };

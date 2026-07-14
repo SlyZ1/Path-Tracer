@@ -118,6 +118,14 @@ shared_ptr<Mesh> Scene::findMesh(const string& path){
     return nullptr;
 }
 
+vector<string> Scene::getObjectNames() const {
+    vector<string> names = {};
+    for (const Object& obj : m_objects){
+        names.push_back(obj.name);
+    }
+    return names;
+}
+
 void Scene::loadFromState(const SceneState& sceneState, bool verbose){
     if ((int)sceneState.objectStates.empty()) return;
 
@@ -159,8 +167,8 @@ shared_ptr<Object> Scene::getObjectFromId(SceneState sceneState, unsigned int ID
 }
 
 
-glm::vec2 Scene::worldToScreen(glm::vec3 worldPos){
-    vec3 forward = m_cameraDirection;
+glm::vec2 Scene::worldToScreen(shared_ptr<Camera> camera, glm::vec3 worldPos){
+    vec3 forward = camera->lookDir();
 
     vec3 worldUp = abs(forward.y) < 0.999
                  ? vec3(0,1,0)
@@ -169,7 +177,7 @@ glm::vec2 Scene::worldToScreen(glm::vec3 worldPos){
     vec3 right = normalize(cross(forward, worldUp));
     vec3 up = cross(right, forward);
 
-    vec3 dir = normalize(worldPos - m_cameraPosition);
+    vec3 dir = normalize(worldPos - camera->position());
     float normFactor = 1 / dot(forward, dir);
     dir *= normFactor;
     float fov = m_camera->getCameraProperties()->fov;
@@ -442,6 +450,12 @@ void Scene::removeMesh(int index){
 
 int Scene::addObject(Object obj){
     obj.ID = m_maxId++;
+    if (obj.type == PrimType::MESH_){
+        obj.name = m_meshes[obj.meshIndex]->modelName + string(" ") + to_string(obj.ID);
+    }
+    else{
+        obj.name = string("Primitive ") + to_string(obj.ID);
+    }
     int newIndex = (int)m_objects.size();
     m_objects.push_back(obj);
     updateScene();

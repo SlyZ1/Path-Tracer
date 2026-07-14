@@ -53,6 +53,7 @@ struct MeshInfos {
 };
 
 struct Object {
+    string name;
     vec3 pos;
     vec3 scale;
     vec3 rotation;
@@ -64,6 +65,7 @@ struct Object {
 
     Object operator+(const Object& other){
         Object newObj;
+        newObj.name = name;
         newObj.pos = pos + other.pos;
         newObj.scale = scale + other.scale;
         newObj.rotation = mod(mod(rotation + other.rotation, 360.0f) + 360.0f, 360.0f);
@@ -77,6 +79,7 @@ struct Object {
 
     Object operator*(float t){
         Object newObj;
+        newObj.name = name;
         newObj.pos = pos * t;
         newObj.scale = scale * t;
         newObj.rotation = mod(mod(rotation * t, 360.0f) + 360.0f, 360.0f);
@@ -171,8 +174,9 @@ public:
     void setSpectral(bool spectral) { m_spectral = spectral; }
     bool getSpectral() const { return m_spectral; }
     void loadFromState(const SceneState& sceneState, bool verbose = true);
+    vector<string> getObjectNames() const;
     SceneState getState();
-    vec2 worldToScreen(vec3 worldPos);
+    vec2 worldToScreen(shared_ptr<Camera> camera, vec3 worldPos);
     void initGPU();
     int intersectObject(const Ray& ray);
     int addMesh(shared_ptr<Mesh> newMesh);
