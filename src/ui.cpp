@@ -27,6 +27,13 @@ void UI::renderToolTip(const string& tip) const {
     }
 }
 
+void TextRight(const char* text){
+    float textWidth = ImGui::CalcTextSize(text).x;
+    float availWidth = ImGui::GetContentRegionAvail().x;
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + std::max(0.0f, availWidth - textWidth));
+    ImGui::Text("%s", text);
+}
+
 void UI::Label(const char* label, const string& desc) const
 {
     ImGui::TableNextRow();
@@ -40,14 +47,35 @@ void UI::Label(const char* label, const string& desc) const
 
 void UI::BeginTwoColumnLayout() const
 {
+    float availWidth = ImGui::GetContentRegionAvail().x;
+    float labelWidth = std::max(availWidth * 0.4f, 120.0f);
     ImGui::BeginTable("##layout", 2, ImGuiTableFlags_SizingStretchProp);
-    ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 100);
+    ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, labelWidth);
     ImGui::TableSetupColumn("Input", ImGuiTableColumnFlags_WidthStretch);
 }
 
 void UI::EndTwoColumnLayout() const
 {
     ImGui::EndTable();
+}
+
+bool UI::BeginCustomHeader(const string& name) const {
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
+    ImVec2 padding = ImGui::GetStyle().WindowPadding;
+    ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
+    ImGui::BeginChild((name + "_group").c_str(), ImVec2(-FLT_MIN, 0), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysUseWindowPadding);
+    bool open = ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_SpanAvailWidth);
+    if (open){
+        ImGui::Spacing();
+        ImGui::Spacing();
+    }
+    return open;
+}
+
+void UI::EndCustomHeader() const {
+    ImGui::EndChild();
+    ImGui::PopStyleVar(1);
+    ImGui::PopStyleColor(1);
 }
 
 void UI::renderPointer(){
@@ -103,7 +131,7 @@ void UI::renderStats(int frameAccumulator){
                             | ImGuiWindowFlags_NoMove
                             | ImGuiWindowFlags_NoMouseInputs
                             | ImGuiWindowFlags_NoResize;
-    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x, 0), ImGuiCond_Always, ImVec2(1, 0));
+    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x, ImGui::GetMainViewport()->WorkPos.y), ImGuiCond_Always, ImVec2(1, 0));
     if (ImGui::Begin("Stats", nullptr, flags)) {
         BeginTwoColumnLayout();
 
@@ -197,7 +225,7 @@ void UI::renderPopupData(Object* selectedObject){
                 selectedObject->mat.data2.y = glm::clamp(selectedObject->mat.data2.y, -1.0f, 1.0f);
                 m_scene->updateSceneNextFrame();
             }
-            break;
+            break; 
         case MatType::GLOSSY:
             Label("Fuzziness", "Controls how unpolished the object will be.\nUsed in the Cook-Torrance model with the GGX microfacets distribution.");
             selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 0.8f);
@@ -309,81 +337,47 @@ void UI::renderPopup(){
         
         ImGui::NewLine();
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 0.3f, 0.3f, 0.6f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.3f, 0.3f, 0.8f));
         if (ImGui::Button("Remove", ImVec2(-1, 0))){
             m_scene->removeObject(m_scene->getSelectedObject());
         }
-        ImGui::PopStyleColor(1);
+        ImGui::PopStyleColor(3);
     }
     ImGui::End();
 }
 
-void UI::render(int frameAccumulator) {
-    renderStats(frameAccumulator);
-    if (!m_show){
-        renderPointer();
-        return;
-    }
-    
-    renderPopup();
-    renderGizmos();
+void UI::renderScene(){
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 3.0f));
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.05f, 0.05f, 0.05f, 1.0f));
+    ImGui::SetNextWindowSizeConstraints(ImVec2(-FLT_MIN, 250.0f), ImVec2(-FLT_MIN, ImGui::GetIO().DisplaySize.y - 250.0f));
+    ImGui::BeginChild("SceneContainer", ImVec2(-FLT_MIN, 200.0f), ImGuiChildFlags_ResizeY | ImGuiChildFlags_AlwaysUseWindowPadding);
+    ImGui::PopStyleVar(2);
+    ImGui::PopStyleColor(1);
 
-    ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(300, ImGui::GetIO().DisplaySize.y), ImGuiCond_Always);
-    ImGui::Begin("Parameters", (bool*)NULL, ImGuiWindowFlags_MenuBar);
+    ImGui::BeginChild("Scene", ImVec2(-FLT_MIN, -FLT_MIN), ImGuiChildFlags_Borders);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 4.0f));
 
+    ImGui::PopStyleVar(1);
+    ImGui::EndChild();
+    ImGui::EndChild();
+}
+
+void UI::renderParameters(){
+    ImGui::BeginChild("Parameters", ImVec2(-FLT_MIN, -FLT_MIN), ImGuiChildFlags_Borders);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 4.0f));
     ImGui::BeginDisabled(m_renderer->isRendering() || m_disabled);
 
-    if (ImGui::BeginMenuBar()) {
-        if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("Import Model (.obj)"))  {
-                bool cancel;
-                nfdopendialogu8args_t args = {0};
-                nfdfilteritem_t filters[] = {
-                    { "3D Models", "obj" },
-                    { "OBJ", "obj" }
-                };
-                args.filterList = filters;
-                args.filterCount = 2;
-                string path = m_app->openFileDialog(cancel, args);
-                shared_ptr<Mesh> newMesh = make_shared<Mesh>();
-                newMesh->loadFromModel(path.c_str());
-                m_scene->addMesh(newMesh);
-            }
-            ImGui::Separator();
-            if (ImGui::MenuItem("Quit"))  {
-                glfwSetWindowShouldClose(m_app->getWindow(), true);
-            }
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Scene")) {
-            if (ImGui::MenuItem("Save")) {
-                bool cancel;
-                string path = m_app->saveFileDialog(cancel, "scene.json");
-                m_scene->stateToJson(m_scene->getState(), path);
-            }
-            if (ImGui::MenuItem("Load"))  {
-                bool cancel;
-                nfdopendialogu8args_t args = {0};
-                nfdfilteritem_t filters[] = {
-                    { "JSON", "json" },
-                    { "json" }
-                };
-                args.filterList = filters;
-                args.filterCount = 1;
-                string path = m_app->openFileDialog(cancel, args);
-                m_scene->loadFromState(m_scene->stateFromJson(path));
-                m_animator->clear();
-            }
-            ImGui::EndMenu();
-        }
-        ImGui::EndMenuBar();
-    }
+    float padding = ImGui::GetStyle().WindowPadding.y;
+    float buttonHeight = 40;
 
-    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.5f, 0.2f, 1.0f, 0.3f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.5f, 0.2f, 1.0f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.5f, 0.2f, 1.0f, 0.8f));
     
-    if (ImGui::CollapsingHeader("Camera Settings")){
+    ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarRounding, 6.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 0.0f);
+    ImGui::BeginChild("Scrollable Parameters", ImVec2(-FLT_MIN, -(buttonHeight + padding)), ImGuiChildFlags_None, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+
+    if (BeginCustomHeader("Camera Settings")){
         BeginTwoColumnLayout();
         CameraProperties* camProps = m_camera->getCameraProperties();
 
@@ -400,13 +394,11 @@ void UI::render(int frameAccumulator) {
             m_resetFrame();
 
         EndTwoColumnLayout();
+        ImGui::TreePop();
     }
-
-    ImGui::Spacing();
-    ImGui::Spacing();
-    ImGui::Spacing();
+    EndCustomHeader();
     
-    if (ImGui::CollapsingHeader("Sky Box Settings")){
+    if (BeginCustomHeader("Sky Box Settings")){
         BeginTwoColumnLayout();
 
         Label("Sky Intensity");
@@ -426,13 +418,11 @@ void UI::render(int frameAccumulator) {
             m_resetFrame();
 
         EndTwoColumnLayout();
+        ImGui::TreePop();
     }
+    EndCustomHeader();
 
-    ImGui::Spacing();
-    ImGui::Spacing();
-    ImGui::Spacing();
-
-    if (ImGui::CollapsingHeader("Model Settings")){
+    if (BeginCustomHeader("Model Settings")){
         BeginTwoColumnLayout();
 
         Label("Debug BVH");
@@ -440,13 +430,11 @@ void UI::render(int frameAccumulator) {
             m_resetFrame();
 
         EndTwoColumnLayout();
+        ImGui::TreePop();
     }
+    EndCustomHeader();
 
-    ImGui::Spacing();
-    ImGui::Spacing();
-    ImGui::Spacing();
-
-    if (ImGui::CollapsingHeader("Animation Settings")){
+    if (BeginCustomHeader("Animation Settings")){
        
         BeginTwoColumnLayout();
 
@@ -501,13 +489,11 @@ void UI::render(int frameAccumulator) {
         for(float pos : keyPoses){
             drawMarker(minRect, maxRect, pos);
         }
+        ImGui::TreePop();
     }
+    EndCustomHeader();
 
-    ImGui::Spacing();
-    ImGui::Spacing();
-    ImGui::Spacing();
-
-    if (ImGui::CollapsingHeader("Render Settings")){
+    if (BeginCustomHeader("Render Settings")){
     
         BeginTwoColumnLayout();
     
@@ -539,13 +525,11 @@ void UI::render(int frameAccumulator) {
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (windowWidth - textWidth) * 0.5f);
             ImGui::Text("%s", text.c_str());
         }
+        ImGui::TreePop();
     }
+    EndCustomHeader();
 
-    ImGui::Spacing();
-    ImGui::Spacing();
-    ImGui::Spacing();
-
-    if (ImGui::CollapsingHeader("Technical Settings")){
+    if (BeginCustomHeader("Technical Settings")){
         BeginTwoColumnLayout();
         
         Label("Max Bounces");
@@ -560,22 +544,127 @@ void UI::render(int frameAccumulator) {
         ImGui::Combo("##Texture Display", &textureDisplay, textureTypes, IM_ARRAYSIZE(textureTypes));
         
         EndTwoColumnLayout();
+        ImGui::TreePop();
     }
+    EndCustomHeader();
 
-    float padding = ImGui::GetStyle().WindowPadding.y;
-    float buttonHeight = 40;
+    ImGui::EndChild(); 
+    ImGui::PopStyleVar(2);
+    
     ImGui::SetCursorPosY(ImGui::GetWindowHeight() - buttonHeight - padding);
-
     bool isSpectral = m_scene->getSpectral();
     string spectralButtonLabel = "Toggle Spectral : " + string(isSpectral ? "ON" : "OFF");
     if (ImGui::Button(spectralButtonLabel.c_str(), ImVec2(-FLT_MIN, buttonHeight))){
         m_scene->setSpectral(!isSpectral);
         m_reloadShader();
     }
-    
-    ImGui::PopStyleColor(3);
+
     ImGui::EndDisabled();
-    ImGui::End();
+    ImGui::PopStyleVar(1);
+    ImGui::EndChild();
+}
+
+void UI::render(int frameAccumulator) {
+    if (ImGui::BeginMainMenuBar()) {
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Import Model (.obj)"))  {
+                bool cancel;
+                nfdopendialogu8args_t args = {0};
+                nfdfilteritem_t filters[] = {
+                    { "3D Models", "obj" },
+                    { "OBJ", "obj" }
+                };
+                args.filterList = filters;
+                args.filterCount = 2;
+                string path = m_app->openFileDialog(cancel, args);
+                shared_ptr<Mesh> newMesh = make_shared<Mesh>();
+                newMesh->loadFromModel(path.c_str());
+                m_scene->addMesh(newMesh);
+            }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Quit"))  {
+                glfwSetWindowShouldClose(m_app->getWindow(), true);
+            }
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Scene")) {
+            if (ImGui::MenuItem("Save")) {
+                bool cancel;
+                string path = m_app->saveFileDialog(cancel, "scene.json");
+                m_scene->stateToJson(m_scene->getState(), path);
+            }
+            if (ImGui::MenuItem("Load"))  {
+                bool cancel;
+                nfdopendialogu8args_t args = {0};
+                nfdfilteritem_t filters[] = {
+                    { "JSON", "json" },
+                    { "json" }
+                };
+                args.filterList = filters;
+                args.filterCount = 1;
+                string path = m_app->openFileDialog(cancel, args);
+                m_scene->loadFromState(m_scene->stateFromJson(path));
+                m_animator->clear();
+            }
+            ImGui::EndMenu();
+        }
+        ImGui::EndMainMenuBar();
+    }
+
+    float menuBarHeight = ImGui::GetMainViewport()->WorkPos.y;
+    float workingFrameHeight = ImGui::GetMainViewport()->WorkSize.y;
+
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+    
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 6.0f);
+        
+            renderStats(frameAccumulator);
+            if (!m_show){
+                renderPointer();
+                ImGui::PopStyleColor(4);
+                ImGui::PopStyleVar(2);
+                return;
+            }
+            
+            renderPopup();
+            renderGizmos();
+        
+        ImGui::PopStyleColor(1);
+        ImGui::PopStyleVar(1);
+
+        
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.05f, 0.05f, 0.05f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.1f, 0.1f, 0.1f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.1f, 0.1f, 0.1f, 0.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 6.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 2.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 2.0f));
+        
+            ImGui::SetNextWindowPos(ImVec2(0, menuBarHeight), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(400, workingFrameHeight), ImGuiCond_Once);
+            ImGui::SetNextWindowSizeConstraints(ImVec2(300, workingFrameHeight), 
+                                                ImVec2(ImGui::GetIO().DisplaySize.x / 2.0f, workingFrameHeight));
+            ImGui::Begin("Left Window", (bool*)NULL, ImGuiWindowFlags_NoCollapse 
+                                                    | ImGuiWindowFlags_NoTitleBar 
+                                                    | ImGuiWindowFlags_NoBringToFrontOnFocus);
+                                                    
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
+                renderScene();
+                renderParameters();
+            ImGui::PopStyleVar(1);
+
+            ImGui::End();
+        
+        ImGui::PopStyleVar(3);
+        ImGui::PopStyleColor(4);
+
+    ImGui::PopStyleColor(3);
+    ImGui::PopStyleVar(1);
 }
 
 void UI::updateGPU() const {

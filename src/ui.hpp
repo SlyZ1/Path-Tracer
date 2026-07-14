@@ -25,6 +25,9 @@ class UI {
         void BeginTwoColumnLayout() const;
         void EndTwoColumnLayout() const;
         void drawMarker(ImVec2 minRect, ImVec2 maxRect, float keyPos) const;
+
+        bool BeginCustomHeader(const string& name) const;
+        void EndCustomHeader() const;
         
         void renderGizmos();
 
@@ -40,6 +43,9 @@ class UI {
         void renderToolTip(const string& tip) const;
         void renderPopup();
         void renderPopupData(Object* selectedObject);
+        void renderParameters();
+        void renderScene();
+        float m_windowSplit = 200.0f;
 
         void renderPointer();
 
