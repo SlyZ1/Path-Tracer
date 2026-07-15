@@ -8,7 +8,7 @@ LIBTOOL  = "$(MSVC_BIN)/lib.exe"
 NVCC = "$(CUDA_PATH)/bin/nvcc.exe"
 
 CXXFLAGS     = /nologo /Zi /std:c++17 /EHsc /W4 /MD
-CXXFLAGS_SRC = $(CXXFLAGS)
+CXXFLAGS_SRC = $(CXXFLAGS) /showIncludes
 
 NVCCFLAGS = -std=c++17 -ccbin "$(MSVC_BIN)/cl.exe" -g -Xcompiler /MD -arch=sm_89
 
@@ -22,7 +22,7 @@ INCLUDES = -Iinclude \
            -Iinclude/nlohmannjson \
            -I"$(CUDA_PATH)/include"
 
-LIBS = /LIBPATH:lib glfw3dll.lib nfd.lib ole32.lib uuid.lib nvinfer.lib \
+LIBS = /LIBPATH:lib glfw3dll.lib nfd.lib ole32.lib uuid.lib nvinfer.lib dwmapi.lib \
        /LIBPATH:"$(CUDA_PATH)/lib/x64" cudart.lib cuda.lib
 
 rwildcard = $(foreach d, $(wildcard $(1:=/*)), $(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
@@ -33,6 +33,8 @@ CU_SRC  = $(call rwildcard, src, *.cu)
 OBJ    = $(patsubst src/%.cpp, build/src/%.obj, \
          $(patsubst src/%.c,   build/src/%.obj, $(SRC)))
 CU_OBJ = $(patsubst src/%.cu, build/src/%.obj, $(CU_SRC))
+
+DEP    = $(OBJ:.obj=.d)
 
 IMGUI_SRC   = $(wildcard include/imgui/*.cpp)
 LODEPNG_SRC = $(wildcard include/lodepng/*.cpp)
@@ -54,12 +56,14 @@ $(TARGET): $(OBJ) $(CU_OBJ) $(THIRD_PARTY_LIB)
 	$(LINK) /nologo $(OBJ) $(CU_OBJ) $(THIRD_PARTY_LIB) /OUT:$@ $(LIBS)
 
 build/src/%.obj: src/%.cpp
-	@if not exist "$(subst /,\,$(dir $@))" mkdir "$(subst /,\,$(dir $@))"
-	$(CXX) $(CXXFLAGS_SRC) $(INCLUDES) /c $< /Fo:$@
+	if not exist "$(subst /,\,$(dir $@))" mkdir "$(subst /,\,$(dir $@))"
+	$(CXX) $(CXXFLAGS_SRC) $(INCLUDES) /c $< /Fo:$@ > "$(subst /,\,$@).tmp"
+	powershell -NoProfile -ExecutionPolicy Bypass -File tools\gen_deps.ps1 -TmpFile "$(subst /,\,$@).tmp" -ObjFile "$(subst /,\,$@)" -SrcFile "$(subst /,\,$<)" -DepFile "$(subst /,\,$(@:.obj=.d))"
 
 build/src/%.obj: src/%.c
 	@if not exist "$(subst /,\,$(dir $@))" mkdir "$(subst /,\,$(dir $@))"
-	$(CXX) $(CXXFLAGS_SRC) $(INCLUDES) /c $< /Fo:$@
+	$(CXX) $(CXXFLAGS_SRC) $(INCLUDES) /c $< /Fo:$@ > "$(subst /,\,$@).tmp"
+	powershell -NoProfile -ExecutionPolicy Bypass -File tools\gen_deps.ps1 -TmpFile "$(subst /,\,$@).tmp" -ObjFile "$(subst /,\,$@)" -SrcFile "$(subst /,\,$<)" -DepFile "$(subst /,\,$(@:.obj=.d))"
 
 build/src/%.obj: src/%.cu
 	@if not exist "$(subst /,\,$(dir $@))" mkdir "$(subst /,\,$(dir $@))"
@@ -82,6 +86,8 @@ build/tinyexr/%.obj: include/tinyexr/%.c | build/tinyexr
 
 build/imgui build/lodepng build/tinyobj build/tinyexr:
 	if not exist "$(subst /,\,$@)" mkdir "$(subst /,\,$@)"
+
+-include $(DEP)
 
 clean:
 	rmdir /S /Q build

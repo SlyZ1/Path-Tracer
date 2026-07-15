@@ -187,9 +187,9 @@ public:
     void removeObject(int index);
     void copyObject(int index);
     int pasteObject();
-    void selectObject(int index) { m_selectedObject = index; };
+    void selectObject(int index) { m_selectedObject = index; m_selectedMesh = -1; };
     int getSelectedObject() const { return m_selectedObject; };
-    void selectMesh(int index) { m_selectedMesh = index; };
+    void selectMesh(int index) { m_selectedMesh = index; m_selectedObject = -1; };
     int getSelectedMesh() const { return m_selectedMesh; };
     vector<const char*> getMeshNames() const;
     void updateScene();

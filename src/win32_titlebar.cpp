@@ -8,6 +8,6 @@
 
 void setDarkTitleBar(GLFWwindow* window){
     HWND hwnd = glfwGetWin32Window(window);
-    COLORREF titleBarColor = RGB(51, 51, 51);
+    COLORREF titleBarColor = RGB(12, 12, 12);
     DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, &titleBarColor, sizeof(titleBarColor));
 }

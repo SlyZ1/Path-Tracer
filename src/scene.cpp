@@ -506,10 +506,10 @@ void Scene::updateSceneNextFrame(){
     m_updateNextFrame = true;
 }
 
-int Scene::addMaterial(vector<Material>& materials, Material mat){
+int Scene::addMaterial(vector<Material>& materials, Material mat){ 
     for (int i = 0; i < (int)materials.size(); i++){
-        const Material& material = materials[i];
-        if (mat == material) return i;
+        const Material& material = materials[i]; 
+        if (mat == material) return i; 
     }
     if (m_spectral){
         mat.color = Material::rgbToSigmoidCoeffs(mat.color);

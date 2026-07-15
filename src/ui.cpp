@@ -281,22 +281,22 @@ void UI::renderPopup(){
             selectedObject->rotation = mod(mod(selectedObject->rotation, 360.0f) + 360.0f, 360.0f);
             m_context.scene->updateSceneNextFrame();
         }
-
-        if (selectedObject->type == PrimType::SPHERE && selectedObject->mat.type == MatType::EMIT){
-            Label("Scale");
-            selectedObject->scale = max(vec3(selectedObject->scale.x), vec3(0.0f));
-            if (ImGui::DragFloat("##Scale", &selectedObject->scale.x, 0.001f)){
-                selectedObject->scale = max(vec3(selectedObject->scale.x), vec3(0.0f));
-                m_context.scene->updateSceneNextFrame();
-            }
-        }
         else{
             static bool scaleLocked = true;
             static vec3 scaleRatio = vec3(1.0f);
 
             bool previousScaleLocked = scaleLocked;
-            Label("Scale", "", [](){ImGui::Checkbox("##ScaleLocker", &scaleLocked);}, 24.0f);
-
+            bool disabled = false;
+            if (selectedObject->type == PrimType::SPHERE && selectedObject->mat.type == MatType::EMIT){
+                disabled = true;
+                scaleLocked = true;
+            }
+            Label("Scale", "", [=](){
+                ImGui::BeginDisabled(disabled);
+                ImGui::Checkbox("##ScaleLocker", &scaleLocked);
+                ImGui::EndDisabled();
+            }, 24.0f);
+            
             selectedObject->scale = max(selectedObject->scale, vec3(0.0f));
 
             if (scaleLocked && !previousScaleLocked){
@@ -436,20 +436,15 @@ void UI::renderScene(){
             selectedSceneIndex = m_context.scene->getSelectedObject();
             vector<const char*> items = m_context.scene->getObjectNames();
             int newSelected = renderListItems(items, &selectedSceneIndex);
-            if (newSelected >= 0){
-                m_context.scene->selectObject(newSelected);
-                m_context.scene->selectMesh(-1);
-            }
+            if (newSelected >= 0) m_context.scene->selectObject(newSelected);
             ImGui::EndTabItem();
         }
-        if (ImGui::BeginTabItem("Meshes")){
+        if (ImGui::BeginTabItem("Meshes")){ 
             static int selectedMeshesIndex = -1;
+            selectedMeshesIndex = m_context.scene->getSelectedMesh();
             vector<const char*> items = m_context.scene->getMeshNames();
             int newSelected = renderListItems(items, &selectedMeshesIndex);
-            if (newSelected >= 0){
-                m_context.scene->selectObject(-1);
-                m_context.scene->selectMesh(newSelected);
-            }
+            if (newSelected >= 0) m_context.scene->selectMesh(newSelected);
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();

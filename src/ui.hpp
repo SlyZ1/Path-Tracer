@@ -40,7 +40,7 @@ class UI {
             function<void(void)> customWidget = nullptr, 
             float widgetSize = 0.0f
         ) const;
-        
+
         void BeginTwoColumnLayout() const;
         void EndTwoColumnLayout() const;
         void drawMarker(ImVec2 minRect, ImVec2 maxRect, float keyPos) const;
