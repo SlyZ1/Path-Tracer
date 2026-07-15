@@ -2,7 +2,7 @@
 #define TINYEXR_IMPLEMENTATION
 #include <tinyexr/tinyexr.h>
 
-using namespace std;
+using namespace std; 
 
 GLFWwindow* App::Window = {};
 
@@ -44,7 +44,9 @@ void App::init(int width, int height, const char *name, bool headless){
         exit(1);
     }
 
-    cudaGLSetGLDevice(0);
+    setDarkTitleBar(m_window);
+
+    cudaGLSetGLDevice(0); 
     cudaFree(0);
 
     glViewport(0, 0, width, height);

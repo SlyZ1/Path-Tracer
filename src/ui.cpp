@@ -336,48 +336,58 @@ void UI::renderPopup(){
     ImGui::End();
 }
 
+int UI::renderListItems(const vector<const char*>& items, int* selectedIndex){
+    ImGui::PushStyleColor(ImGuiCol_Header, m_fgColor);
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(m_fgColor.x, m_fgColor.y, m_fgColor.z, 0.5f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, m_fgColor);
+    ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.04f, 0.5f));
+    float itemHeight = ImGui::GetTextLineHeight() + 4.0f;
+    int newSelected = -1;
+    for (int i = 0; i < (int)items.size(); i++){
+        bool isSelected = (*selectedIndex == i);
+        
+        if (ImGui::Selectable(items[i], isSelected, ImGuiSelectableFlags_None, ImVec2(ImGui::GetContentRegionAvail().x, itemHeight))){
+            *selectedIndex = i;
+            newSelected = i;
+        }
+    }
+    ImGui::PopStyleVar(1);
+    ImGui::PopStyleColor(3);
+    return newSelected;
+}
+
 void UI::renderScene(){
     ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 3.0f));
     ImGui::PushStyleColor(ImGuiCol_ChildBg, m_bgColor);
     ImGui::SetNextWindowSizeConstraints(ImVec2(-FLT_MIN, 250.0f), ImVec2(-FLT_MIN, ImGui::GetIO().DisplaySize.y - 250.0f));
     ImGui::BeginChild("SceneContainer", ImVec2(-FLT_MIN, 200.0f), ImGuiChildFlags_ResizeY | ImGuiChildFlags_AlwaysUseWindowPadding);
-    ImGui::PopStyleVar(2);
+    ImGui::PopStyleVar(1);
     ImGui::PopStyleColor(1);
 
-    ImGui::BeginChild("Scene", ImVec2(-FLT_MIN, -FLT_MIN), ImGuiChildFlags_Borders);
+    ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 0.0f);
+    ImGui::BeginChild("Scene", ImVec2(-FLT_MIN, -FLT_MIN - 2), ImGuiChildFlags_Borders, ImGuiWindowFlags_AlwaysVerticalScrollbar);
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 4.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_TabRounding, 7.0f);
 
     if (ImGui::BeginTabBar("SceneTabs")){
         if (ImGui::BeginTabItem("Scene")){
-            ImGui::PushStyleColor(ImGuiCol_Header, m_fgColor);
-            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(m_fgColor.x, m_fgColor.y, m_fgColor.z, 0.5f));
-            ImGui::PushStyleColor(ImGuiCol_HeaderActive, m_fgColor);
-            ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.04f, 0.5f));
-            float itemHeight = ImGui::GetTextLineHeight() + 4.0f;
-            static int selectedIndex = -1;
-            selectedIndex = m_context.scene->getSelectedObject();
-            vector<string> items = m_context.scene->getObjectNames();
-            for (int i = 0; i < (int)items.size(); i++){
-                bool isSelected = (selectedIndex == i);
-                
-                if (ImGui::Selectable(items[i].c_str(), isSelected, ImGuiSelectableFlags_None, ImVec2(ImGui::GetContentRegionAvail().x, itemHeight))){
-                    selectedIndex = i;
-                    m_context.scene->selectObject(i);
-                }
-            }
-            ImGui::PopStyleVar(1);
-            ImGui::PopStyleColor(3);
+            static int selectedSceneIndex = -1;
+            selectedSceneIndex = m_context.scene->getSelectedObject();
+            vector<const char*> items = m_context.scene->getObjectNames();
+            int newSelected = renderListItems(items, &selectedSceneIndex);
+            if (newSelected >= 0) m_context.scene->selectObject(newSelected);
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Meshes")){
-
+            static int selectedMeshesIndex = -1;
+            vector<const char*> items = m_context.scene->getMeshNames();
+            int newSelected = renderListItems(items, &selectedMeshesIndex);
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();
     }
 
-    ImGui::PopStyleVar(1);
+    ImGui::PopStyleVar(3);
     ImGui::EndChild();
     ImGui::EndChild();
 }
@@ -641,6 +651,7 @@ void UI::render() {
     ImGui::PushStyleColor(ImGuiCol_TitleBgActive, m_mgColor);
     ImGui::PushStyleColor(ImGuiCol_PopupBg, m_mgColor);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, 3.0f);
     
         ImGui::PushStyleColor(ImGuiCol_WindowBg, m_fgColor);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 6.0f);
@@ -649,7 +660,7 @@ void UI::render() {
             if (!m_show){
                 renderPointer();
                 ImGui::PopStyleColor(5);
-                ImGui::PopStyleVar(2);
+                ImGui::PopStyleVar(3);
                 return;
             }
             
@@ -665,8 +676,8 @@ void UI::render() {
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.1f, 0.1f, 0.1f, 0.0f));
         ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.1f, 0.1f, 0.1f, 0.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 6.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 2.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 2.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 4.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 1.0f));
         
             ImGui::SetNextWindowPos(ImVec2(0, menuBarHeight), ImGuiCond_Always);
             ImGui::SetNextWindowSize(ImVec2(400, workingFrameHeight), ImGuiCond_Once);
@@ -689,7 +700,7 @@ void UI::render() {
         ImGui::PopStyleColor(4);
 
     ImGui::PopStyleColor(4);
-    ImGui::PopStyleVar(1);
+    ImGui::PopStyleVar(2);
 }
 
 void UI::updateGPU() const {

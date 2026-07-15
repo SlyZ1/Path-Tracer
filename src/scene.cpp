@@ -47,6 +47,8 @@ shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> ca
     meshObject.isSmooth = true;
     scene->addObject(meshObject);
 
+    scene->selectObject(-1);
+
     return scene;
 }
 
@@ -118,10 +120,10 @@ shared_ptr<Mesh> Scene::findMesh(const string& path){
     return nullptr;
 }
 
-vector<string> Scene::getObjectNames() const {
-    vector<string> names = {};
+vector<const char*> Scene::getObjectNames() const {
+    vector<const char*> names = {};
     for (const Object& obj : m_objects){
-        names.push_back(obj.name);
+        names.push_back(obj.name.c_str());
     }
     return names;
 }

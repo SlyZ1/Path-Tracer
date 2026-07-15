@@ -49,6 +49,7 @@ class UI {
         void renderPopup();
         void renderPopupData(Object* selectedObject);
         void renderParameters();
+        int renderListItems(const vector<const char*>& items, int* selectedIndex);
         void renderScene();
         float m_windowSplit = 200.0f;
 

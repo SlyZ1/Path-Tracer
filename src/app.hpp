@@ -1,3 +1,6 @@
+#ifndef APP_HPP
+#define APP_HPP
+
 #include <iostream>
 #include <lodepng/lodepng.h>
 #include <imgui/imgui.h>
@@ -10,9 +13,7 @@
 #include <nativefiledialog/nfd.h>
 #include <cuda_gl_interop.h>
 #include <vector>
-
-#ifndef APP_HPP
-#define APP_HPP
+#include "win32_titlebar.hpp"
 
 using namespace std;
 

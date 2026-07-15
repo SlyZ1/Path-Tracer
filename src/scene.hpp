@@ -174,7 +174,7 @@ public:
     void setSpectral(bool spectral) { m_spectral = spectral; }
     bool getSpectral() const { return m_spectral; }
     void loadFromState(const SceneState& sceneState, bool verbose = true);
-    vector<string> getObjectNames() const;
+    vector<const char*> getObjectNames() const;
     SceneState getState();
     vec2 worldToScreen(shared_ptr<Camera> camera, vec3 worldPos);
     void initGPU();
