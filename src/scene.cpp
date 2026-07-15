@@ -125,7 +125,7 @@ vector<const char*> Scene::getObjectNames() const {
     for (const Object& obj : m_objects){
         names.push_back(obj.name.c_str());
     }
-    return names;
+    return names; 
 }
 
 void Scene::loadFromState(const SceneState& sceneState, bool verbose){
@@ -423,7 +423,7 @@ int Scene::intersectObject(const Ray& ray){
                 dist = intersectCube(ray, obj);
                 break;
             case PrimType::MESH_:
-                dist = intersectMesh(ray, obj);
+                if (obj.meshIndex >= 0) dist = intersectMesh(ray, obj);
                 break;
             default:
                 break;
@@ -446,8 +446,10 @@ void Scene::removeMesh(int index){
     for (Object& obj : m_objects){
         if (obj.type != PrimType::MESH_) continue;
         if (obj.meshIndex > index) obj.meshIndex -= 1;
+        if (obj.meshIndex == index) obj.meshIndex = -1;
     }
     m_meshes.erase(m_meshes.begin() + index);
+    updateScene();
 }
 
 int Scene::addObject(Object obj){
@@ -509,7 +511,10 @@ int Scene::addMaterial(vector<Material>& materials, Material mat){
         const Material& material = materials[i];
         if (mat == material) return i;
     }
-    if (m_spectral) mat.color = Material::rgbToSigmoidCoeffs(mat.color);
+    if (m_spectral){
+        mat.color = Material::rgbToSigmoidCoeffs(mat.color);
+        mat.color2 = Material::rgbToSigmoidCoeffs(mat.color2);
+    }
     materials.push_back(mat);
     return (int)materials.size() - 1;
 }
@@ -539,8 +544,8 @@ void Scene::updateGPU(){
     vector<int> numberOfNodes = {};
     vector<bool> meshIsUsed = vector<bool>(m_meshes.size(), false);
     for (Object& obj : m_objects){
-        if (obj.type != PrimType::MESH_) continue;
-        obj.meshIndex = std::clamp(obj.meshIndex, 0, (int)m_meshes.size() - 1);
+        if (obj.type != PrimType::MESH_ || obj.meshIndex < 0) continue;
+        obj.meshIndex = std::min(obj.meshIndex, (int)m_meshes.size() - 1);
         meshIsUsed[obj.meshIndex] = true; 
     }
     for (int i = 0; i < (int)m_meshes.size(); i++){
@@ -565,6 +570,7 @@ void Scene::updateGPU(){
     for (const Object& obj : m_objects){
         int matIndex = addMaterial(materials, obj.mat);
         if (obj.type == PrimType::MESH_){
+            if (obj.meshIndex < 0) continue;
             if (obj.mat.type == MatType::GLASS && (obj.mat.data.w > 0)){
                 volumeIndicies.insert(volumeIndicies.begin() + numVolumeMeshes, (int)meshInfos.size());
                 numVolumeMeshes++;
@@ -580,7 +586,7 @@ void Scene::updateGPU(){
             meshInfo.isSmooth = obj.isSmooth;
             meshInfos.push_back(meshInfo);
         }
-        else{
+        else {
             if (obj.mat.type == MatType::GLASS && (obj.mat.data.w > 0)){
                 volumeIndicies.push_back((int)primitives.size());
                 numVolumePrims++;

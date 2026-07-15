@@ -28,16 +28,20 @@ float p_VNDF_reflect(vec3 N, vec3 L, vec3 V, float alpha){
 }
 
 #ifdef SPECTRAL
-Spectrum fresnelTerm(float HdotV, FresnelParams params){
-    return airy(HdotV, filmIOR(params.mat), filmDepth(params.mat), params.lambda, params.spectrumValue);
+Spectrum fresnelTerm(float HdotV, FresnelConductorParams params){
+    Spectrum eta = artisticEta(params.spectrumValue, params.spectrumValue2);
+    Spectrum k = artisticK(params.spectrumValue, eta);
+    return airy(HdotV, filmIOR(params.mat), filmDepth(params.mat), params.lambda, eta, k);
 }
 #else
-Spectrum fresnelTerm(float HdotV, FresnelParams params){
-    return schlickFresnel(HdotV, params.spectrumValue);
+Spectrum fresnelTerm(float HdotV, FresnelConductorParams params){
+    Spectrum eta = artisticEta(params.spectrumValue, params.spectrumValue2);
+    Spectrum k = artisticK(params.spectrumValue, eta);
+    return fresnelConductor(HdotV, eta, k);
 }
 #endif
 
-Spectrum cookTorranceMetals(FresnelParams params, vec3 N, vec3 V, vec3 L, float alpha){
+Spectrum cookTorranceMetals(FresnelConductorParams params, vec3 N, vec3 V, vec3 L, float alpha){
     float a2 = alpha * alpha;
     vec3 h = normalize(L + V);
     float NdotL = dot(N, L);
@@ -53,7 +57,7 @@ Spectrum cookTorranceMetals(FresnelParams params, vec3 N, vec3 V, vec3 L, float 
     return F * D * G / max(4 * NdotV * NdotL, PROBA_EPS);
 }
 
-Spectrum weight_VNDF_reflect(FresnelParams params, vec3 N, vec3 V, vec3 L, float alpha){
+Spectrum weight_VNDF_reflect(FresnelConductorParams params, vec3 N, vec3 V, vec3 L, float alpha){
     vec3 H = normalize(V + L);
     float HdotV = dot(H, V);
     float NdotL = dot(N, L);
@@ -73,7 +77,8 @@ void metal(inout RaycastData data){
     ray.pbsdf = -1;
 
     Spectrum spectrumValue = getSpectrumValue(hit.mat);
-    FresnelParams fresnelParams = newFresnelParams(spectrumValue);
+    Spectrum spectrumValue2 = getSpectrumValueFromColor(hit.mat.color2);
+    FresnelConductorParams fresnelParams = newFresnelParams(spectrumValue, spectrumValue2);
     
     if (pbrFuzz(hit.mat) < EPS){
         vec3 newDir = reflect(ray.dir, hit.normal);

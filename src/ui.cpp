@@ -16,6 +16,21 @@ void UI::drawMarker(ImVec2 minRect, ImVec2 maxRect, float keyPos) const {
     );
 }
 
+void TextWithShadow(const char* text, ImVec4 textColor = ImVec4(1,1,1,1), ImVec4 shadowColor = ImVec4(0,0,0,0.6f), ImVec2 offset = ImVec2(1,1)){
+    ImVec2 pos = ImGui::GetCursorScreenPos();
+    float rowHeight = ImGui::GetTextLineHeightWithSpacing();
+    float textHeight = ImGui::GetTextLineHeight();
+
+    pos.y += (rowHeight - textHeight) * 0.5f; 
+    ImDrawList* draw = ImGui::GetWindowDrawList();
+    
+    draw->AddText(ImVec2(pos.x + offset.x, pos.y + offset.y), ImGui::GetColorU32(shadowColor), text);
+    draw->AddText(pos, ImGui::GetColorU32(textColor), text);
+    
+    ImVec2 textSize = ImGui::CalcTextSize(text);
+    ImGui::Dummy(textSize);
+}
+
 void UI::renderToolTip(const string& tip) const {
     if (ImGui::IsItemHovered())
     {
@@ -34,15 +49,20 @@ void TextRight(const char* text){
     ImGui::Text("%s", text);
 }
 
-void UI::Label(const char* label, const string& desc) const
+void UI::Label(const char* label, const string& desc, function<void(void)> customWidget, float widgetSize) const
 {
     ImGui::TableNextRow();
     ImGui::TableSetColumnIndex(0);
-    ImGui::Text("%s", label);
+    TextWithShadow(label, ImVec4(1,1,1,1), ImVec4(0.05f,0.05f,0.05f,0.7f), ImVec2(1,1));
     if (!desc.empty())
-        renderToolTip(desc);
+        renderToolTip(desc); 
+    if (customWidget != nullptr){
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - widgetSize);
+        customWidget();
+    }
     ImGui::TableSetColumnIndex(1);
-    ImGui::SetNextItemWidth(-FLT_MIN);
+    ImGui::SetNextItemWidth(-FLT_MIN); 
 }
 
 void UI::BeginTwoColumnLayout() const
@@ -90,13 +110,12 @@ void UI::renderGizmos(){
     Object* selectedObject = m_context.scene->getObject(m_context.scene->getSelectedObject());
 
     ImDrawList* draw = ImGui::GetBackgroundDrawList();
-    ImU32 orange = IM_COL32(255, 150, 100, 255);
 
     // Center point
     glm::vec2 objectCenter = m_context.scene->worldToScreen(m_context.camera, selectedObject->pos);
     ImVec2 pos = ImGui::GetIO().DisplaySize * 0.5 + ImVec2(objectCenter.x, objectCenter.y);
     draw->AddCircleFilled(pos, 5, IM_COL32(0, 0, 0, 255));
-    draw->AddCircleFilled(pos, 3, orange);
+    draw->AddCircleFilled(pos, 3, m_blue32);
 
     // // Right arrow
     // draw->AddCircleFilled(pos + ImVec2(13, 0), 3, orange);
@@ -248,6 +267,8 @@ void UI::renderPopup(){
     
     ImGui::SetNextWindowSizeConstraints(ImVec2(300, 0), ImVec2(FLT_MAX, FLT_MAX));
     if (ImGui::Begin("Properties", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::PushStyleColor(ImGuiCol_Border, m_blueBorder);
+        
         ImGui::SeparatorText("Object");
         BeginTwoColumnLayout();
         Label("Position");
@@ -260,9 +281,9 @@ void UI::renderPopup(){
             selectedObject->rotation = mod(mod(selectedObject->rotation, 360.0f) + 360.0f, 360.0f);
             m_context.scene->updateSceneNextFrame();
         }
-        Label("Scale");
-        if (selectedObject->type == PrimType::SPHERE && selectedObject->mat.type == MatType::EMIT){
 
+        if (selectedObject->type == PrimType::SPHERE && selectedObject->mat.type == MatType::EMIT){
+            Label("Scale");
             selectedObject->scale = max(vec3(selectedObject->scale.x), vec3(0.0f));
             if (ImGui::DragFloat("##Scale", &selectedObject->scale.x, 0.001f)){
                 selectedObject->scale = max(vec3(selectedObject->scale.x), vec3(0.0f));
@@ -270,16 +291,44 @@ void UI::renderPopup(){
             }
         }
         else{
+            static bool scaleLocked = true;
+            static vec3 scaleRatio = vec3(1.0f);
+
+            bool previousScaleLocked = scaleLocked;
+            Label("Scale", "", [](){ImGui::Checkbox("##ScaleLocker", &scaleLocked);}, 24.0f);
+
             selectedObject->scale = max(selectedObject->scale, vec3(0.0f));
+
+            if (scaleLocked && !previousScaleLocked){
+                vec3 s = selectedObject->scale;
+                float maxComp = std::max({s.x, s.y, s.z});
+                if (maxComp > 0.0f)
+                    scaleRatio = s / maxComp;
+                else
+                    scaleRatio = vec3(1.0f);
+            }
+
+            vec3 beforeDrag = selectedObject->scale;
             if (ImGui::DragFloat3("##Scale", &selectedObject->scale.x, 0.001f)){
                 selectedObject->scale = max(selectedObject->scale, vec3(0.0f));
+                
+                if (scaleLocked){
+                    vec3 delta = abs(selectedObject->scale - beforeDrag);
+                    int changedAxis = (delta.x > delta.y && delta.x > delta.z) ? 0 : (delta.y > delta.z ? 1 : 2);
+                    
+                    float newScale = selectedObject->scale[changedAxis];
+                    selectedObject->scale = scaleRatio * (newScale / scaleRatio[changedAxis]);
+                }
                 m_context.scene->updateSceneNextFrame();
             }
         }
 
+        EndTwoColumnLayout();
         ImGui::Spacing();
         ImGui::Spacing();
-        
+        ImGui::SeparatorText("Shape");
+        BeginTwoColumnLayout();
+
         Label("Shape Type");
         if (ImGui::Combo("##Shape Type", (int*)(&selectedObject->type), Scene::primLabels, IM_ARRAYSIZE(Scene::primLabels))){
             m_context.scene->updateSceneNextFrame();
@@ -303,10 +352,7 @@ void UI::renderPopup(){
 
         ImGui::SeparatorText("Material");
         BeginTwoColumnLayout();
-        Label("Color");
-        if (ImGui::ColorEdit3("##Color", &selectedObject->mat.color.x))
-            m_context.scene->updateSceneNextFrame();
-
+        
         const char* items[] = { 
             "Diffuse", 
             "Metal", 
@@ -318,6 +364,20 @@ void UI::renderPopup(){
         if (ImGui::Combo("##Material type", (int*)&selectedObject->mat.type, items, IM_ARRAYSIZE(items)))
             m_context.scene->updateSceneNextFrame();
 
+        if (selectedObject->mat.type != MatType::METAL){
+            Label("Color");
+            if (ImGui::ColorEdit3("##Color", &selectedObject->mat.color.x))
+                m_context.scene->updateSceneNextFrame();
+        }
+        else{
+            Label("Reflectivity");
+            if (ImGui::ColorEdit3("##Reflectivity", &selectedObject->mat.color.x))
+                m_context.scene->updateSceneNextFrame();
+            Label("Edge Tint");
+            if (ImGui::ColorEdit3("##Edge Tint", &selectedObject->mat.color2.x))
+                m_context.scene->updateSceneNextFrame();
+        }
+
         renderPopupData(selectedObject);
         EndTwoColumnLayout();
         
@@ -328,10 +388,10 @@ void UI::renderPopup(){
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 0.3f, 0.3f, 0.6f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.3f, 0.3f, 0.8f));
-        if (ImGui::Button("Remove", ImVec2(-1, 0))){
+        if (ImGui::Button("Remove", ImVec2(-1, 0))){ 
             m_context.scene->removeObject(m_context.scene->getSelectedObject());
         }
-        ImGui::PopStyleColor(3);
+        ImGui::PopStyleColor(4);
     }
     ImGui::End();
 }
@@ -368,6 +428,7 @@ void UI::renderScene(){
     ImGui::BeginChild("Scene", ImVec2(-FLT_MIN, -FLT_MIN - 2), ImGuiChildFlags_Borders, ImGuiWindowFlags_AlwaysVerticalScrollbar);
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 4.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_TabRounding, 7.0f);
+    ImGui::PushStyleColor(ImGuiCol_Border, m_blueBorder);
 
     if (ImGui::BeginTabBar("SceneTabs")){
         if (ImGui::BeginTabItem("Scene")){
@@ -375,18 +436,26 @@ void UI::renderScene(){
             selectedSceneIndex = m_context.scene->getSelectedObject();
             vector<const char*> items = m_context.scene->getObjectNames();
             int newSelected = renderListItems(items, &selectedSceneIndex);
-            if (newSelected >= 0) m_context.scene->selectObject(newSelected);
+            if (newSelected >= 0){
+                m_context.scene->selectObject(newSelected);
+                m_context.scene->selectMesh(-1);
+            }
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Meshes")){
             static int selectedMeshesIndex = -1;
             vector<const char*> items = m_context.scene->getMeshNames();
             int newSelected = renderListItems(items, &selectedMeshesIndex);
+            if (newSelected >= 0){
+                m_context.scene->selectObject(-1);
+                m_context.scene->selectMesh(newSelected);
+            }
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();
     }
 
+    ImGui::PopStyleColor(1);
     ImGui::PopStyleVar(3);
     ImGui::EndChild();
     ImGui::EndChild();
@@ -395,7 +464,7 @@ void UI::renderScene(){
 void UI::renderParameters(){
     ImGui::BeginChild("Parameters", ImVec2(-FLT_MIN, -FLT_MIN), ImGuiChildFlags_Borders);
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 4.0f));
-    ImGui::BeginDisabled(m_context.renderer->isRendering() || m_disabled);
+    ImGui::PushStyleColor(ImGuiCol_Border, m_blueBorder);
 
     float padding = ImGui::GetStyle().WindowPadding.y;
     float buttonHeight = 40;
@@ -587,7 +656,7 @@ void UI::renderParameters(){
         m_context.reloadShader();
     }
 
-    ImGui::EndDisabled();
+    ImGui::PopStyleColor(1);
     ImGui::PopStyleVar(1);
     ImGui::EndChild();
 }
@@ -651,6 +720,7 @@ void UI::render() {
     ImGui::PushStyleColor(ImGuiCol_TitleBgActive, m_mgColor);
     ImGui::PushStyleColor(ImGuiCol_PopupBg, m_mgColor);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, 3.0f);
     
         ImGui::PushStyleColor(ImGuiCol_WindowBg, m_fgColor);
@@ -660,7 +730,7 @@ void UI::render() {
             if (!m_show){
                 renderPointer();
                 ImGui::PopStyleColor(5);
-                ImGui::PopStyleVar(3);
+                ImGui::PopStyleVar(4);
                 return;
             }
             
@@ -670,6 +740,7 @@ void UI::render() {
         ImGui::PopStyleColor(1);
         ImGui::PopStyleVar(1);
 
+        ImGui::BeginDisabled(m_context.renderer->isRendering() || m_disabled);
         
         ImGui::PushStyleColor(ImGuiCol_WindowBg, m_bgColor);
         ImGui::PushStyleColor(ImGuiCol_ChildBg, m_mgColor);
@@ -699,8 +770,10 @@ void UI::render() {
         ImGui::PopStyleVar(3);
         ImGui::PopStyleColor(4);
 
+        ImGui::EndDisabled();
+
     ImGui::PopStyleColor(4);
-    ImGui::PopStyleVar(2);
+    ImGui::PopStyleVar(3);
 }
 
 void UI::updateGPU() const {

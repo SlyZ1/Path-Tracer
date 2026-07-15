@@ -94,7 +94,7 @@ struct Object {
 
 struct Ray {
     vec3 origin;
-    vec3 direction;
+    vec3 direction; 
 };
 
 struct SceneState {
@@ -115,7 +115,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(PrimType, {
     { PrimType::CUBE,       "cube"      },
     { PrimType::MESH_,      "mesh"      }
 })
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Material, color, type, data, data2)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Material, color, color2, type, data, data2)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Object, pos, scale, rotation, mat, ID, type, meshIndex, isSmooth)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SceneState, modelPaths, objectStates)
 
@@ -141,6 +141,7 @@ private:
 
     int m_copiedObject = -1;
     int m_selectedObject = -1;
+    int m_selectedMesh = -1;
     unsigned int m_maxId = 0;
 
     bool m_spectral = false;
@@ -187,7 +188,9 @@ public:
     void copyObject(int index);
     int pasteObject();
     void selectObject(int index) { m_selectedObject = index; };
-    int getSelectedObject() const {return m_selectedObject; };
+    int getSelectedObject() const { return m_selectedObject; };
+    void selectMesh(int index) { m_selectedMesh = index; };
+    int getSelectedMesh() const { return m_selectedMesh; };
     vector<const char*> getMeshNames() const;
     void updateScene();
     void updateSceneNextFrame();

@@ -342,6 +342,7 @@ void inputs(){
 
     if (app->keyPressedOnce(GLFW_KEY_DELETE, frameCount)){
         scene->removeObject(scene->getSelectedObject());
+        scene->removeMesh(scene->getSelectedMesh());
     }
 
     if (app->keyPressed(GLFW_KEY_LEFT_CONTROL) && app->keyPressedOnce(GLFW_KEY_C, frameCount)){

@@ -27,11 +27,20 @@ class UI {
         bool m_disabled = false;
         UIContext m_context = {};
         ImGuiStyle m_defaultStyle;
-        const ImVec4 m_bgColor = ImVec4(0.05f, 0.05f, 0.05f, 1.0f);
-        const ImVec4 m_mgColor = ImVec4(0.1f, 0.1f, 0.1f, 1.0f);
-        const ImVec4 m_fgColor = ImVec4(0.15f, 0.15f, 0.15f, 1.0f);
+        const ImVec4 m_bgColor = ImVec4(0.1f, 0.1f, 0.1f, 1.0f);
+        const ImVec4 m_mgColor = ImVec4(0.15f, 0.15f, 0.15f, 1.0f);
+        const ImVec4 m_fgColor = ImVec4(0.2f, 0.2f, 0.2f, 1.0f);
+        const ImU32 m_blue32 = IM_COL32(109, 155, 212, 255);
+        const ImVec4 m_blue = ImVec4(0.42f, 0.6f, 0.83f, 1.0f);
+        const ImVec4 m_blueBorder = ImVec4(0.42f, 0.6f, 0.83f, 0.1f);
 
-        void Label(const char* label, const string& desc = "") const;
+        void Label(
+            const char* label, 
+            const string& desc = "", 
+            function<void(void)> customWidget = nullptr, 
+            float widgetSize = 0.0f
+        ) const;
+        
         void BeginTwoColumnLayout() const;
         void EndTwoColumnLayout() const;
         void drawMarker(ImVec2 minRect, ImVec2 maxRect, float keyPos) const;

@@ -16,6 +16,8 @@ enum MatType : int {
 
 struct Material {
     vec3 color;
+    int pad;
+    vec3 color2;
     MatType type;
     vec4 data;
     vec4 data2;
@@ -41,6 +43,8 @@ struct Material {
     Material operator+(const Material& other){
         return {
             color + other.color,
+            pad,
+            color2 + other.color2,
             type,
             data + other.data,
             data2 + other.data2,
@@ -50,6 +54,8 @@ struct Material {
     Material operator*(float t){
         return {
             color * t,
+            pad,
+            color2 * t,
             type,
             data * t,
             data2 * t

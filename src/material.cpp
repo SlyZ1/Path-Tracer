@@ -5,6 +5,7 @@ Material Material::diffuseMaterial(vec3 color, float roughness){
     Material mat;
     mat.type = MatType::DIFFUSE;
     mat.color = color;
+    mat.color2 = vec3(0.0f);
     mat.data = vec4(glm::clamp(roughness, 0.0f, 1.0f), 0.0f, 0.0f, 0.0f);
     mat.data2 = vec4(0.0f);
     return mat;
@@ -14,6 +15,7 @@ Material Material::metalMaterial(vec3 color, float fuzziness, float filmIOR, flo
     Material mat;
     mat.type = MatType::METAL;
     mat.color = color;
+    mat.color2 = color;
     mat.data = vec4(glm::clamp(fuzziness, 0.0f, 1.0f), 0.0f, 0.0f, 0.0f);
     mat.data2 = vec4(filmIOR, filmDepth, 0.0f, 0.0f);
     return mat;
@@ -31,6 +33,7 @@ Material Material::glassMaterial(
     Material mat;
     mat.type = MatType::GLASS;
     mat.color = color;
+    mat.color2 = vec3(1.0f);
     mat.data = vec4(fuzziness, glm::max(refractionIndex, 0.0f), absorptionFactor, scatteringFactor);
     mat.data2 = vec4(dispertionFactor, anisotropy, 0.0f, 0.0f);
     return mat;
@@ -40,6 +43,7 @@ Material Material::glossyMaterial(vec3 color, float fuzziness, float metallic){
     Material mat;
     mat.type = MatType::GLOSSY;
     mat.color = color;
+    mat.color2 = vec3(1.0f);
     mat.data = vec4(glm::clamp(fuzziness, 0.0f, 1.0f), glm::clamp(metallic, 0.0f, 1.0f), 0.0f, 0.0f);
     mat.data2 = vec4(1.0f, 0.0f, 0.0f, 0.0f);
     return mat;
@@ -49,6 +53,7 @@ Material Material::emitMaterial(vec3 color, float intensity){
     Material mat;
     mat.type = MatType::EMIT;
     mat.color = color;
+    mat.color2 = vec3(1.0f);
     mat.data = vec4(glm::max(intensity, 0.0f), 0.0f, 0.0f, 0.0f);
     mat.data2 = vec4(0.0f);
     return mat;

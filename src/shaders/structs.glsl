@@ -5,6 +5,8 @@ struct Camera {
 
 struct Mat {
     vec3 color;
+    int pad;
+    vec3 color2;
     int type;
     vec4 data;
     vec4 data2;
@@ -67,9 +69,11 @@ struct MeshInfos {
 
 #ifdef SPECTRAL
     #define getSpectrumValue(m) sampleSpectrum(ray.lambda, m.color)
+    #define getSpectrumValueFromColor(c) sampleSpectrum(ray.lambda, c)
     #define WHITE_COLOR vec3(0.0, 0.0, 0.5 / sqrt(0.99 * 0.01))
 #else
     #define getSpectrumValue(m) m.color
+    #define getSpectrumValueFromColor(c) c
     #define WHITE_COLOR vec3(1.0)
 #endif
 
@@ -99,18 +103,20 @@ struct RaycastData {
 };
 
 #ifdef SPECTRAL
-struct FresnelParams {
+struct FresnelConductorParams {
     Mat mat;
     Spectrum lambda;
     Spectrum spectrumValue;
+    Spectrum spectrumValue2;
 };
-#define newFresnelParams(v) FresnelParams(hit.mat, ray.lambda, v)
+#define newFresnelParams(v, v2) FresnelConductorParams(hit.mat, ray.lambda, v, v2)
 #else
 
-struct FresnelParams {
+struct FresnelConductorParams {
     Spectrum spectrumValue;
+    Spectrum spectrumValue2;
 };
-#define newFresnelParams(v) FresnelParams(v)
+#define newFresnelParams(v, v2) FresnelConductorParams(v, v2)
 #endif
 
 struct PointAndDir {
