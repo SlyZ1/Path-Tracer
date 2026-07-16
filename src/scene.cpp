@@ -31,7 +31,7 @@ shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> ca
     light.scale = vec3(1.0f);
     light.rotation = vec3(0.0f);
     light.mat = Material::emitMaterial(vec3(1.0f), 20.0f);
-    scene->addObject(light);
+    scene->addObject(light); 
 
     shared_ptr<Mesh> bunnyMesh = make_shared<Mesh>();
     bunnyMesh->loadFromModel("models/bunny.obj");
@@ -486,8 +486,9 @@ void Scene::copyObject(int index){
 }
 
 int Scene::pasteObject(){
-    Object newObj = *getObject(m_copiedObject);
-    return addObject(newObj);
+    Object* newObj = getObject(m_copiedObject);
+    if (newObj == nullptr) return -1;
+    return addObject(*newObj);
 }
 
 vector<const char*> Scene::getMeshNames() const {

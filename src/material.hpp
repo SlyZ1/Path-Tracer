@@ -15,10 +15,10 @@ enum MatType : int {
 };
 
 struct Material {
-    vec3 color;
+    vec3 color = vec3(0.7f);
     int pad;
-    vec3 color2;
-    MatType type;
+    vec3 color2 = vec3(0.7f);
+    MatType type = MatType::DIFFUSE;
     vec4 data;
     vec4 data2;
 

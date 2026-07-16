@@ -55,9 +55,9 @@ struct MeshInfos {
 struct Object {
     string name;
     vec3 pos;
-    vec3 scale;
+    vec3 scale = vec3(1.0);
     vec3 rotation;
-    Material mat;
+    Material mat = Material();
     unsigned int ID;
     PrimType type;
     int meshIndex;

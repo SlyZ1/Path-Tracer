@@ -115,7 +115,7 @@ void UI::renderGizmos(){
     glm::vec2 objectCenter = m_context.scene->worldToScreen(m_context.camera, selectedObject->pos);
     ImVec2 pos = ImGui::GetIO().DisplaySize * 0.5 + ImVec2(objectCenter.x, objectCenter.y);
     draw->AddCircleFilled(pos, 5, IM_COL32(0, 0, 0, 255));
-    draw->AddCircleFilled(pos, 3, m_blue32);
+    draw->AddCircleFilled(pos, 3, m_lightBlue32);
 
     // // Right arrow
     // draw->AddCircleFilled(pos + ImVec2(13, 0), 3, orange);
@@ -267,7 +267,7 @@ void UI::renderPopup(){
     
     ImGui::SetNextWindowSizeConstraints(ImVec2(300, 0), ImVec2(FLT_MAX, FLT_MAX));
     if (ImGui::Begin("Properties", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::PushStyleColor(ImGuiCol_Border, m_blueBorder);
+        ImGui::PushStyleColor(ImGuiCol_Border, m_lightBlueBorder);
         
         ImGui::SeparatorText("Object");
         BeginTwoColumnLayout();
@@ -385,9 +385,9 @@ void UI::renderPopup(){
         ImGui::Spacing();
         
         ImGui::NewLine();
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 0.3f, 0.3f, 0.6f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.3f, 0.3f, 0.8f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 0.3f, 0.3f, 0.8f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 0.3f, 0.3f, 0.4f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.3f, 0.3f, 0.6f));
         if (ImGui::Button("Remove", ImVec2(-1, 0))){ 
             m_context.scene->removeObject(m_context.scene->getSelectedObject());
         }
@@ -401,7 +401,8 @@ int UI::renderListItems(const vector<const char*>& items, int* selectedIndex){
     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(m_fgColor.x, m_fgColor.y, m_fgColor.z, 0.5f));
     ImGui::PushStyleColor(ImGuiCol_HeaderActive, m_fgColor);
     ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.04f, 0.5f));
-    float itemHeight = ImGui::GetTextLineHeight() + 4.0f;
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+    float itemHeight = ImGui::GetTextLineHeight() + 8.0f;
     int newSelected = -1;
     for (int i = 0; i < (int)items.size(); i++){
         bool isSelected = (*selectedIndex == i);
@@ -411,7 +412,7 @@ int UI::renderListItems(const vector<const char*>& items, int* selectedIndex){
             newSelected = i;
         }
     }
-    ImGui::PopStyleVar(1);
+    ImGui::PopStyleVar(2);
     ImGui::PopStyleColor(3);
     return newSelected;
 }
@@ -424,34 +425,93 @@ void UI::renderScene(){
     ImGui::PopStyleVar(1);
     ImGui::PopStyleColor(1);
 
-    ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 0.0f);
-    ImGui::BeginChild("Scene", ImVec2(-FLT_MIN, -FLT_MIN - 2), ImGuiChildFlags_Borders, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+    ImGui::BeginChild("Scene", ImVec2(-FLT_MIN, -FLT_MIN - 2), ImGuiChildFlags_Borders), ImGuiWindowFlags_AlwaysVerticalScrollbar;
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 4.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_TabRounding, 7.0f);
-    ImGui::PushStyleColor(ImGuiCol_Border, m_blueBorder);
+    ImGui::PushStyleColor(ImGuiCol_Border, m_lightBlueBorder);
 
+    float buttonRegionSize = 30.0f;
+    float buttonSize = 24.0f;
     if (ImGui::BeginTabBar("SceneTabs")){
         if (ImGui::BeginTabItem("Scene")){
+            ImGui::BeginChild("SceneListContainer", ImVec2(-FLT_MIN -buttonRegionSize, -FLT_MIN), 0, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+            ImGui::Dummy(ImVec2(-FLT_MIN, 4.0f));
             static int selectedSceneIndex = -1;
             selectedSceneIndex = m_context.scene->getSelectedObject();
             vector<const char*> items = m_context.scene->getObjectNames();
             int newSelected = renderListItems(items, &selectedSceneIndex);
             if (newSelected >= 0) m_context.scene->selectObject(newSelected);
+            ImGui::EndChild();
+            if (ImGui::IsItemClicked()) m_context.scene->selectObject(-1);
+            ImGui::SameLine();
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, m_bgColor);
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+            ImGui::BeginChild("SceneButtonsContainer", ImVec2(-FLT_MIN-2, -FLT_MIN), ImGuiChildFlags_AlwaysUseWindowPadding);
+
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(m_mgColor.x, m_mgColor.y, m_mgColor.z, 0.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(m_mgColor.x, m_mgColor.y, m_mgColor.z, 0.3f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(m_mgColor.x, m_mgColor.y, m_mgColor.z, 0.5f));
+            ImGui::PushStyleColor(ImGuiCol_Separator, m_mgColor);
+            if (ImGui::Button("+", ImVec2(buttonRegionSize-2, buttonRegionSize-2))){
+                m_context.scene->addObject(Object());
+            }
+            ImGui::Separator();
+            if (ImGui::Button("-", ImVec2(buttonRegionSize-2, buttonRegionSize-2))){
+                m_context.scene->removeObject(m_context.scene->getSelectedObject());
+            }
+            ImGui::Separator();
+            ImGui::PopStyleColor(4);
+            ImGui::PopStyleVar(2);
+
+            ImGui::EndChild();
+            ImGui::PopStyleColor(1);
+            ImGui::PopStyleVar(1);
             ImGui::EndTabItem();
         }
-        if (ImGui::BeginTabItem("Meshes")){ 
+        if (ImGui::BeginTabItem("Imported Models")){
+            ImGui::BeginChild("SceneListContainer", ImVec2(-FLT_MIN -buttonRegionSize, -FLT_MIN), 0, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+            ImGui::Dummy(ImVec2(-FLT_MIN, 4.0f));
             static int selectedMeshesIndex = -1;
             selectedMeshesIndex = m_context.scene->getSelectedMesh();
             vector<const char*> items = m_context.scene->getMeshNames();
             int newSelected = renderListItems(items, &selectedMeshesIndex);
             if (newSelected >= 0) m_context.scene->selectMesh(newSelected);
+            ImGui::EndChild();
+            if (ImGui::IsItemClicked()) m_context.scene->selectMesh(-1);
+            ImGui::SameLine();
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, m_bgColor);
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+            ImGui::BeginChild("SceneButtonsContainer", ImVec2(-FLT_MIN-2, -FLT_MIN), ImGuiChildFlags_AlwaysUseWindowPadding);
+
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(m_mgColor.x, m_mgColor.y, m_mgColor.z, 0.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(m_mgColor.x, m_mgColor.y, m_mgColor.z, 0.3f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(m_mgColor.x, m_mgColor.y, m_mgColor.z, 0.5f));
+            ImGui::PushStyleColor(ImGuiCol_Separator, m_mgColor);
+            if (ImGui::Button("+", ImVec2(buttonRegionSize-2, buttonRegionSize-2))){
+                importModelDialog();
+            }
+            ImGui::Separator();
+            if (ImGui::Button("-", ImVec2(buttonRegionSize-2, buttonRegionSize-2))){
+                m_context.scene->removeMesh(m_context.scene->getSelectedMesh());
+            }
+            ImGui::Separator();
+            ImGui::PopStyleColor(4);
+            ImGui::PopStyleVar(2);
+
+            ImGui::EndChild();
+            ImGui::PopStyleColor(1);
+            ImGui::PopStyleVar(1);
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();
     }
 
     ImGui::PopStyleColor(1);
-    ImGui::PopStyleVar(3);
+    ImGui::PopStyleVar(2);
     ImGui::EndChild();
     ImGui::EndChild();
 }
@@ -459,14 +519,13 @@ void UI::renderScene(){
 void UI::renderParameters(){
     ImGui::BeginChild("Parameters", ImVec2(-FLT_MIN, -FLT_MIN), ImGuiChildFlags_Borders);
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 4.0f));
-    ImGui::PushStyleColor(ImGuiCol_Border, m_blueBorder);
+    ImGui::PushStyleColor(ImGuiCol_Border, m_lightBlueBorder);
 
     float padding = ImGui::GetStyle().WindowPadding.y;
     float buttonHeight = 40;
 
     
     ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarRounding, 6.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 0.0f);
     ImGui::BeginChild("Scrollable Parameters", ImVec2(-FLT_MIN, -(buttonHeight + padding)), ImGuiChildFlags_None, ImGuiWindowFlags_AlwaysVerticalScrollbar);
 
     if (BeginCustomHeader("Camera Settings")){
@@ -641,7 +700,7 @@ void UI::renderParameters(){
     EndCustomHeader();
 
     ImGui::EndChild(); 
-    ImGui::PopStyleVar(2);
+    ImGui::PopStyleVar(1);
     
     ImGui::SetCursorPosY(ImGui::GetWindowHeight() - buttonHeight - padding);
     bool isSpectral = m_context.scene->getSpectral();
@@ -656,38 +715,35 @@ void UI::renderParameters(){
     ImGui::EndChild();
 }
 
-void UI::render() {
+void UI::importModelDialog(){
+    bool cancel;
+    nfdopendialogu8args_t args = {0};
+    nfdfilteritem_t filters[] = {
+        { "3D Models", "obj" },
+        { "OBJ", "obj" }
+    };
+    args.filterList = filters;
+    args.filterCount = 2;
+    string path = m_context.app->openFileDialog(cancel, args);
+    shared_ptr<Mesh> newMesh = make_shared<Mesh>();
+    newMesh->loadFromModel(path.c_str());
+    m_context.scene->addMesh(newMesh);
+}
+
+void UI::renderMainMenuBar(){
     ImGui::PushStyleColor(ImGuiCol_MenuBarBg, m_bgColor);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Import Model (.obj)"))  {
-                bool cancel;
-                nfdopendialogu8args_t args = {0};
-                nfdfilteritem_t filters[] = {
-                    { "3D Models", "obj" },
-                    { "OBJ", "obj" }
-                };
-                args.filterList = filters;
-                args.filterCount = 2;
-                string path = m_context.app->openFileDialog(cancel, args);
-                shared_ptr<Mesh> newMesh = make_shared<Mesh>();
-                newMesh->loadFromModel(path.c_str());
-                m_context.scene->addMesh(newMesh);
+                importModelDialog();
             }
-            ImGui::Separator();
-            if (ImGui::MenuItem("Quit"))  {
-                glfwSetWindowShouldClose(m_context.app->getWindow(), true);
-            }
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Scene")) {
-            if (ImGui::MenuItem("Save")) {
+            if (ImGui::MenuItem("Save Scene (.json)")) {
                 bool cancel;
                 string path = m_context.app->saveFileDialog(cancel, "scene.json");
                 m_context.scene->stateToJson(m_context.scene->getState(), path);
             }
-            if (ImGui::MenuItem("Load"))  {
+            if (ImGui::MenuItem("Load Scene (.json)"))  {
                 bool cancel;
                 nfdopendialogu8args_t args = {0};
                 nfdfilteritem_t filters[] = {
@@ -700,12 +756,20 @@ void UI::render() {
                 m_context.scene->loadFromState(m_context.scene->stateFromJson(path));
                 m_context.animator->clear();
             }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Quit"))  {
+                glfwSetWindowShouldClose(m_context.app->getWindow(), true);
+            }
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
     }
     ImGui::PopStyleColor(1);
     ImGui::PopStyleVar(1);
+}
+
+void UI::render() {
+    renderMainMenuBar();
 
     float menuBarHeight = ImGui::GetMainViewport()->WorkPos.y;
     float workingFrameHeight = ImGui::GetMainViewport()->WorkSize.y;
@@ -717,6 +781,7 @@ void UI::render() {
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, 3.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 0.0f);
     
         ImGui::PushStyleColor(ImGuiCol_WindowBg, m_fgColor);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 6.0f);
@@ -725,7 +790,7 @@ void UI::render() {
             if (!m_show){
                 renderPointer();
                 ImGui::PopStyleColor(5);
-                ImGui::PopStyleVar(4);
+                ImGui::PopStyleVar(5);
                 return;
             }
             
@@ -768,7 +833,7 @@ void UI::render() {
         ImGui::EndDisabled();
 
     ImGui::PopStyleColor(4);
-    ImGui::PopStyleVar(3);
+    ImGui::PopStyleVar(4);
 }
 
 void UI::updateGPU() const {
