@@ -3,6 +3,7 @@
 ![](outputs/thin_film.png)
 ![](./outputs/triple_dragon.png)
 ![](outputs/dispertion_2.png)
+![](outputs/spectral_example.png)
 
 ## Overview
 
