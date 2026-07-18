@@ -15,8 +15,9 @@ void glossy(inout RaycastData data){
     float reflectance = fresnel(cos1, cos2, n);
     if (totalReflection || rand(seed) <= reflectance){
         data.hit.mat.data = vec4(pbrFuzz(hit.mat), 0.0, 0.0, 0.0);
-        data.hit.mat.data2 = vec4(1.0, 0.0, 0.0, 0.0);
+        data.hit.mat.data2 = vec4(0.0, 0.0, 1.0, 0.0);
         data.hit.mat.color = WHITE_COLOR;
+        data.hit.mat.color2 = WHITE_COLOR;
         metal(data);
     }
     else{

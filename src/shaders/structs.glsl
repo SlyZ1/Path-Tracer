@@ -103,6 +103,7 @@ struct RaycastData {
 };
 
 #ifdef SPECTRAL
+
 struct FresnelConductorParams {
     Mat mat;
     Spectrum lambda;
@@ -110,6 +111,14 @@ struct FresnelConductorParams {
     Spectrum spectrumValue2;
 };
 #define newFresnelParams(v, v2) FresnelConductorParams(hit.mat, ray.lambda, v, v2)
+
+struct FresnelDielectricParams {
+    Mat mat;
+    Spectrum lambda;
+    SpectralParam n;
+};
+#define newFresnelDielectricParams(n) FresnelDielectricParams(hit.mat, ray.lambda, n)
+
 #else
 
 struct FresnelConductorParams {
@@ -117,6 +126,12 @@ struct FresnelConductorParams {
     Spectrum spectrumValue2;
 };
 #define newFresnelParams(v, v2) FresnelConductorParams(v, v2)
+
+struct FresnelDielectricParams {
+    SpectralParam n;
+};
+#define newFresnelDielectricParams(n) FresnelDielectricParams(n)
+
 #endif
 
 struct PointAndDir {

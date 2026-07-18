@@ -179,15 +179,15 @@ void UI::renderPopupData(Object* selectedObject){
             }
             if (m_context.scene->getSpectral()){
                 Label("Film IOR", "Index of refraction of the thin film on the surface.");
-                selectedObject->mat.data2.x = glm::clamp(selectedObject->mat.data2.x, 1.0f, 2.0f);
-                if (ImGui::SliderFloat("##IOR", &selectedObject->mat.data2.x, 1.0f, 2.0f)){
-                    selectedObject->mat.data2.x = glm::clamp(selectedObject->mat.data2.x, 1.0f, 2.0f);
+                selectedObject->mat.data2.z = glm::clamp(selectedObject->mat.data2.z, 1.0f, 2.0f);
+                if (ImGui::SliderFloat("##Film IOR", &selectedObject->mat.data2.z, 1.0f, 2.0f)){
+                    selectedObject->mat.data2.z = glm::clamp(selectedObject->mat.data2.z, 1.0f, 2.0f);
                     m_context.scene->updateSceneNextFrame();
                 }
                 Label("Film Depth", "Depth of the thin film on the surface.");
-                selectedObject->mat.data2.y = glm::clamp(selectedObject->mat.data2.y, 0.0f, 1000.0f);
-                if (ImGui::SliderFloat("##Film Depth", &selectedObject->mat.data2.y, 0.0f, 1000.0f)){
-                    selectedObject->mat.data2.y = glm::clamp(selectedObject->mat.data2.y, 0.0f, 1000.0f);
+                selectedObject->mat.data2.w = glm::clamp(selectedObject->mat.data2.w, 0.0f, 1000.0f);
+                if (ImGui::SliderFloat("##Film Depth", &selectedObject->mat.data2.w, 0.0f, 1000.0f)){
+                    selectedObject->mat.data2.w = glm::clamp(selectedObject->mat.data2.w, 0.0f, 1000.0f);
                     m_context.scene->updateSceneNextFrame();
                 }
             }
@@ -232,6 +232,22 @@ void UI::renderPopupData(Object* selectedObject){
             if (ImGui::SliderFloat("##Anisotropy", &selectedObject->mat.data2.y, -1.0f, 1.0f)){
                 selectedObject->mat.data2.y = glm::clamp(selectedObject->mat.data2.y, -1.0f, 1.0f);
                 m_context.scene->updateSceneNextFrame();
+            }
+            ImGui::Spacing();
+            ImGui::Spacing();
+            if (m_context.scene->getSpectral()){
+                Label("Film IOR", "Index of refraction of the thin film on the surface.");
+                selectedObject->mat.data2.z = glm::clamp(selectedObject->mat.data2.z, 1.0f, 2.0f);
+                if (ImGui::SliderFloat("##Film IOR", &selectedObject->mat.data2.z, 1.0f, 2.0f)){
+                    selectedObject->mat.data2.z = glm::clamp(selectedObject->mat.data2.z, 1.0f, 2.0f);
+                    m_context.scene->updateSceneNextFrame();
+                }
+                Label("Film Depth", "Depth of the thin film on the surface.");
+                selectedObject->mat.data2.w = glm::clamp(selectedObject->mat.data2.w, 0.0f, 1000.0f);
+                if (ImGui::SliderFloat("##Film Depth", &selectedObject->mat.data2.w, 0.0f, 1000.0f)){
+                    selectedObject->mat.data2.w = glm::clamp(selectedObject->mat.data2.w, 0.0f, 1000.0f);
+                    m_context.scene->updateSceneNextFrame();
+                }
             }
             break; 
         case MatType::GLOSSY:
@@ -337,7 +353,10 @@ void UI::renderPopup(){
         if (selectedObject->type == PrimType::MESH_){
             Label("Mesh Used");
             vector<const char*> meshes = m_context.scene->getMeshNames();
+            selectedObject->meshIndex = glm::clamp(selectedObject->meshIndex, 0, (int)meshes.size());
             if (ImGui::Combo("##Model", &selectedObject->meshIndex, meshes.data(), (int)meshes.size())){
+                selectedObject->meshIndex = glm::clamp(selectedObject->meshIndex, 0, (int)meshes.size());
+                m_context.scene->updateMeshes();
                 m_context.scene->updateSceneNextFrame();
             }
 

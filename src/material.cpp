@@ -17,7 +17,7 @@ Material Material::metalMaterial(vec3 color, float fuzziness, float filmIOR, flo
     mat.color = color;
     mat.color2 = color;
     mat.data = vec4(glm::clamp(fuzziness, 0.0f, 1.0f), 0.0f, 0.0f, 0.0f);
-    mat.data2 = vec4(filmIOR, filmDepth, 0.0f, 0.0f);
+    mat.data2 = vec4(0.0f, 0.0f, filmIOR, filmDepth);
     return mat;
 } 
 
@@ -45,7 +45,7 @@ Material Material::glossyMaterial(vec3 color, float fuzziness, float metallic){
     mat.color = color;
     mat.color2 = vec3(1.0f);
     mat.data = vec4(glm::clamp(fuzziness, 0.0f, 1.0f), glm::clamp(metallic, 0.0f, 1.0f), 0.0f, 0.0f);
-    mat.data2 = vec4(1.0f, 0.0f, 0.0f, 0.0f);
+    mat.data2 = vec4(0.0f, 0.0f, 1.0f, 0.0f);
     return mat;
 }
 

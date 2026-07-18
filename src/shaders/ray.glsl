@@ -72,12 +72,12 @@ in vec4 vClipPos;
 #define pbrMetallic(m) m.data.y
 #define emitIntensity(m) m.data.x
 #define glassIndex(m) m.data.y
-#define dispertionFactor(m) m.data2.x
 #define absorptionFactor(m) m.data.z
 #define scatteringFactor(m) m.data.w
-#define filmIOR(m) m.data2.x
-#define filmDepth(m) m.data2.y
+#define dispertionFactor(m) m.data2.x
 #define anisotropy(m) m.data2.y
+#define filmIOR(m) m.data2.z
+#define filmDepth(m) m.data2.w
 
 #define MAT_DIFF 0
 #define MAT_METAL 1

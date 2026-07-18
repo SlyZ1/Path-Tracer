@@ -192,6 +192,7 @@ public:
     void selectMesh(int index) { m_selectedMesh = index; m_selectedObject = -1; };
     int getSelectedMesh() const { return m_selectedMesh; };
     vector<const char*> getMeshNames() const;
+    void updateMeshes();
     void updateScene();
     void updateSceneNextFrame();
     void updateGPU();

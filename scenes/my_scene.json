@@ -1,43 +1,52 @@
 {
-    "modelPaths": ["C:\\Users\\conta\\Documents\\Dev\\CPP\\Raytracing\\models\\dragon.obj"],
+    "modelPaths": ["models/bunny.obj"],
     "objectStates": [
         {
             "ID": 0,
-            "isSmooth": true,
+            "isSmooth": false,
             "mat": {
                 "color": [1.0,1.0,1.0],
-                "data": [20.0,0.0,0.0,0.0],
-                "type": "emit"
+                "color2": [1.0,1.0,1.0],
+                "data": [0.0,0.20000000298023224,0.0,0.0],
+                "data2": [0.0,0.0,1.0,0.0],
+                "type": "glossy"
             },
-            "meshIndex": 200275088,
-            "pos": [0.0,5.0,2.0],
-            "scale": 1.0,
-            "type": "sphere"
+            "meshIndex": 34,
+            "pos": [0.0,0.0,0.0],
+            "rotation": [0.0,0.0,0.0],
+            "scale": [30.0,30.0,30.0],
+            "type": "plane"
         },
         {
             "ID": 1,
-            "isSmooth": true,
+            "isSmooth": false,
             "mat": {
                 "color": [1.0,1.0,1.0],
-                "data": [0.0,0.20000000298023224,0.0,0.0],
-                "type": "glossy"
+                "color2": [1.0,1.0,1.0],
+                "data": [20.0,0.0,0.0,0.0],
+                "data2": [0.0,0.0,0.0,0.0],
+                "type": "emit"
             },
-            "meshIndex": 2,
-            "pos": [0.0,0.0,0.0],
-            "scale": 1.0,
-            "type": "plane"
+            "meshIndex": 32760,
+            "pos": [0.0,5.0,2.0],
+            "rotation": [0.0,0.0,0.0],
+            "scale": [1.0,1.0,1.0],
+            "type": "sphere"
         },
         {
             "ID": 2,
             "isSmooth": true,
             "mat": {
-                "color": [0.9264705777168274,0.8401816487312317,0.8528711795806885],
-                "data": [0.0,1.0,4.561999797821045,1.1629999876022339],
-                "type": "glass"
+                "color": [0.8999999761581421,0.6000000238418579,0.20000000298023224],
+                "color2": [0.0,0.0,0.0],
+                "data": [0.0,0.0,0.0,0.0],
+                "data2": [0.0,0.0,0.0,0.0],
+                "type": "diffuse"
             },
             "meshIndex": 0,
-            "pos": [0.0,1.309999942779541,0.0],
-            "scale": 3.0,
+            "pos": [0.0,1.2899999618530273,0.0],
+            "rotation": [0.0,0.0,0.0],
+            "scale": [3.0,3.0,3.0],
             "type": "mesh"
         }
     ]

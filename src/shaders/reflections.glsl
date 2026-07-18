@@ -22,9 +22,15 @@ float schlickFresnel(float VdotN, float F0)
     return F0 + (1.0 - F0) * dot5;
 }
 
-vec4 fresnel(float cos1, vec4 cos2, vec4 n){
-    vec4 Fp = (n * cos1 - cos2) / (n * cos1 + cos2);
-    vec4 Fs = (vec4(cos1) - n * cos2) / (vec4(cos1) + n * cos2);
+Spectrum fresnel(float cos1, Spectrum cos2, Spectrum n){
+    Spectrum Fp = (n * cos1 - cos2) / (n * cos1 + cos2);
+    Spectrum Fs = (Spectrum(cos1) - n * cos2) / (Spectrum(cos1) + n * cos2);
+    return 0.5 * (Fp * Fp + Fs * Fs);
+}
+
+Spectrum fresnel(Spectrum cos1, Spectrum cos2, Spectrum n){
+    Spectrum Fp = (n * cos1 - cos2) / (n * cos1 + cos2);
+    Spectrum Fs = (cos1 - n * cos2) / (cos1 + n * cos2);
     return 0.5 * (Fp * Fp + Fs * Fs);
 }
 
@@ -70,7 +76,8 @@ Spectrum fresnelConductor(float cos, Spectrum eta, Spectrum k){
     return 0.5 * (Rp + Rt);
 }
 
-Spectrum airy(float cosI, float filmN, float filmL, Spectrum lambda, Spectrum eta, Spectrum k){
+#ifdef SPECTRAL
+Spectrum airyConductor(float cosI, float filmN, float filmL, Spectrum lambda, Spectrum eta, Spectrum k){
     float sinT2 = (1.0 - cosI*cosI) / (filmN*filmN);
     if (sinT2 > 1 - EPS) return fresnelConductor(0, eta, k);
     float cosT = sqrt(max(1.0 - sinT2, 0.0));
@@ -83,5 +90,29 @@ Spectrum airy(float cosI, float filmN, float filmL, Spectrum lambda, Spectrum et
     Spectrum num = r12*r12 + r23*r23 + 2.0*r12*r23*cos(phi);
     Spectrum denom = 1 + r12*r12*r23*r23 + 2.0*r12*r23*cos(phi);
 
-    return clamp(num / (denom), 0.0, 1.0);
+    return clamp(num / denom, 0.0, 1.0);
 }
+
+Spectrum airyDielectric(float cosI, float filmN, float filmL, Spectrum lambda, SpectralParam glassN, bool inside){
+    SpectralParam n1 = inside ? glassN : SpectralParam(1.0);
+    float n2 = filmN;
+    SpectralParam n3 = inside ? SpectralParam(1.0) : glassN;
+    
+    SpectralParam sinT2 = (n1*n1 / (n2*n2)) * (1.0 - cosI*cosI);
+    if (any(greaterThan(sinT2, SpectralParam(1.0 - EPS)))) return Spectrum(1.0);
+    SpectralParam cosT = sqrt(max(1.0 - sinT2, 0.0));
+
+    SpectralParam sinO2 = (n2*n2 / (n3*n3)) * (1.0 - cosT*cosT);
+    SpectralParam cosO = sqrt(max(1.0 - sinO2, 0.0));
+
+    Spectrum r12 = Spectrum(sqrt(fresnel(cosI, cosT, n2/n1)));
+    Spectrum r23 = Spectrum(sqrt(fresnel(cosT, cosO, n3/n2)));
+
+    Spectrum phi = Spectrum(4.0 * PI * n2 * filmL * cosT) / lambda;
+    
+    Spectrum num = r12*r12 + r23*r23 + 2.0*r12*r23*cos(phi);
+    Spectrum denom = 1.0 + r12*r12*r23*r23 + 2.0*r12*r23*cos(phi);
+
+    return clamp(num / denom, 0.0, 1.0);
+}
+#endif

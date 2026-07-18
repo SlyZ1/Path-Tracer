@@ -31,7 +31,7 @@ float p_VNDF_reflect(vec3 N, vec3 L, vec3 V, float alpha){
 Spectrum fresnelTerm(float HdotV, FresnelConductorParams params){
     Spectrum eta = artisticEta(params.spectrumValue, params.spectrumValue2);
     Spectrum k = artisticK(params.spectrumValue, eta);
-    return airy(HdotV, filmIOR(params.mat), filmDepth(params.mat), params.lambda, eta, k);
+    return airyConductor(HdotV, filmIOR(params.mat), filmDepth(params.mat), params.lambda, eta, k);
 }
 #else
 Spectrum fresnelTerm(float HdotV, FresnelConductorParams params){

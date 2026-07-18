@@ -385,9 +385,9 @@ float Scene::intersectMesh(const Ray& ray, const Object& obj)
             float leftT = -1.0f;
             float rightT = -1.0f;
             if (node.left >= 0)
-                leftT = intersectAABB(invRay, Mesh::scaleAABB(node.bounds, scale), 0.001f, hitT);
+                leftT = intersectAABB(invRay, Mesh::scaleAABB(node.leftBounds, scale), 0.001f, hitT);
             if (node.right >= 0)
-                rightT = intersectAABB(invRay, Mesh::scaleAABB(node.bounds, scale), 0.001f, hitT);
+                rightT = intersectAABB(invRay, Mesh::scaleAABB(node.rightBounds, scale), 0.001f, hitT);
 
             if (leftT >= 0 && rightT >= 0){
                 if (leftT < rightT) {
@@ -423,7 +423,9 @@ int Scene::intersectObject(const Ray& ray){
                 dist = intersectCube(ray, obj);
                 break;
             case PrimType::MESH_:
-                if (obj.meshIndex >= 0) dist = intersectMesh(ray, obj);
+                cout << "intersect : " << obj.meshIndex << endl;
+                if (obj.meshIndex >= 0 && obj.meshIndex < (int)m_meshes.size()) dist = intersectMesh(ray, obj);
+                cout << "intersected." << endl;
                 break;
             default:
                 break;
@@ -443,6 +445,7 @@ int Scene::addMesh(shared_ptr<Mesh> newMesh){
 }
 
 void Scene::removeMesh(int index){
+    if (index < 0 || index > (int)m_meshes.size()) return;
     for (Object& obj : m_objects){
         if (obj.type != PrimType::MESH_) continue;
         if (obj.meshIndex > index) obj.meshIndex -= 1;
@@ -475,7 +478,6 @@ Object* Scene::getObject(int index){
 
 void Scene::removeObject(int index){
     if (index < 0 || index >= (int)m_objects.size()) return;
-    Object obj = m_objects[index];
     m_objects.erase(m_objects.begin() + index);
     updateScene();
     m_selectedObject = -1;
@@ -497,6 +499,10 @@ vector<const char*> Scene::getMeshNames() const {
         result.push_back(mesh->modelName.c_str());
     }
     return result;
+}
+
+void Scene::updateMeshes(){
+    m_numMeshesChanged = true;
 }
 
 void Scene::updateScene(){
@@ -545,7 +551,7 @@ void Scene::updateGPU(){
     vector<int> numberOfNodes = {};
     vector<bool> meshIsUsed = vector<bool>(m_meshes.size(), false);
     for (Object& obj : m_objects){
-        if (obj.type != PrimType::MESH_ || obj.meshIndex < 0) continue;
+        if (obj.type != PrimType::MESH_ || obj.meshIndex < 0 || obj.meshIndex > (int)m_meshes.size()) continue;
         obj.meshIndex = std::min(obj.meshIndex, (int)m_meshes.size() - 1);
         meshIsUsed[obj.meshIndex] = true; 
     }
@@ -571,7 +577,7 @@ void Scene::updateGPU(){
     for (const Object& obj : m_objects){
         int matIndex = addMaterial(materials, obj.mat);
         if (obj.type == PrimType::MESH_){
-            if (obj.meshIndex < 0) continue;
+            if (obj.meshIndex < 0 || obj.meshIndex > (int)m_meshes.size()) continue;
             if (obj.mat.type == MatType::GLASS && (obj.mat.data.w > 0)){
                 volumeIndicies.insert(volumeIndicies.begin() + numVolumeMeshes, (int)meshInfos.size());
                 numVolumeMeshes++;
@@ -634,6 +640,7 @@ void Scene::updateGPU(){
         glBufferData(GL_SHADER_STORAGE_BUFFER, (int)nodes.size() * sizeof(linBVHNode), nodes.data(), GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_nodesBuffer);
         glUniform1i(ShaderProgram::getVarLoc("numBVHNodes"), (int)nodes.size());
+        m_numMeshesChanged = false;
     }
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshInfosBuffer);
