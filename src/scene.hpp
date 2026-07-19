@@ -98,6 +98,11 @@ struct Ray {
 };
 
 struct SceneState {
+    float skyIntensity;
+    vec3 skyTop;
+    vec3 skyMiddle;
+    vec3 skyBottom;
+    CameraProperties camProperties;
     vector<string> modelPaths;
     vector<Object> objectStates;
 };
@@ -115,9 +120,10 @@ NLOHMANN_JSON_SERIALIZE_ENUM(PrimType, {
     { PrimType::CUBE,       "cube"      },
     { PrimType::MESH_,      "mesh"      }
 })
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(CameraProperties, fov, aperture, focalLength)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Material, color, color2, type, data, data2)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Object, name, pos, scale, rotation, mat, ID, type, meshIndex, isSmooth)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SceneState, modelPaths, objectStates)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SceneState, skyIntensity, skyTop, skyMiddle, skyBottom, camProperties, modelPaths, objectStates)
 
 class Scene {
 private:
@@ -171,6 +177,11 @@ public:
     static shared_ptr<Object> getObjectFromId(SceneState sceneState, unsigned int ID);
 
     static const char* primLabels[4];
+
+    float skyIntensity = 0.3f;
+    glm::vec3 skyTopColor = vec3(0.32f, 0.55f, 0.78f);
+    glm::vec3 skyMiddleColor = vec3(0.75f, 0.78f, 0.82f);
+    glm::vec3 skyBottomColor = vec3(1.00f, 0.65f, 0.30f);
 
     void setSpectral(bool spectral) { m_spectral = spectral; }
     bool getSpectral() const { return m_spectral; }

@@ -572,20 +572,20 @@ void UI::renderParameters(){
         BeginTwoColumnLayout();
 
         Label("Sky Intensity");
-        if (ImGui::SliderFloat("##Sky Intensity", &m_skyIntensity, 0.0f, 1.0f))
-            m_context.resetFrame();
+        if (ImGui::SliderFloat("##Sky Intensity", &m_context.scene->skyIntensity, 0.0f, 1.0f))
+            m_context.scene->updateSceneNextFrame();
         
         Label("Sky Top Color");
-        if (ImGui::ColorEdit3("##Sky Top Color", &m_skyTopColor.x))
-            m_context.resetFrame();
+        if (ImGui::ColorEdit3("##Sky Top Color", &m_context.scene->skyTopColor.x))
+            m_context.scene->updateSceneNextFrame();
             
         Label("Sky Middle Color");
-        if (ImGui::ColorEdit3("##Sky Middle Color", &m_skyMiddleColor.x))
-            m_context.resetFrame();
+        if (ImGui::ColorEdit3("##Sky Middle Color", &m_context.scene->skyMiddleColor.x))
+            m_context.scene->updateSceneNextFrame();
             
         Label("Sky Bottom Color");
-        if (ImGui::ColorEdit3("##Sky Bottom Color", &m_skyBottomColor.x))
-            m_context.resetFrame();
+        if (ImGui::ColorEdit3("##Sky Bottom Color", &m_context.scene->skyBottomColor.x))
+            m_context.scene->updateSceneNextFrame();
 
         EndTwoColumnLayout();
         ImGui::TreePop();
@@ -861,19 +861,6 @@ void UI::updateGPU() const {
     glUniform1i(ShaderProgram::getVarLoc("maxBounces"), m_maxBounces);
 
     glUniform1i(ShaderProgram::getVarLoc("debugBVH"), m_debugBVH ? 1 : 0);
-
-    glUniform1f(ShaderProgram::getVarLoc("skyIntensity"), m_skyIntensity);
-    vec3 skyBottomColor = m_skyBottomColor;
-    vec3 skyMiddleColor = m_skyMiddleColor;
-    vec3 skyTopColor = m_skyTopColor;
-    if (m_context.scene->getSpectral()){
-        skyBottomColor = Material::rgbToSigmoidCoeffs(skyBottomColor);
-        skyMiddleColor = Material::rgbToSigmoidCoeffs(skyMiddleColor);
-        skyTopColor = Material::rgbToSigmoidCoeffs(skyTopColor);
-    }
-    glUniform3f(ShaderProgram::getVarLoc("skyBottomColor"), skyBottomColor.x, skyBottomColor.y, skyBottomColor.z);
-    glUniform3f(ShaderProgram::getVarLoc("skyMiddleColor"), skyMiddleColor.x, skyMiddleColor.y, skyMiddleColor.z);
-    glUniform3f(ShaderProgram::getVarLoc("skyTopColor"), skyTopColor.x, skyTopColor.y, skyTopColor.z);
 }
 
 bool UI::isInteracting(){

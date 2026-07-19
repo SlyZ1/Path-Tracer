@@ -72,12 +72,6 @@ class UI {
         int m_resMultiplier = 3;
         int m_maxBounces = 10;
         
-        // Sky Box
-        float m_skyIntensity = 0.3f;
-        glm::vec3 m_skyTopColor = vec3(0.32f, 0.55f, 0.78f);
-        glm::vec3 m_skyMiddleColor = vec3(0.75f, 0.78f, 0.82f);
-        glm::vec3 m_skyBottomColor = vec3(1.00f, 0.65f, 0.30f);
-        
         // Camera
         float m_fov = 50.0f;
         

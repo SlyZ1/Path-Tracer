@@ -333,7 +333,7 @@ void inputs(){
 
     if (renderer->isRendering() || locked) return;
 
-    
+
     if (app->keyPressedOnce(GLFW_KEY_K, frameCount))
         cout << "Frame Time: " << glfwGetTime() << "s with " << frameAccumulator << " samples." << endl;
 

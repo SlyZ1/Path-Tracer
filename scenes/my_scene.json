@@ -1,4 +1,9 @@
 {
+    "camProperties": {
+        "aperture": 0.0,
+        "focalLength": 1.0,
+        "fov": 50.0
+    },
     "modelPaths": [],
     "objectStates": [
         {
@@ -171,5 +176,9 @@
             "scale": [1.0,1.0,1.0],
             "type": "sphere"
         }
-    ]
+    ],
+    "skyBottom": [1.0,1.0,1.0],
+    "skyIntensity": 0.4790000021457672,
+    "skyMiddle": [1.0,1.0,1.0],
+    "skyTop": [1.0,1.0,1.0]
 }

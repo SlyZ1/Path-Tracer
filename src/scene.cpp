@@ -147,6 +147,15 @@ void Scene::loadFromState(const SceneState& sceneState, bool verbose){
     m_objects = sceneState.objectStates;
     m_selectedObject = -1;
     m_copiedObject = -1;
+
+    skyBottomColor = sceneState.skyBottom;
+    skyMiddleColor = sceneState.skyMiddle;
+    skyTopColor = sceneState.skyTop;
+    skyIntensity = sceneState.skyIntensity;
+
+    CameraProperties* camProps = m_camera->getCameraProperties();
+    *camProps = sceneState.camProperties;
+
     updateScene();
     if (verbose) cout << "Scene loaded." << endl;
 }
@@ -158,6 +167,12 @@ SceneState Scene::getState(){
     for (auto mesh : m_meshes){
         sceneState.modelPaths.push_back(mesh->modelPath);
     }
+
+    sceneState.skyBottom = skyBottomColor;
+    sceneState.skyMiddle = skyMiddleColor;
+    sceneState.skyTop = skyTopColor;
+    sceneState.skyIntensity = skyIntensity;
+    sceneState.camProperties = *(m_camera->getCameraProperties());
     return sceneState;
 }
 
@@ -423,9 +438,7 @@ int Scene::intersectObject(const Ray& ray){
                 dist = intersectCube(ray, obj);
                 break;
             case PrimType::MESH_:
-                cout << "intersect : " << obj.meshIndex << endl;
                 if (obj.meshIndex >= 0 && obj.meshIndex < (int)m_meshes.size()) dist = intersectMesh(ray, obj);
-                cout << "intersected." << endl;
                 break;
             default:
                 break;
@@ -647,6 +660,19 @@ void Scene::updateGPU(){
     glBufferData(GL_SHADER_STORAGE_BUFFER, (int)meshInfos.size() * sizeof(MeshInfos), meshInfos.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_meshInfosBuffer);
     glUniform1i(ShaderProgram::getVarLoc("numMeshes"), (int)meshInfos.size());
+
+    glUniform1f(ShaderProgram::getVarLoc("skyIntensity"), skyIntensity);
+    vec3 skyBottom = skyBottomColor;
+    vec3 skyMiddle = skyMiddleColor;
+    vec3 skyTop = skyTopColor;
+    if (m_spectral){
+        skyBottom = Material::rgbToSigmoidCoeffs(skyBottomColor);
+        skyMiddle = Material::rgbToSigmoidCoeffs(skyMiddleColor);
+        skyTop = Material::rgbToSigmoidCoeffs(skyTopColor);
+    }
+    glUniform3f(ShaderProgram::getVarLoc("skyBottomColor"), skyBottom.x, skyBottom.y, skyBottom.z);
+    glUniform3f(ShaderProgram::getVarLoc("skyMiddleColor"), skyMiddle.x, skyMiddle.y, skyMiddle.z);
+    glUniform3f(ShaderProgram::getVarLoc("skyTopColor"), skyTop.x, skyTop.y, skyTop.z);
 }
 
 void Scene::deleteScene(){
