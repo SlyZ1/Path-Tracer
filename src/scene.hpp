@@ -116,7 +116,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(PrimType, {
     { PrimType::MESH_,      "mesh"      }
 })
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Material, color, color2, type, data, data2)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Object, pos, scale, rotation, mat, ID, type, meshIndex, isSmooth)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Object, name, pos, scale, rotation, mat, ID, type, meshIndex, isSmooth)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SceneState, modelPaths, objectStates)
 
 class Scene {

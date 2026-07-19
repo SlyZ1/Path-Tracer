@@ -813,13 +813,15 @@ void UI::render() {
                 return;
             }
             
+        ImGui::BeginDisabled(m_context.renderer->isRendering() || m_disabled);
+
             renderPopup();
             renderGizmos();
         
         ImGui::PopStyleColor(1);
         ImGui::PopStyleVar(1);
 
-        ImGui::BeginDisabled(m_context.renderer->isRendering() || m_disabled);
+        
         
         ImGui::PushStyleColor(ImGuiCol_WindowBg, m_bgColor);
         ImGui::PushStyleColor(ImGuiCol_ChildBg, m_mgColor);

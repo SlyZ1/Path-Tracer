@@ -103,7 +103,7 @@ void Mesh::loadFromModel(const char* path){
     for (int i = 0; i < size; i++) {
         triIndices[i] = i;
     }
-    m_nodes = computeSAH(m_triangles, triIndices, 0, size);
+    m_nodes = computeSAH(computeBVHTriangles(m_triangles), triIndices, 0, size);
     m_linNodes = lineariseBVH(m_nodes);
     modelName = fs::path(path).stem().string();
     modelPath = path;
@@ -126,14 +126,26 @@ AABB Mesh::triangleBounds(const Triangle& tri) {
     return box;
 }
 
-AABB Mesh::computeBounds(const vector<Triangle>& triangles, vector<int>& indices, int begin, int end) {
-    AABB box = triangleBounds(triangles[indices[begin]]);
+vector<Mesh::BVHTriangle> Mesh::computeBVHTriangles(vector<Triangle>& triangles){
+    vector<Mesh::BVHTriangle> bvhTriangles;
+    bvhTriangles.reserve(triangles.size());
+    for(const Triangle& tri : triangles){
+        bvhTriangles.push_back({
+            tri.centroid(),
+            triangleBounds(tri)
+        });
+    }
+    return bvhTriangles;
+}
+
+AABB Mesh::computeBounds(const vector<BVHTriangle>& triangles, vector<int>& indices, int begin, int end) {
+    AABB box = triangles[indices[begin]].bounds;
     for(int i = begin + 1; i < end; ++i)
-        box.expand(triangleBounds(triangles[indices[i]]));
+        box.expand(triangles[indices[i]].bounds);
     return box;
 }
 
-shared_ptr<BVHNode> Mesh::computeBVH(vector<Triangle>& triangles, 
+shared_ptr<BVHNode> Mesh::computeBVH(vector<BVHTriangle>& triangles, 
                           vector<int>& indices,
                           int begin, int end) 
 {
@@ -147,9 +159,9 @@ shared_ptr<BVHNode> Mesh::computeBVH(vector<Triangle>& triangles,
     }
 
     AABB centroidAABB;
-    centroidAABB.min = centroidAABB.max = vec4(triangles[indices[begin]].centroid(), 0);
+    centroidAABB.min = centroidAABB.max = vec4(triangles[indices[begin]].centroid, 0);
     for (int i = begin + 1; i < end; ++i)
-        centroidAABB.expand(triangles[indices[i]].centroid());
+        centroidAABB.expand(triangles[indices[i]].centroid);
 
     vec4 extent = centroidAABB.max - centroidAABB.min;
     int axis = 0;
@@ -160,7 +172,7 @@ shared_ptr<BVHNode> Mesh::computeBVH(vector<Triangle>& triangles,
 
     std::sort(indices.begin() + begin, indices.begin() + end,
         [&triangles, axis](int a, int b) {
-            return triangles[a].centroid()[axis] < triangles[b].centroid()[axis];
+            return triangles[a].centroid[axis] < triangles[b].centroid[axis];
         });
 
     int mid = begin + (end - begin) / 2;
@@ -171,7 +183,7 @@ shared_ptr<BVHNode> Mesh::computeBVH(vector<Triangle>& triangles,
     return node;
 }
 
-shared_ptr<BVHNode> Mesh::computeSAH(vector<Triangle>& triangles, vector<int>& indices, int begin, int end){
+shared_ptr<BVHNode> Mesh::computeSAH(vector<BVHTriangle>& triangles, vector<int>& indices, int begin, int end){
     shared_ptr<BVHNode> node = make_shared<BVHNode>();
     node->bounds = computeBounds(triangles, indices, begin, end);
     node->triangle = -1;
@@ -185,9 +197,9 @@ shared_ptr<BVHNode> Mesh::computeSAH(vector<Triangle>& triangles, vector<int>& i
     }
     
     AABB centroidAABB;
-    centroidAABB.min = centroidAABB.max = vec4(triangles[indices[begin]].centroid(), 0);
+    centroidAABB.min = centroidAABB.max = vec4(triangles[indices[begin]].centroid, 0);
     for (int i = begin + 1; i < end; i++){
-        centroidAABB.expand(triangles[indices[i]].centroid());
+        centroidAABB.expand(triangles[indices[i]].centroid);
     }
 
     vec4 extent = centroidAABB.max - centroidAABB.min;
@@ -202,10 +214,10 @@ shared_ptr<BVHNode> Mesh::computeSAH(vector<Triangle>& triangles, vector<int>& i
     Bucket buckets[NUM_BUCKETS];
 
     for (int i = begin; i < end; i++){
-        const Triangle& tri = triangles[indices[i]];
-        float t = (tri.centroid()[axis] - centroidAABB.min[axis]) / extent[axis];
+        const BVHTriangle& tri = triangles[indices[i]];
+        float t = (tri.centroid[axis] - centroidAABB.min[axis]) / extent[axis];
         int b = std::clamp((int)(t * NUM_BUCKETS), 0, NUM_BUCKETS - 1);
-        buckets[b].bounds.expand(triangleBounds(tri));
+        buckets[b].bounds.expand(tri.bounds);
         buckets[b].count++;
     }
 
@@ -246,7 +258,7 @@ shared_ptr<BVHNode> Mesh::computeSAH(vector<Triangle>& triangles, vector<int>& i
 
     auto mid = std::partition(indices.begin() + begin, indices.begin() + end,
         [&](int idx) {
-            return triangles[idx].centroid()[axis] <= bestSplitPoint;
+            return triangles[idx].centroid[axis] <= bestSplitPoint;
         });
 
     int splitMid = (int)(mid - indices.begin());

@@ -33,7 +33,7 @@ Spectrum oren_nayar(Spectrum spectrumValue, vec3 normal, vec3 lightDir, vec3 vie
     if (roughness < 1e-2) return lambert;
 
     float NdotL = max(dot(normal, lightDir), 0);
-    float NdotV = max(dot(normal, viewDir), 0);
+    float NdotV = max(dot(normal, viewDir), EPS);
     
     float A = 1 / (1 + CONSTANT1_FON * roughness);
     float B = roughness * A;

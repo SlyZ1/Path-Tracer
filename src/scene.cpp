@@ -261,7 +261,7 @@ float Scene::intersectPlane(const Ray& ray, const Object& plane){
     mat3 rot = rotationMatrix(plane.rotation);
     mat3 invRot = transpose(rot);
 
-    vec3 localOrigin = invRot * (ray.origin - plane.pos);
+    vec3 localOrigin = invRot * (ray.origin - plane.pos);  
     vec3 localDir = invRot * ray.direction;
 
     vec3 normal = vec3(0.0f, 1.0f, 0.0f);

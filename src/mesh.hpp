@@ -101,18 +101,23 @@ public:
 
     void loadFromModel(const char* path);
     const vector<Triangle>& getTriangles() const;
-    shared_ptr<BVHNode> computeBVH(vector<Triangle>& triangles, vector<int>& indices, int begin, int end);
-    shared_ptr<BVHNode> computeSAH(vector<Triangle>& triangles, vector<int>& indices, int begin, int end);
-    static vector<linBVHNode> lineariseBVH(shared_ptr<BVHNode> node);
     shared_ptr<BVHNode> getBVHNodes() const { return m_nodes; }
     const vector<linBVHNode>& getLinNodes() const { return m_linNodes; }
     
-private:
+    private:
+    struct BVHTriangle {
+        vec3 centroid;
+        AABB bounds;
+    };
     vector<Triangle> m_triangles = {};
     shared_ptr<BVHNode> m_nodes = nullptr;
     vector<linBVHNode> m_linNodes = {};
+    vector<BVHTriangle> computeBVHTriangles(vector<Triangle>& triangles);
+    shared_ptr<BVHNode> computeBVH(vector<BVHTriangle>& triangles, vector<int>& indices, int begin, int end);
+    shared_ptr<BVHNode> computeSAH(vector<BVHTriangle>& triangles, vector<int>& indices, int begin, int end);
+    static vector<linBVHNode> lineariseBVH(shared_ptr<BVHNode> node);
     static AABB triangleBounds(const Triangle& tri);
-    static AABB computeBounds(const vector<Triangle>& triangles, vector<int>& indices, int begin, int end);
+    static AABB computeBounds(const vector<BVHTriangle>& triangles, vector<int>& indices, int begin, int end);
 };
 
 #endif

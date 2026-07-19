@@ -52,6 +52,8 @@ CPUTimer frameTimer = {};
 CPUTimer cpuFrameTimer = CPUTimer(0.2f);
 GPUTimer gpuFrameTimer = {};
 
+bool locked = false;
+
 extern "C" {
     __declspec(dllexport) unsigned long NvOptimusEnablement = 1;
     __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
@@ -202,7 +204,7 @@ void init(bool headless = false){
 }
 
 void handleCamera(){
-    if (!app->cursorIsHidden()){
+    if (!app->cursorIsHidden() || locked){
         camera->hasStoppedMoving();
         return;
     }
@@ -301,11 +303,11 @@ void render(){
 void inputs(){
     if (UI::isInteracting()) return;
     
-    if (renderer->isRendering()) return;
+    if (app->keyPressedOnce(GLFW_KEY_L, frameCount)){
+        locked = !locked;
+        ui->setDisabled(locked);
+    }
 
-    if (app->keyPressedOnce(GLFW_KEY_K, frameCount))
-        cout << "Frame Time: " << glfwGetTime() << "s with " << frameAccumulator << " samples." << endl;
-    
     if (app->keyPressedOnce(GLFW_KEY_ESCAPE, frameCount)){
         animator->cancelAnimation();
         renderer->cancelRender();
@@ -314,18 +316,6 @@ void inputs(){
         ui->toggle();
         app->toggleCursor(app->cursorIsHidden());
         camera->resetMousePos(app->mouseX(), app->mouseY());
-    }
-
-    if (app->keyPressed(GLFW_KEY_LEFT_ALT) && app->keyPressedOnce(GLFW_KEY_S, frameCount)){
-        bool cancel;
-        string res = app->saveFileDialog(cancel, "output.png");
-        if (!cancel){
-            app->exportImage(res);
-        }
-    }
-
-    if (app->keyPressedOnce(GLFW_KEY_R, frameCount)){
-        reloadShaders();
     }
 
     if (app->mousePressedOnce(GLFW_MOUSE_BUTTON_LEFT, frameCount) && ui->isShowing() && !ui->isHovered()){
@@ -338,6 +328,25 @@ void inputs(){
         Ray ray = Scene::rayFromClick(camera, screenPos);
         int primIndex = scene->intersectObject(ray);
         scene->selectObject(primIndex);
+    }
+
+
+    if (renderer->isRendering() || locked) return;
+
+    
+    if (app->keyPressedOnce(GLFW_KEY_K, frameCount))
+        cout << "Frame Time: " << glfwGetTime() << "s with " << frameAccumulator << " samples." << endl;
+
+    if (app->keyPressed(GLFW_KEY_LEFT_ALT) && app->keyPressedOnce(GLFW_KEY_S, frameCount)){
+        bool cancel;
+        string res = app->saveFileDialog(cancel, "output.png");
+        if (!cancel){
+            app->exportImage(res);
+        }
+    }
+
+    if (app->keyPressedOnce(GLFW_KEY_R, frameCount)){
+        reloadShaders();
     }
 
     if (app->keyPressedOnce(GLFW_KEY_DELETE, frameCount)){
@@ -356,7 +365,7 @@ void inputs(){
 }
 
 void dynamicResolution(){
-    if (camera->getIsMoving(frameCount) || (UI::isInteracting() && !renderer->isRendering())){
+    if (camera->getIsMoving(frameCount) || (UI::isInteracting() && !renderer->isRendering() && !locked)){
         resetFrame();
         int resolutionMultiplier = ui->getResolutionMultiplier();
         if (texWidth != app->width() / resolutionMultiplier)
