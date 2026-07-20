@@ -164,19 +164,19 @@ void computeLighting(inout Hit hit, inout Ray ray, inout uint seed){
     }
     switch (hit.mat.type){
         case MAT_DIFF:
-            diffuse(data);
+            diffuse(data, inVolume);
             break;
         case MAT_GLOSSY:
-            glossy(data);
+            glossy(data, inVolume);
             break;
         case MAT_METAL:
-            metal(data);
+            metal(data, inVolume);
             break;
         case MAT_GLASS:
-            glass(data);
+            glass(data, inVolume);
             break;
         case MAT_EMIT:
-            emit(data);
+            emit(data, inVolume);
             break;
     }
     unwrapData(data);
@@ -227,7 +227,7 @@ vec3 horizon(vec3 lookingAt)
     vec3 sunset = skyBottomColor;
 
     vec3 sky;
-    if (a < 0.35){
+    if (a < 0.5){
         sky = mix(sunset, middle, a / 0.5);
     }
     else{

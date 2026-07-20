@@ -1,9 +1,9 @@
-void emit(inout RaycastData data){
+void emit(inout RaycastData data, bool inVolume){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
 
     float weight = 1;
-    if (ray.pbsdf > 0){
+    if (!inVolume && ray.pbsdf > 0){
         float LdotNl = max(0, dot(-ray.dir, hit.normal));
         float pdirect = p_direct(primitives[hit.primIndex], hit.t, LdotNl);
         weight = computeWeight(ray.pbsdf, pdirect);

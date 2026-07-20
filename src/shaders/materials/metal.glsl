@@ -70,7 +70,7 @@ Spectrum weight_VNDF_reflect(FresnelConductorParams params, vec3 N, vec3 V, vec3
     return F * G1_wi;
 }
 
-void metal(inout RaycastData data){
+void metal(inout RaycastData data, bool inVolume){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
     ray.origin += hit.t * ray.dir + 10 * hit.normal * EPS;
@@ -90,46 +90,48 @@ void metal(inout RaycastData data){
         return;
     }
 
-    // MIS
-    Primitive light;
-    Mat lightMat;
-    int lightIndex = -1;
-    if (numLights > 0){
-        lightIndex = lightIndicies[min(int(rand(seed) * numLights), numLights - 1)];
-        light = primitives[lightIndex];
-        lightMat = matBuffer[light.matIndex];
-    }
     float fuzz = pbrFuzz(hit.mat);
     float alpha = fuzz * fuzz;
     vec3 V = -ray.dir;
     vec3 N = hit.normal;
 
-    // Direct lighting
-    updateData(data);
-    vec4 lightInfos = sampleLight(data, light);
-    unwrapData(data);
-    vec3 L = lightInfos.xyz;
-    float pdirect = lightInfos.w;
+    // NEE
+    if (!inVolume){
+        Primitive light;
+        Mat lightMat;
+        int lightIndex = -1;
+        if (numLights > 0){
+            lightIndex = lightIndicies[min(int(rand(seed) * numLights), numLights - 1)];
+            light = primitives[lightIndex];
+            lightMat = matBuffer[light.matIndex];
+        }
+        
+        updateData(data);
+        vec4 lightInfos = sampleLight(data, light);
+        unwrapData(data);
+        vec3 L = lightInfos.xyz;
+        float pdirect = lightInfos.w;
 
-    Ray lightRay = ray;
-    lightRay.dir = L;
-    if (shadow_hit(light, lightRay) > 0){
-        float pGGX = p_VNDF_reflect(N, L, V, alpha);
-        float weight = computeWeight(pdirect, pGGX);
-        float NdotL = max(dot(N, L), 0);
+        Ray lightRay = ray;
+        lightRay.dir = L;
+        if (shadow_hit(light, lightRay) > 0){
+            float pGGX = p_VNDF_reflect(N, L, V, alpha);
+            float weight = computeWeight(pdirect, pGGX);
+            float NdotL = max(dot(N, L), 0);
 
-        Spectrum f_r = cookTorranceMetals(fresnelParams, N, V, L, alpha);
-        Spectrum Le = getSpectrumValue(lightMat) * emitIntensity(lightMat);
+            Spectrum f_r = cookTorranceMetals(fresnelParams, N, V, L, alpha);
+            Spectrum Le = getSpectrumValue(lightMat) * emitIntensity(lightMat);
 
-        ray.radiance += clamp(ray.throughput * f_r * weight * NdotL / pdirect, 0.0, CLAMP_VAL) * Le;
+            ray.radiance += clamp(ray.throughput * f_r * weight * NdotL / pdirect, 0.0, CLAMP_VAL) * Le;
+        }
     }
 
     // BSDF sampling
     vec3 H = randomGGX_VNDFHemisphere(seed, V, N, alpha);
-    L = reflect(-V, H);
+    vec3 L = reflect(-V, H);
     ray.throughput *= weight_VNDF_reflect(fresnelParams, N, V, L, alpha);
     ray.dir = L;
-    ray.pbsdf = p_VNDF_reflect(N, L, V, alpha);
+    if (!inVolume) ray.pbsdf = p_VNDF_reflect(N, L, V, alpha);
 
     updateData(data);
     russianRoulette(data);

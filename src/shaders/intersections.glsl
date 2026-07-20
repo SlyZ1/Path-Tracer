@@ -88,14 +88,16 @@ Hit triangleIntersect(Triangle tri, Ray ray, bool isSmooth){
     float t = dot(edge2, qvec) * invDet;
     if (t < 0.001) return emptyHit;
 
+    vec3 geomNormal = cross(edge1, edge2);
     vec3 normal = vec3(0);
     if (isSmooth){
         normal = normalize(tri.n0 * (1-u-v) + tri.n1 * u + tri.n2 * v);
+        if (dot(normal, geomNormal) < 0.0) normal = -normal;
     }
     else{
         normal = (tri.n0 + tri.n1 + tri.n2) / 3.0;
     }
-    bool isInside = dot(normal, ray.dir) > 0;
+    bool isInside = dot(geomNormal, ray.dir) > 0;
     //if (isInside && mat.type != MAT_GLASS) return emptyHit;
     Hit newHit;
     newHit.t = t;

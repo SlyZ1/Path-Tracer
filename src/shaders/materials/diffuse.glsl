@@ -54,44 +54,46 @@ Spectrum oren_nayar(Spectrum spectrumValue, vec3 normal, vec3 lightDir, vec3 vie
     return lambert * angleTerm;
 }
 
-void diffuse(inout RaycastData data){
+void diffuse(inout RaycastData data, bool inVolume){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
     ray.origin += hit.t * ray.dir + 10 * EPS * hit.normal;
+    ray.pbsdf = -1;
 
     Spectrum spectrumValue = getSpectrumValue(hit.mat);
-    
-    // MIS
-    Primitive light;
-    Mat lightMat;
-    int lightIndex = -1;
-    if (numLights > 0){
-        lightIndex = lightIndicies[min(int(rand(seed) * numLights), numLights - 1)];
-        light = primitives[lightIndex];
-        lightMat = matBuffer[light.matIndex];
-    }
     float orenNayarRoughness = diffuseRoughness(hit.mat);   
     vec3 viewDir = -ray.dir;
+    
+    // NEE
+    if (!true){
+        Primitive light;
+        Mat lightMat;
+        int lightIndex = -1;
+        if (numLights > 0){
+            lightIndex = lightIndicies[min(int(rand(seed) * numLights), numLights - 1)];
+            light = primitives[lightIndex];
+            lightMat = matBuffer[light.matIndex];
+        }
 
-    // Direct lighting
-    updateData(data);
-    vec4 lightInfos = sampleLight(data, light);
-    unwrapData(data);
-    vec3 lightDir = lightInfos.xyz;
-    float pdirect = lightInfos.w;
+        updateData(data);
+        vec4 lightInfos = sampleLight(data, light);
+        unwrapData(data);
+        vec3 lightDir = lightInfos.xyz;
+        float pdirect = lightInfos.w;
 
-    Ray lightRay = ray;
-    lightRay.dir = lightDir;
-    if (shadow_hit(light, lightRay) > 0){
-        float pbsdf = p_cosineHemisphere(hit.normal, lightDir);
-        float weight = computeWeight(pdirect, pbsdf);
-        float NdotL = max(dot(hit.normal, lightDir), 0);
+        Ray lightRay = ray;
+        lightRay.dir = lightDir;
+        if (shadow_hit(light, lightRay) > 0){
+            float pbsdf = p_cosineHemisphere(hit.normal, lightDir);
+            float weight = computeWeight(pdirect, pbsdf);
+            float NdotL = max(dot(hit.normal, lightDir), 0);
 
-        Spectrum lightSpectrumValue = getSpectrumValue(lightMat);
-        Spectrum f_r = oren_nayar(spectrumValue, hit.normal, lightDir, viewDir, orenNayarRoughness);
-        Spectrum Le = lightSpectrumValue * emitIntensity(lightMat);
+            Spectrum lightSpectrumValue = getSpectrumValue(lightMat);
+            Spectrum f_r = oren_nayar(spectrumValue, hit.normal, lightDir, viewDir, orenNayarRoughness);
+            Spectrum Le = lightSpectrumValue * emitIntensity(lightMat);
 
-        ray.radiance += clamp(ray.throughput * f_r * weight * NdotL / pdirect, 0.0, CLAMP_VAL) * Le;
+            ray.radiance += clamp(ray.throughput * f_r * weight * NdotL / pdirect, 0.0, CLAMP_VAL) * Le;
+        }
     }
 
     // BSDF sampling
@@ -102,7 +104,7 @@ void diffuse(inout RaycastData data){
     
     ray.throughput *= f_r * NdotL / pbsdf;
     ray.dir = bsdfDir;
-    ray.pbsdf = pbsdf;
+    if (!true) ray.pbsdf = pbsdf;
 
     updateData(data);
     russianRoulette(data);

@@ -1,8 +1,10 @@
 #define SCATTERED -10
 
-void volume(inout RaycastData data, inout Mat volumeMat){ // TODO : hit from non volume to another non volume inside a volume
+void volume(inout RaycastData data, inout Mat volumeMat){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
+
+    ray.pbsdf = -1;
 
     Spectrum spectrumValue = getSpectrumValue(volumeMat);
 

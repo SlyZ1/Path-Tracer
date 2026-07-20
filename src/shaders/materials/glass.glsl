@@ -140,7 +140,7 @@ SpectralParam computeIOR(inout RaycastData data){
     return n;
 }
 
-void glass(inout RaycastData data){
+void glass(inout RaycastData data, bool inVolume){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
     ray.pbsdf = -1;

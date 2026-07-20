@@ -368,11 +368,13 @@ void dynamicResolution(){
     if (camera->getIsMoving(frameCount) || (UI::isInteracting() && !renderer->isRendering() && !locked)){
         resetFrame();
         int resolutionMultiplier = ui->getResolutionMultiplier();
-        if (texWidth != app->width() / resolutionMultiplier)
+        if (texWidth != app->width() / resolutionMultiplier){
             genTextures(app->width() / resolutionMultiplier, app->height() / resolutionMultiplier);
+        }
     }
-    else if (texWidth != app->width()){
+    else if (texWidth != app->width() || texHeight != app->height()){
         resetFrame();
+        initRayTraceShader();
         genTextures(app->width(), app->height());
     }
 }

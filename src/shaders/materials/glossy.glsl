@@ -1,4 +1,4 @@
-void glossy(inout RaycastData data){
+void glossy(inout RaycastData data, bool inVolume){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
     ray.pbsdf = -1;
@@ -18,11 +18,11 @@ void glossy(inout RaycastData data){
         data.hit.mat.data2 = vec4(0.0, 0.0, 1.0, 0.0);
         data.hit.mat.color = WHITE_COLOR;
         data.hit.mat.color2 = WHITE_COLOR;
-        metal(data);
+        metal(data, inVolume);
     }
     else{
         data.hit.mat.data = vec4(0.0);
         data.hit.mat.data2 = vec4(0.0);
-        diffuse(data);
+        diffuse(data, inVolume);
     }
 }
