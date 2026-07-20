@@ -2,7 +2,7 @@
 
 ![](outputs/thin_film.png)
 ![](./outputs/triple_dragon.png)
-![](outputs/dispertion_2.png)
+![](outputs/dispertion_3.png)
 ![](outputs/spectral_example.png)
 
 ## Overview
@@ -10,8 +10,6 @@
 Progressive, unidirectional path tracer running entirely in a single fragment shader, accumulating frames as the camera and scene remain static. Scene data (triangles, BVH, primitives, materials, lights) is rebuilt on the CPU side and uploaded to SSBOs whenever the scene changes.
 
 Rendering can run in two modes, toggled at runtime: a standard trichromatic RGB path, or a full hero-wavelength spectral path (dispersion, thin-film interference) recompiled on the fly as a shader variant.
-
----
 
 ## Features
 
@@ -22,12 +20,12 @@ Rendering can run in two modes, toggled at runtime: a standard trichromatic RGB 
 - Physically based depth of field (thin-lens camera model) and antialiasing via per-frame jitter.
 
 ### Materials
-- **Diffuse** - EON (Energy-preserving Oren-Nayar), a closed-form multi-scatter energy compensation for rough Lambertian surfaces.
-- **Conductors** - Cook-Torrance with the GGX distribution, sampled through the visible normal distribution function (VNDF) for low-variance reflection at grazing angles.
-- **Rough dielectrics** - VNDF-sampled microfacet refraction/reflection, from mirror-smooth to fully rough glass, with Beer-Lambert absorption and Cauchy dispersion.
-- **Glossy** - stochastic dielectric/metallic layering (metalness workflow) built on the conductor and diffuse BSDFs.
-- **Artistic Fresnel** - conductor IOR/extinction (eta, k) reconstructed from intuitive reflectance + edge-tint colors (Gulbrandsen, *Artist Friendly Metallic Fresnel*) instead of raw complex refractive indices.
-- **Participating media** - homogeneous volumes with free-flight distance sampling, Henyey-Greenstein phase function, and spectral absorption/scattering coefficients.
+- **Diffuse:** EON (Energy-preserving Oren-Nayar), a closed-form multi-scatter energy compensation for rough Lambertian surfaces.
+- **Conductors:** Cook-Torrance with the GGX distribution, sampled through the visible normal distribution function (VNDF) for low-variance reflection at grazing angles.
+- **Rough dielectrics:** VNDF-sampled microfacet refraction/reflection, from mirror-smooth to fully rough glass, with Beer-Lambert absorption and Cauchy dispersion.
+- **Glossy:** stochastic dielectric/metallic layering (metalness workflow) built on the conductor and diffuse BSDFs.
+- **Artistic Fresnel:** conductor IOR/extinction (eta, k) reconstructed from intuitive reflectance + edge-tint colors (Gulbrandsen, *Artist Friendly Metallic Fresnel*) instead of raw complex refractive indices.
+- **Participating media:** homogeneous volumes with free-flight distance sampling, Henyey-Greenstein phase function, and spectral absorption/scattering coefficients.
 
 ### Spectral rendering
 - Hero-wavelength spectral integrator (4 wavelengths per path), switchable at runtime against a standard trichromatic RGB path.
@@ -43,9 +41,7 @@ Rendering can run in two modes, toggled at runtime: a standard trichromatic RGB 
 ### Tools
 - ImGui-based editor: scene graph, material/light editing, camera controls.
 - Keyframe animation system with interpolated scene state between accumulated frames.
-- Scene serialization to/from JSON, OBJ mesh import, image export to PNG and EXR (half-float).
-
----
+- Scene serialization to/from JSON, OBJ mesh import, image export to PNG and EXR.
 
 ## Build & Run
 
@@ -62,8 +58,6 @@ Rendering can run in two modes, toggled at runtime: a standard trichromatic RGB 
 ```bash
 make run
 ```
-
----
 
 ## Project Structure
 
@@ -82,8 +76,6 @@ Path-Tracer/
 ├── Makefile
 ```
 
----
-
 ## Dependencies
 
 | Library | Purpose |
@@ -100,16 +92,12 @@ Path-Tracer/
 | [CUDA](https://developer.nvidia.com/cuda-toolkit) | GPU interop for the denoiser |
 | [TensorRT](https://developer.nvidia.com/tensorrt) | Denoiser inference engine |
 
----
-
 ## Future Improvements & Explorations
 
 - ML driven denoising
 - Improved animation system and UI
 - Adaptive sampling (variance-guided)
 - Bidirectional path tracing
-
----
 
 ## References
 
@@ -120,8 +108,6 @@ Path-Tracer/
 - Walter et al., *Microfacet Models for Refraction through Rough Surfaces*
 - alexsabourindev, *Diary of a Path Tracer – BVH Construction Using SAH*
 - Heitz, *Sampling the GGX Distribution of Visible Normals*
-
----
 
 ## Author
 
