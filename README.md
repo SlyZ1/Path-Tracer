@@ -31,17 +31,17 @@ Rendering can run in two modes, toggled at runtime: a standard trichromatic RGB 
 
 ### Spectral rendering
 - Hero-wavelength spectral integrator (4 wavelengths per path), switchable at runtime against a standard trichromatic RGB path.
-- RGB -> reflectance spectrum upsampling using the sigmoid-polynomial method and tabulated coefficients from **pbrt-v4** (Jakob & Hanika, *A Low-Dimensional Function Space for Efficient Spectral Upsampling*).
+- RGB -> reflectance spectrum upsampling using the sigmoid-polynomial method and tabulated coefficients from **pbrt-v4**.
 - CIE 1931 color-matching function approximation for spectral-to-XYZ integration and final linear sRGB conversion, with the D65 illuminant.
-- Physically based dielectric dispersion via Cauchy's equation, driving true chromatic splitting/recombination of paths.
-- Thin-film interference (Airy summation over multiple internal reflections) for both conductors and dielectrics, driven by film IOR and thickness.
+- Physically based dielectric dispersion via Cauchy's equation.
+- Thin-film interference for both conductors and dielectrics, using the Airy function.
 
 ### Acceleration structure
-- Per-mesh BVH built with a binned Surface Area Heuristic (16 buckets, longest-axis split), minimizing expected traversal cost instead of naive median splits.
-- Flattened GPU-side layout traversed iteratively per ray, with a debug visualization mode.
+- BVH built with a Surface Area Heuristic.
+- Flattened GPU-side layout traversed iteratively per ray.
 
 ### Tools
-- ImGui-based editor: scene graph, material/light editing, camera controls, live BVH and AOV inspection.
+- ImGui-based editor: scene graph, material/light editing, camera controls.
 - Keyframe animation system with interpolated scene state between accumulated frames.
 - Scene serialization to/from JSON, OBJ mesh import, image export to PNG and EXR (half-float).
 
@@ -53,7 +53,7 @@ Rendering can run in two modes, toggled at runtime: a standard trichromatic RGB 
 
 - Windows
 - MSVC (Visual Studio 2022 Build Tools, C++17)
-- CUDA Toolkit + TensorRT (denoiser backend)
+- CUDA Toolkit + TensorRT (for a potential future denoiser)
 - OpenGL 4.3+
 - GNU Make (mingw32-make)
 
@@ -113,13 +113,13 @@ Path-Tracer/
 
 ## References
 
-- Kulla & Conty, *Revisiting Physically Based Shading at Imageworks*
-- Heitz, *Sampling the GGX Distribution of Visible Normals*
 - Portsmouth et al., *EON: A Practical Energy-Preserving Rough Diffuse BRDF*
 - Gulbrandsen, *Artist Friendly Metallic Fresnel*
 - Jakob & Hanika, *A Low-Dimensional Function Space for Efficient Spectral Upsampling* (pbrt-v4)
-- Pharr, Jakob & Humphreys, *Physically Based Rendering: From Theory to Implementation*
-- Henyey & Greenstein, *Diffuse Radiation in the Galaxy*
+- Dariusz Sawicki, *Microfacet Distribution Function: To Change or Not to Change, That Is the Question*
+- Walter et al., *Microfacet Models for Refraction through Rough Surfaces*
+- alexsabourindev, *Diary of a Path Tracer – BVH Construction Using SAH*
+- Heitz, *Sampling the GGX Distribution of Visible Normals*
 
 ---
 
