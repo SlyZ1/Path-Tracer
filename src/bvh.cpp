@@ -83,7 +83,7 @@ shared_ptr<BVHNode> BVH::computeSAH(vector<BVHLeaf>& leaves, vector<int>& indice
 
     AABB leftBounds[NUM_BUCKETS];
     int leftCounts[NUM_BUCKETS];
-    AABB acc; int count = 0;
+    AABB acc = {}; int count = 0;
     for (int i = 0; i < NUM_BUCKETS; i++){
         if (buckets[i].count > 0){
             acc.expand(buckets[i].bounds);

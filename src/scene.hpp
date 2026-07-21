@@ -19,6 +19,7 @@ namespace glm {
 #include "app.hpp"
 #include "shader_program.hpp"
 #include "mesh.hpp"
+#include "fur.hpp"
 #include "material.hpp"
 #include "intersections.hpp"
 
@@ -36,7 +37,7 @@ struct PrimitiveObject {
 
 struct BVHInfos {
     vec3 pos;
-    int triangleOffset;
+    int leafOffset;
     vec3 scale;
     int nodeOffset;
     vec3 rotation;
@@ -124,12 +125,15 @@ private:
     GLuint m_indicesBuffer = 0;
     GLuint m_bvhInfosBuffer = 0;
     GLuint m_trianglesBuffer = 0;
+    GLuint m_hairStrandBuffer = 0;
     GLuint m_nodesBuffer = 0;
     bool m_sceneChanged = false;
     bool m_updateNextFrame = false;
     bool m_numMeshesChanged = false;
+    bool m_numFursChanged = false;
     vector<Object> m_objects = {};
     vector<shared_ptr<Mesh>> m_meshes = {};
+    vector<shared_ptr<Fur>> m_furs = {};
     static vec3 m_cameraDirection;
     static vec3 m_cameraPosition;
 
@@ -173,6 +177,7 @@ public:
     int intersectObject(const Ray& ray);
     int addMesh(shared_ptr<Mesh> newMesh);
     void removeMesh(int index);
+    int addFur(shared_ptr<Fur> newFur);
     int addObject(Object prim);
     Object* getObject(int index);
     void removeObject(int index);

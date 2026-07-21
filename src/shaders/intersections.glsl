@@ -2,8 +2,9 @@
 #define PRIM_PLANE 1
 #define PRIM_CUBE 2
 #define PRIM_CYLINDER 3
+#define PRIM_TRIANGLE 10
 
-Hit sphereIntersect(Primitive sphere, Ray ray){
+Hit intersectSphere(Primitive sphere, Ray ray){
     mat3 rot = rotationMatrix(sphere.rotation);
     mat3 invRot = transpose(rot);
 
@@ -39,7 +40,7 @@ Hit sphereIntersect(Primitive sphere, Ray ray){
     return newHit;
 }
 
-Hit planeIntersect(Primitive plane, Ray ray){
+Hit intersectPlane(Primitive plane, Ray ray){
     mat3 rot = rotationMatrix(plane.rotation);
     mat3 invRot = transpose(rot);
 
@@ -63,7 +64,7 @@ Hit planeIntersect(Primitive plane, Ray ray){
     return newHit;
 }
 
-Hit triangleIntersect(Triangle tri, Ray ray, bool isSmooth){
+Hit intersectTriangle(Triangle tri, Ray ray, bool isSmooth){
     Hit emptyHit; emptyHit.t = -2;
     
     vec3 edge1 = tri.v1 - tri.v0;
@@ -172,17 +173,9 @@ Hit intersectCube(Primitive cube, Ray ray)
     return hit;
 }
 
-Hit intersectCylinder(Primitive cylinder, Ray ray){
+Hit intersectCylinder(vec3 pa, float ra, vec3 pb, float rb, Ray ray){
     Hit hit;
     hit.t = -1.0;
-
-    mat3 rot = rotationMatrix(cylinder.rotation);
-
-    float ra = cylinder.scale.x;
-    float rb = cylinder.scale.z;
-    float height = cylinder.scale.y;
-    vec3 pa = cylinder.pos + vec3(0, height * 0.5, 0);
-    vec3 pb = cylinder.pos - vec3(0, height * 0.5, 0);
 
     vec3 ba = pb - pa;
     vec3 oa = ray.origin - pa;
@@ -264,6 +257,16 @@ Hit intersectCylinder(Primitive cylinder, Ray ray){
     return hit;
 }
 
+Hit intersectCylinder(Primitive cylinder, Ray ray){
+    mat3 rot = rotationMatrix(cylinder.rotation);
+    float ra = cylinder.scale.x;
+    float rb = cylinder.scale.z;
+    vec3 height = rot * cylinder.scale * vec3(0,1,0);
+    vec3 pa = cylinder.pos + height * 0.5;
+    vec3 pb = cylinder.pos - height * 0.5;
+    return intersectCylinder(pa, ra, pb, rb, ray);
+}
+
 AABB scaleAABB(AABB box, vec3 scale){
     box.min.xyz *= scale;
     box.max.xyz *= scale;
@@ -277,7 +280,7 @@ Triangle scaleTri(Triangle tri, vec3 scale){
     return tri;
 }
 
-Hit bvhIntersect(inout Ray ray, BVHInfos info, bool isShadow)
+Hit intersectBvh(inout Ray ray, BVHInfos info, int leafType, bool isShadow)
 {
     vec3 pos = info.pos;
     vec3 scale = info.scale;
@@ -301,21 +304,28 @@ Hit bvhIntersect(inout Ray ray, BVHInfos info, bool isShadow)
     int stack[STACK_SIZE];
     int stackPtr = 0;
 
-    int triangleOffset = info.triangleOffset;
+    int leafOffset = info.triangleOffset;
     int nodeOffset = info.nodeOffset;
     stack[stackPtr++] = info.numberOfNodes - 1 + info.nodeOffset;
 
     while (stackPtr > 0) {
         int nodeIndex = stack[--stackPtr];
         BVHNode node = nodes[nodeIndex];
-
         Hit boxHit = intersectAABB(invRay, scaleAABB(node.aabb, scale), 0.001, hitT);
         if (boxHit.t < 0 || boxHit.t > hitT) continue;
         if (debugBVH > 0) ray.throughput *= 0.95;
 
         if (node.triangle >= 0) {
             bool isSmooth = isSmooth(info) > 0;
-            Hit triHit = triangleIntersect(scaleTri(triangles[node.triangle + triangleOffset], scale), newRay, isSmooth);
+            Hit triHit;
+            if (leafType == PRIM_TRIANGLE)
+                triHit = intersectTriangle(scaleTri(triangles[node.triangle + leafOffset], scale), newRay, isSmooth);
+            else if (leafType == PRIM_CYLINDER){
+                vec4 pa = hairPoints[node.triangle + leafOffset];
+                vec4 pb = hairPoints[node.triangle + 1 + leafOffset];
+                triHit = intersectCylinder(pa.xyz, pa.w, pb.xyz, pb.w, ray);
+            }
+            
             if (triHit.t >= 0) {
                 triHit.normal = normalize(rot * triHit.normal);
                 if (isShadow) return triHit;
@@ -326,6 +336,7 @@ Hit bvhIntersect(inout Ray ray, BVHInfos info, bool isShadow)
             }
         }
         else {
+
             Hit leftHit; leftHit.t = -1;
             Hit rightHit; rightHit.t = -1;
             if (node.left >= 0)
@@ -359,10 +370,10 @@ Hit rayIntersection(inout Ray ray, bool isShadow){
         Primitive prim = primitives[i];
         Hit newHit;
         if (prim.type == PRIM_SPHERE){
-            newHit = sphereIntersect(prim, ray);
+            newHit = intersectSphere(prim, ray);
         }
         else if (prim.type == PRIM_PLANE){
-            newHit = planeIntersect(prim, ray);
+            newHit = intersectPlane(prim, ray);
         }
         else if (prim.type == PRIM_CUBE){
             newHit = intersectCube(prim, ray);
@@ -376,9 +387,18 @@ Hit rayIntersection(inout Ray ray, bool isShadow){
             hit.primIndex = i;
         }
     }
-    for (int j = 0; j < numMeshes; j += 1){
-        BVHInfos info = bvhInfos[meshBvhInfosIndex(j)];
-        Hit bvhHit = bvhIntersect(ray, info, isShadow);
+    for (int i = 0; i < numMeshes; i += 1){
+        BVHInfos info = bvhInfos[i];
+        Hit bvhHit = intersectBvh(ray, info, PRIM_TRIANGLE, isShadow);
+        if (bvhHit.t > 0 && bvhHit.t < hit.t){
+            hit = bvhHit;
+            hit.mat = matBuffer[info.matIndex];
+            hit.primIndex = -1;
+        }
+    }
+    for (int j = 0; j < numHair; j += 1){
+        BVHInfos info = bvhInfos[j + numMeshes];
+        Hit bvhHit = intersectBvh(ray, info, PRIM_CYLINDER, isShadow);
         if (bvhHit.t > 0 && bvhHit.t < hit.t){
             hit = bvhHit;
             hit.mat = matBuffer[info.matIndex];
@@ -400,10 +420,10 @@ bool isInVolume(inout Ray ray, out Mat mat){
         Primitive prim = primitives[indicies[volumePrimitiveIndex(i)]];
         Hit newHit;
         if (prim.type == PRIM_SPHERE){
-            newHit = sphereIntersect(prim, ray);
+            newHit = intersectSphere(prim, ray);
         }
         else if (prim.type == PRIM_PLANE){
-            newHit = planeIntersect(prim, ray);
+            newHit = intersectPlane(prim, ray);
         }
         else if (prim.type == PRIM_CUBE){
             newHit = intersectCube(prim, ray);
@@ -418,7 +438,7 @@ bool isInVolume(inout Ray ray, out Mat mat){
     }
     for (int j = 0; j < numVolumesMeshes; j += 1){
         BVHInfos info = bvhInfos[meshBvhInfosIndex(indicies[volumeMeshIndex(j)])];
-        Hit bvhHit = bvhIntersect(ray, info, false);
+        Hit bvhHit = intersectBvh(ray, info, PRIM_TRIANGLE, false);
         if (bvhHit.t > 0 && bvhHit.t < hit.t){
             hit = bvhHit;
             hit.mat = matBuffer[info.matIndex];

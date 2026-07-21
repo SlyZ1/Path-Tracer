@@ -345,7 +345,10 @@ void UI::renderPopup(){
         BeginTwoColumnLayout();
 
         Label("Shape Type");
+        PrimType previousType = selectedObject->type;
         if (ImGui::Combo("##Shape Type", (int*)(&selectedObject->type), Scene::primLabels, IM_ARRAYSIZE(Scene::primLabels))){
+            if (previousType == PrimType::MESH_ || selectedObject->type == PrimType::MESH_)
+                m_context.scene->updateMeshes();
             m_context.scene->updateSceneNextFrame();
         }
 

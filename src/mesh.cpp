@@ -99,12 +99,13 @@ void Mesh::loadFromModel(const char* path){
     }
 
     int size = (int)m_triangles.size();
-    vector<int> triIndices(size);
+    vector<int> indicies(size);
     for (int i = 0; i < size; i++) {
-        triIndices[i] = i;
+        indicies[i] = i;
     }
-    m_nodes = BVH::computeSAH(computeBVHLeaves(m_triangles), triIndices, 0, size);
-    m_linNodes = BVH::lineariseBVH(m_nodes);
+    vector<BVHLeaf> leaves = computeBVHLeaves();
+    shared_ptr<BVHNode> nodes = BVH::computeSAH(leaves, indicies, 0, size);
+    m_linNodes = BVH::lineariseBVH(nodes);
     modelName = fs::path(path).stem().string();
     modelPath = path;
 }
@@ -122,10 +123,10 @@ AABB Mesh::triangleBounds(const Triangle& tri) {
     return box; 
 }
 
-vector<BVHLeaf> Mesh::computeBVHLeaves(vector<Triangle>& triangles){
+vector<BVHLeaf> Mesh::computeBVHLeaves(){
     vector<BVHLeaf> bvhTriangles;
-    bvhTriangles.reserve(triangles.size());
-    for(const Triangle& tri : triangles){
+    bvhTriangles.reserve(m_triangles.size());
+    for(const Triangle& tri : m_triangles){
         bvhTriangles.push_back({
             tri.centroid(),
             triangleBounds(tri)

@@ -20,6 +20,7 @@ Analytic model for daylight : https://papers.cumincad.org/data/works/att/74bb.co
 Physically based rendering of atmosphere based on Mie's theory : https://elib.dlr.de/204028/1/v43i2_15_15010.pdf
 
 
+Marschner et al., Light Scattering from Human Hair Fibers:  http://www.graphics.stanford.edu/papers/hair/hair-sg03final.pdf
 
 Parctical Fur for Path-Tracing : https://media.disneyanimation.com/uploads/production/publication_asset/152/asset/eurographics2016Fur_Smaller.pdf
 

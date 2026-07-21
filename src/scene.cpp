@@ -20,10 +20,10 @@ shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> ca
     
     Object plane;
     plane.type = PrimType::PLANE;
-    plane.pos = vec3(0.0f);
+    plane.pos = vec3(0.0f, -1.5f, 0.0f);
     plane.scale = vec3(30.0f);
     plane.rotation = vec3(0.0f);
-    plane.mat = Material::glossyMaterial(vec3(1.0f), 0.0f, 0.2f);
+    plane.mat = Material::diffuseMaterial(vec3(1.0f), 0.0f);
     scene->addObject(plane);
 
     Object light;
@@ -34,19 +34,31 @@ shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> ca
     light.mat = Material::emitMaterial(vec3(1.0f), 20.0f);
     scene->addObject(light); 
 
-    shared_ptr<Mesh> bunnyMesh = make_shared<Mesh>();
-    bunnyMesh->loadFromModel("models/bunny.obj");
-    int bunnyIndex = scene->addMesh(bunnyMesh); 
+    shared_ptr<Fur> fur = make_shared<Fur>();
+    fur->loadFromBin("src/python/furball_test");
+    scene->addFur(fur);
 
-    Object meshObject;
-    meshObject.pos = vec3(0.0f, 1.29f, 0.0f);
-    meshObject.scale = vec3(3.0f);
-    meshObject.rotation = vec3(0.0f);
-    meshObject.type = PrimType::MESH_;
-    meshObject.mat = Material::diffuseMaterial(vec3(0.9f, 0.6f, 0.2f), 0.0f);
-    meshObject.meshIndex = bunnyIndex;
-    meshObject.isSmooth = true;
-    scene->addObject(meshObject);
+    // shared_ptr<Mesh> bunnyMesh = make_shared<Mesh>();
+    // bunnyMesh->loadFromModel("models/bunny.obj");
+    // int bunnyIndex = scene->addMesh(bunnyMesh); 
+
+    // Object meshObject;
+    // meshObject.pos = vec3(0.0f, 1.29f, 0.0f);
+    // meshObject.scale = vec3(3.0f);
+    // meshObject.rotation = vec3(0.0f);
+    // meshObject.type = PrimType::MESH_;
+    // meshObject.mat = Material::diffuseMaterial(vec3(0.9f, 0.6f, 0.2f), 0.0f);
+    // meshObject.meshIndex = bunnyIndex;
+    // meshObject.isSmooth = true;
+    // scene->addObject(meshObject);
+
+    Object sphere;
+    sphere.pos = vec3(0.0f);
+    sphere.scale = vec3(0.5f);
+    sphere.rotation = vec3(0.0f);
+    sphere.type = PrimType::SPHERE;
+    sphere.mat = Material::diffuseMaterial(vec3(1.0), 0.0f);
+    scene->addObject(sphere);
 
     scene->selectObject(-1);
 
@@ -216,6 +228,8 @@ void Scene::initGPU(){
     glGenBuffers(1, &m_bvhInfosBuffer);
     glDeleteBuffers(1, &m_trianglesBuffer);
     glGenBuffers(1, &m_trianglesBuffer);
+    glDeleteBuffers(1, &m_hairStrandBuffer);
+    glGenBuffers(1, &m_hairStrandBuffer);
     glDeleteBuffers(1, &m_nodesBuffer);
     glGenBuffers(1, &m_nodesBuffer);
 }
@@ -273,10 +287,17 @@ void Scene::removeMesh(int index){
     updateScene();
 }
 
+int Scene::addFur(shared_ptr<Fur> newFur){
+    m_furs.push_back(newFur);
+    m_numFursChanged = true;
+    return (int)m_furs.size() - 1;
+}
+
 int Scene::addObject(Object obj){
     obj.ID = m_maxId++;
     if (obj.type == PrimType::MESH_){
         obj.name = m_meshes[obj.meshIndex]->modelName + string(" ") + to_string(obj.ID);
+        updateMeshes();
     }
     else{
         obj.name = string("Primitive ") + to_string(obj.ID);
@@ -296,6 +317,8 @@ Object* Scene::getObject(int index){
 
 void Scene::removeObject(int index){
     if (index < 0 || index >= (int)m_objects.size()) return;
+    cout << m_objects[index].type << endl;
+    if (m_objects[index].type == PrimType::MESH_) updateMeshes();
     m_objects.erase(m_objects.begin() + index);
     updateScene();
     m_selectedObject = -1;
@@ -355,19 +378,12 @@ void Scene::updateGPU(){
 
     m_resetFrame();
 
-    vector<PrimitiveObject> primitives = {};
-    vector<BVHInfos> meshInfos = {};
-    vector<Triangle> triangles = {};
     vector<linBVHNode> nodes = {};
-    int numVolumeMeshes = 0;
-    int numVolumePrims = 0;
-    vector<Material> materials = {};
-    vector<int> volumeIndicies = {};
-    vector<int> lightIndicies = {};
-    vector<int> triangleOffsets = {};
     vector<int> nodeOffsets = {};
     vector<int> numberOfNodes = {};
     vector<bool> meshIsUsed = vector<bool>(m_meshes.size(), false);
+    vector<Triangle> triangles = {};
+    vector<int> triangleOffsets = {};
     for (Object& obj : m_objects){
         if (obj.type != PrimType::MESH_ || obj.meshIndex < 0 || obj.meshIndex > (int)m_meshes.size()) continue;
         obj.meshIndex = std::min(obj.meshIndex, (int)m_meshes.size() - 1);
@@ -392,16 +408,23 @@ void Scene::updateGPU(){
         triangles.insert(triangles.end(), meshTriangles.begin(), meshTriangles.end());
         nodes.insert(nodes.end(), meshNodes.begin(), meshNodes.end());
     }
+    vector<PrimitiveObject> primitives = {};
+    vector<BVHInfos> bvhInfos = {};
+    vector<int> volumeIndicies = {};
+    int numVolumeMeshes = 0;
+    int numVolumePrims = 0;
+    vector<Material> materials = {};
+    vector<int> lightIndicies = {};
     for (const Object& obj : m_objects){
         int matIndex = addMaterial(materials, obj.mat);
         if (obj.type == PrimType::MESH_){
             if (obj.meshIndex < 0 || obj.meshIndex > (int)m_meshes.size()) continue;
             if (obj.mat.type == MatType::GLASS && (obj.mat.data.w > 0)){
-                volumeIndicies.insert(volumeIndicies.begin() + numVolumeMeshes, (int)meshInfos.size());
+                volumeIndicies.insert(volumeIndicies.begin() + numVolumeMeshes, (int)bvhInfos.size());
                 numVolumeMeshes++;
             }
             BVHInfos meshInfo;
-            meshInfo.triangleOffset = triangleOffsets[obj.meshIndex];
+            meshInfo.leafOffset = triangleOffsets[obj.meshIndex];
             meshInfo.nodeOffset = nodeOffsets[obj.meshIndex];
             meshInfo.numberOfNodes = numberOfNodes[obj.meshIndex];
             meshInfo.pos = obj.pos;
@@ -409,7 +432,7 @@ void Scene::updateGPU(){
             meshInfo.rotation = obj.rotation;
             meshInfo.matIndex = matIndex;
             meshInfo.data.x = (float)obj.isSmooth;
-            meshInfos.push_back(meshInfo);
+            bvhInfos.push_back(meshInfo);
         }
         else {
             if (obj.mat.type == MatType::GLASS && (obj.mat.data.w > 0)){
@@ -426,6 +449,26 @@ void Scene::updateGPU(){
             primitives.push_back(prim);
         }
     }
+    int numMeshes = (int)bvhInfos.size();
+    vector<HairPoint> hairPoints = {};
+    for (auto fur : m_furs){
+        const vector<HairPoint>& points = fur->getPoints();
+        const vector<linBVHNode>& furNodes = fur->getLinNodes();
+
+        BVHInfos furInfo;
+        furInfo.leafOffset = (int)hairPoints.size();
+        furInfo.nodeOffset = (int)nodes.size();
+        furInfo.numberOfNodes = (int)furNodes.size();
+        furInfo.pos = vec3(0);
+        furInfo.scale = vec3(1);
+        furInfo.rotation = vec3(0);
+        furInfo.matIndex = 0;
+        bvhInfos.push_back(furInfo);
+
+        hairPoints.insert(hairPoints.end(), points.begin(), points.end());
+        nodes.insert(nodes.end(), furNodes.begin(), furNodes.end());
+    }
+
     vector<int> indices = lightIndicies;
     indices.insert(indices.end(), volumeIndicies.begin(), volumeIndicies.end());
 
@@ -435,6 +478,25 @@ void Scene::updateGPU(){
     glUniform1i(ShaderProgram::getVarLoc("numVolumesMeshes"), numVolumeMeshes);
     glUniform1i(ShaderProgram::getVarLoc("numVolumesPrims"), numVolumePrims);
 
+    if (m_numMeshesChanged){
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_trianglesBuffer);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, (int)triangles.size() * sizeof(Triangle), triangles.data(), GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_trianglesBuffer);
+    }
+    if (m_numFursChanged){
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_hairStrandBuffer);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, (int)hairPoints.size() * sizeof(HairPoint), hairPoints.data(), GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, m_hairStrandBuffer);
+    }
+    if (m_numFursChanged || m_numMeshesChanged){
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_nodesBuffer);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, (int)nodes.size() * sizeof(linBVHNode), nodes.data(), GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_nodesBuffer);
+        glUniform1i(ShaderProgram::getVarLoc("numBVHNodes"), (int)nodes.size());
+        m_numMeshesChanged = false;
+        m_numFursChanged = false;
+    }
+
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_sceneBuffer);
     glBufferData(GL_SHADER_STORAGE_BUFFER, (int)primitives.size() * sizeof(PrimitiveObject), primitives.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_sceneBuffer);
@@ -443,26 +505,15 @@ void Scene::updateGPU(){
     glBufferData(GL_SHADER_STORAGE_BUFFER, (int)indices.size() * sizeof(int), indices.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_indicesBuffer);
     
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_bvhInfosBuffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, (int)bvhInfos.size() * sizeof(BVHInfos), bvhInfos.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_bvhInfosBuffer);
+    glUniform1i(ShaderProgram::getVarLoc("numMeshes"), numMeshes);
+    glUniform1i(ShaderProgram::getVarLoc("numHair"), (int)m_furs.size());
+    
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_materialsBuffer);
     glBufferData(GL_SHADER_STORAGE_BUFFER, (int)materials.size() * sizeof(Material), materials.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, m_materialsBuffer);
-
-    if (m_numMeshesChanged){
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_trianglesBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, (int)triangles.size() * sizeof(Triangle), triangles.data(), GL_DYNAMIC_DRAW);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_trianglesBuffer);
-    
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_nodesBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, (int)nodes.size() * sizeof(linBVHNode), nodes.data(), GL_DYNAMIC_DRAW);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_nodesBuffer);
-        glUniform1i(ShaderProgram::getVarLoc("numBVHNodes"), (int)nodes.size());
-        m_numMeshesChanged = false;
-    }
-
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_bvhInfosBuffer);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, (int)meshInfos.size() * sizeof(BVHInfos), meshInfos.data(), GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_bvhInfosBuffer);
-    glUniform1i(ShaderProgram::getVarLoc("numMeshes"), (int)meshInfos.size());
 
     glUniform1f(ShaderProgram::getVarLoc("skyIntensity"), skyIntensity);
     vec3 skyBottom = skyBottomColor;

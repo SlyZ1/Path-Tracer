@@ -40,14 +40,12 @@ public:
 
     void loadFromModel(const char* path);
     const vector<Triangle>& getTriangles() const { return m_triangles; }
-    shared_ptr<BVHNode> getBVHNodes() const { return m_nodes; }
     const vector<linBVHNode>& getLinNodes() const { return m_linNodes; }
     
 private:
     vector<Triangle> m_triangles = {};
-    shared_ptr<BVHNode> m_nodes = nullptr;
     vector<linBVHNode> m_linNodes = {};
-    vector<BVHLeaf> computeBVHLeaves(vector<Triangle>& triangles);
+    vector<BVHLeaf> computeBVHLeaves();
     static AABB triangleBounds(const Triangle& tri);
 };
 
