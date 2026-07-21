@@ -99,10 +99,10 @@ void metal(inout RaycastData data, bool inVolume){
     if (!inVolume){
         Primitive light;
         Mat lightMat;
-        int lightIndex = -1;
+        int lightIdx = -1;
         if (numLights > 0){
-            lightIndex = indicies[min(int(rand(seed) * numLights), numLights - 1)];
-            light = primitives[lightIndex];
+            lightIdx = indicies[lightIndex(min(int(rand(seed) * numLights), numLights - 1))];
+            light = primitives[lightIdx];
             lightMat = matBuffer[light.matIndex];
         }
         

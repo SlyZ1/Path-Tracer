@@ -212,8 +212,8 @@ void Scene::initGPU(){
     glGenBuffers(1, &m_materialsBuffer);
     glDeleteBuffers(1, &m_indicesBuffer);
     glGenBuffers(1, &m_indicesBuffer);
-    glDeleteBuffers(1, &m_meshInfosBuffer);
-    glGenBuffers(1, &m_meshInfosBuffer);
+    glDeleteBuffers(1, &m_bvhInfosBuffer);
+    glGenBuffers(1, &m_bvhInfosBuffer);
     glDeleteBuffers(1, &m_trianglesBuffer);
     glGenBuffers(1, &m_trianglesBuffer);
     glDeleteBuffers(1, &m_nodesBuffer);
@@ -356,7 +356,7 @@ void Scene::updateGPU(){
     m_resetFrame();
 
     vector<PrimitiveObject> primitives = {};
-    vector<MeshInfos> meshInfos = {};
+    vector<BVHInfos> meshInfos = {};
     vector<Triangle> triangles = {};
     vector<linBVHNode> nodes = {};
     int numVolumeMeshes = 0;
@@ -400,7 +400,7 @@ void Scene::updateGPU(){
                 volumeIndicies.insert(volumeIndicies.begin() + numVolumeMeshes, (int)meshInfos.size());
                 numVolumeMeshes++;
             }
-            MeshInfos meshInfo;
+            BVHInfos meshInfo;
             meshInfo.triangleOffset = triangleOffsets[obj.meshIndex];
             meshInfo.nodeOffset = nodeOffsets[obj.meshIndex];
             meshInfo.numberOfNodes = numberOfNodes[obj.meshIndex];
@@ -408,7 +408,7 @@ void Scene::updateGPU(){
             meshInfo.scale = obj.scale;
             meshInfo.rotation = obj.rotation;
             meshInfo.matIndex = matIndex;
-            meshInfo.isSmooth = obj.isSmooth;
+            meshInfo.data.x = (float)obj.isSmooth;
             meshInfos.push_back(meshInfo);
         }
         else {
@@ -451,7 +451,6 @@ void Scene::updateGPU(){
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_trianglesBuffer);
         glBufferData(GL_SHADER_STORAGE_BUFFER, (int)triangles.size() * sizeof(Triangle), triangles.data(), GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_trianglesBuffer);
-        glUniform1i(ShaderProgram::getVarLoc("numTriangles"), (int)triangles.size());
     
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_nodesBuffer);
         glBufferData(GL_SHADER_STORAGE_BUFFER, (int)nodes.size() * sizeof(linBVHNode), nodes.data(), GL_DYNAMIC_DRAW);
@@ -460,9 +459,9 @@ void Scene::updateGPU(){
         m_numMeshesChanged = false;
     }
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshInfosBuffer);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, (int)meshInfos.size() * sizeof(MeshInfos), meshInfos.data(), GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_meshInfosBuffer);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_bvhInfosBuffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, (int)meshInfos.size() * sizeof(BVHInfos), meshInfos.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_bvhInfosBuffer);
     glUniform1i(ShaderProgram::getVarLoc("numMeshes"), (int)meshInfos.size());
 
     glUniform1f(ShaderProgram::getVarLoc("skyIntensity"), skyIntensity);

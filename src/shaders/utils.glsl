@@ -5,6 +5,26 @@
     #define CLAMP_VAL 1.3
 #endif
 
+int meshBvhInfosIndex(int index){
+    return index;
+}
+
+int hairBvhInfosIndex(int index){
+    return numMeshes + index;
+}
+
+int lightIndex(int index){
+    return index;
+}
+
+int volumeMeshIndex(int index){
+    return numLights + index;
+}
+
+int volumePrimitiveIndex(int index){
+    return numLights + numVolumesMeshes + index;
+}
+
 mat3 rotationMatrix(vec3 rotationDegrees){
     vec3 r = radians(rotationDegrees);
     float cx = cos(r.x), sx = sin(r.x);

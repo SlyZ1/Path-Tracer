@@ -5,26 +5,34 @@
 layout(std430, binding = 0) buffer TrianglesBuffer {
     Triangle triangles[];
 };
-uniform int numTriangles;
+
+layout(std430, binding = 6) buffer HairStrandsBuffer {
+    vec4 hairPoints[];
+};
+
 layout(std430, binding = 1) buffer BVHBuffer {
     BVHNode nodes[];
 };
 uniform int numBVHNodes;
 uniform int debugBVH;
+
 layout(std430, binding = 2) buffer PrimitiveBuffer {
     Primitive primitives[];
 };
 uniform int numPrimitives;
+
 layout(std430, binding = 3) buffer IndicesBuffer {
     int indicies[];
 };
 uniform int numLights;
 uniform int numVolumesMeshes;
 uniform int numVolumesPrims;
-layout(std430, binding = 4) buffer MeshBuffer {
-    MeshInfos meshInfos[];
+
+layout(std430, binding = 4) buffer BVHInfosBuffer {
+    BVHInfos bvhInfos[];
 };
 uniform int numMeshes;
+uniform int numHair;
 
 layout(std430, binding = 5) buffer MaterialBuffer {
     Mat matBuffer[];
@@ -76,6 +84,11 @@ in vec4 vClipPos;
 #define filmIOR(m) m.data2.z
 #define filmDepth(m) m.data2.w
 
+#define isSmooth(i) i.data.x
+
+#define hairPointRadius(p) p.w
+#define hairPointPos(p) p.xyz
+
 #define MAT_DIFF 0
 #define MAT_METAL 1
 #define MAT_GLASS 2
@@ -89,46 +102,6 @@ in vec4 vClipPos;
 #pragma include "./reflections.glsl"
 #pragma include "./intersections.glsl"
 #pragma include "./mis-nee.glsl"
-#pragma FDECLARE
-// RAND.GLSL
-uint initSeed(uvec2 pos, uint frame);
-float rand(inout uint seed);
-vec3 randomInSphere(inout uint seed);
-vec2 randomInDisk(inout uint seed);
-vec3 randomOnUnitSphere(inout uint seed);
-vec3 randomOnUnitHemiphere(inout uint seed, vec3 normal);
-vec3 randomCosineHemisphere(inout uint seed, vec3 normal, float randomizationFactor);
-vec3 randomGGXHemisphere(inout uint seed, vec3 normal, float alpha);
-
-// UTILS.GLSL
-vec2 ratio(vec2 vec);
-vec3 reflect(vec3 I, vec3 N);
-vec3 refract(vec3 I, vec3 N, float n);
-void stop(inout Hit hit, bool touchedLight);
-float luminanceMean(vec3 c);
-float linearToDepth(float depth, float near, float far);
-float sampleSpectrum(float lambda, vec3 c);
-vec3 wavelengthToRGB(float lambda);
-
-// REFLECTIONS.GLSL
-vec4 schlickFresnel(float VdotN, vec4 F0);
-vec3 schlickFresnel(float VdotN, vec3 F0);
-float schlickFresnel(float VdotN, float F0);
-vec4 fresnel(float cos1, vec4 cos2, vec4 n);
-float fresnel(float cos1, float cos2, float n);
-vec4 airy(float cosI, float filmN, float filmL, vec4 lambda, vec4 spectrumValue);
-
-// INTERSECTIONS.GLSL
-Hit rayIntersection(inout Ray ray, bool isShadow);
-bool isInVolume(inout Ray ray, out Mat mat);
-
-// MIS-NEE.GLSL
-float computeWeight(float p1, float p2);
-float p_direct(Primitive light, float distance, float cosLight);
-float shadow_hit(Primitive light, Ray ray);
-void russianRoulette(inout RaycastData data);
-vec4 sampleLight(inout RaycastData data, Primitive light);
-#pragma FEND
 
 // -------------------- MATERIALS
 
@@ -138,15 +111,6 @@ vec4 sampleLight(inout RaycastData data, Primitive light);
 #pragma include "./materials/glossy.glsl"
 #pragma include "./materials/emit.glsl"
 #pragma include "./materials/volume.glsl"
-
-#pragma FDECLARE
-void diffuse(inout RaycastData data);
-void metal(inout RaycastData data);
-void glass(inout RaycastData data);
-void glossy(inout RaycastData data);
-void emit(inout RaycastData data);
-void volume(inout RaycastData data, inout Mat volumeMat);
-#pragma FEND
 
 void computeLighting(inout Hit hit, inout Ray ray, inout uint seed){
     if (hit.t < 0) return;

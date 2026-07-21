@@ -34,16 +34,15 @@ struct PrimitiveObject {
     int pad;
 };
 
-struct MeshInfos {
+struct BVHInfos {
     vec3 pos;
     int triangleOffset;
     vec3 scale;
     int nodeOffset;
     vec3 rotation;
     int numberOfNodes;
-    int isSmooth;
+    vec3 data;
     int matIndex = -1;
-    vec2 pad;
 };
 
 struct Object {
@@ -123,7 +122,7 @@ private:
     GLuint m_sceneBuffer = 0;
     GLuint m_materialsBuffer = 0;
     GLuint m_indicesBuffer = 0;
-    GLuint m_meshInfosBuffer = 0;
+    GLuint m_bvhInfosBuffer = 0;
     GLuint m_trianglesBuffer = 0;
     GLuint m_nodesBuffer = 0;
     bool m_sceneChanged = false;

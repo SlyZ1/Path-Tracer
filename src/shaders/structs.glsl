@@ -45,16 +45,15 @@ struct BVHNode {
     AABB rightAabb;
 };
 
-struct MeshInfos {
+struct BVHInfos {
     vec3 pos;
     int triangleOffset;
     vec3 scale;
     int nodeOffset;
     vec3 rotation;
     int numberOfNodes;
-    int isSmooth;
+    vec3 data;
     int matIndex;
-    vec2 pad;
 };
 
 #ifdef SPECTRAL

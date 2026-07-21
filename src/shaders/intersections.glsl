@@ -277,7 +277,7 @@ Triangle scaleTri(Triangle tri, vec3 scale){
     return tri;
 }
 
-Hit bvhIntersect(inout Ray ray, MeshInfos info, bool isShadow)
+Hit bvhIntersect(inout Ray ray, BVHInfos info, bool isShadow)
 {
     vec3 pos = info.pos;
     vec3 scale = info.scale;
@@ -314,7 +314,7 @@ Hit bvhIntersect(inout Ray ray, MeshInfos info, bool isShadow)
         if (debugBVH > 0) ray.throughput *= 0.95;
 
         if (node.triangle >= 0) {
-            bool isSmooth = info.isSmooth > 0;
+            bool isSmooth = isSmooth(info) > 0;
             Hit triHit = triangleIntersect(scaleTri(triangles[node.triangle + triangleOffset], scale), newRay, isSmooth);
             if (triHit.t >= 0) {
                 triHit.normal = normalize(rot * triHit.normal);
@@ -377,7 +377,7 @@ Hit rayIntersection(inout Ray ray, bool isShadow){
         }
     }
     for (int j = 0; j < numMeshes; j += 1){
-        MeshInfos info = meshInfos[j];
+        BVHInfos info = bvhInfos[meshBvhInfosIndex(j)];
         Hit bvhHit = bvhIntersect(ray, info, isShadow);
         if (bvhHit.t > 0 && bvhHit.t < hit.t){
             hit = bvhHit;
@@ -397,7 +397,7 @@ bool isInVolume(inout Ray ray, out Mat mat){
     Ray invRay = ray;
     invRay.dir = 1.0 / invRay.dir;
     for(int i = 0; i < numVolumesPrims; i += 1){
-        Primitive prim = primitives[indicies[i + numVolumesMeshes + numLights]];
+        Primitive prim = primitives[indicies[volumePrimitiveIndex(i)]];
         Hit newHit;
         if (prim.type == PRIM_SPHERE){
             newHit = sphereIntersect(prim, ray);
@@ -417,7 +417,7 @@ bool isInVolume(inout Ray ray, out Mat mat){
         }
     }
     for (int j = 0; j < numVolumesMeshes; j += 1){
-        MeshInfos info = meshInfos[indicies[j + numLights]];
+        BVHInfos info = bvhInfos[meshBvhInfosIndex(indicies[volumeMeshIndex(j)])];
         Hit bvhHit = bvhIntersect(ray, info, false);
         if (bvhHit.t > 0 && bvhHit.t < hit.t){
             hit = bvhHit;
