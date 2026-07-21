@@ -215,8 +215,8 @@ float Intersections::intersectMesh(const Ray& ray, shared_ptr<Mesh> mesh, vec3 p
         float boxT = intersectAABB(invRay, Mesh::scaleAABB(node.bounds, scale), 0.001f, hitT);
         if (boxT < 0 || boxT > hitT) continue;
 
-        if (node.triangle >= 0) {
-            float triT = intersectTriangle(newRay, Mesh::scaleTri(triangles[node.triangle], scale));
+        if (node.leaf >= 0) {
+            float triT = intersectTriangle(newRay, Mesh::scaleTri(triangles[node.leaf], scale));
             if (triT >= 0 && triT < hitT) {
                 hitT = triT;
             }

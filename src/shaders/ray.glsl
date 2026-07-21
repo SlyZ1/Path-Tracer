@@ -15,21 +15,18 @@ layout(std430, binding = 2) buffer PrimitiveBuffer {
     Primitive primitives[];
 };
 uniform int numPrimitives;
-layout(std430, binding = 3) buffer LightIndicesBuffer {
-    int lightIndicies[];
+layout(std430, binding = 3) buffer IndicesBuffer {
+    int indicies[];
 };
 uniform int numLights;
+uniform int numVolumesMeshes;
+uniform int numVolumesPrims;
 layout(std430, binding = 4) buffer MeshBuffer {
     MeshInfos meshInfos[];
 };
 uniform int numMeshes;
-layout(std430, binding = 5) buffer VolumeIndicesBuffer {
-    int volumeIndicies[];
-};
-uniform int numVolumesMeshes;
-uniform int numVolumesPrims;
 
-layout(std430, binding = 6) buffer MaterialBuffer {
+layout(std430, binding = 5) buffer MaterialBuffer {
     Mat matBuffer[];
 };
 

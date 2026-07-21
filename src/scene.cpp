@@ -210,10 +210,8 @@ void Scene::initGPU(){
     glGenBuffers(1, &m_sceneBuffer);
     glDeleteBuffers(1, &m_materialsBuffer);
     glGenBuffers(1, &m_materialsBuffer);
-    glDeleteBuffers(1, &m_lightIndicesBuffer);
-    glGenBuffers(1, &m_lightIndicesBuffer);
-    glDeleteBuffers(1, &m_volumeIndicesBuffer);
-    glGenBuffers(1, &m_volumeIndicesBuffer);
+    glDeleteBuffers(1, &m_indicesBuffer);
+    glGenBuffers(1, &m_indicesBuffer);
     glDeleteBuffers(1, &m_meshInfosBuffer);
     glGenBuffers(1, &m_meshInfosBuffer);
     glDeleteBuffers(1, &m_trianglesBuffer);
@@ -428,8 +426,11 @@ void Scene::updateGPU(){
             primitives.push_back(prim);
         }
     }
+    vector<int> indices = lightIndicies;
+    indices.insert(indices.end(), volumeIndicies.begin(), volumeIndicies.end());
 
     glUniform1i(ShaderProgram::getVarLoc("numPrimitives"), (int)primitives.size());
+
     glUniform1i(ShaderProgram::getVarLoc("numLights"), (int)lightIndicies.size());
     glUniform1i(ShaderProgram::getVarLoc("numVolumesMeshes"), numVolumeMeshes);
     glUniform1i(ShaderProgram::getVarLoc("numVolumesPrims"), numVolumePrims);
@@ -438,17 +439,13 @@ void Scene::updateGPU(){
     glBufferData(GL_SHADER_STORAGE_BUFFER, (int)primitives.size() * sizeof(PrimitiveObject), primitives.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_sceneBuffer);
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_lightIndicesBuffer);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, (int)lightIndicies.size() * sizeof(int), lightIndicies.data(), GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_lightIndicesBuffer);
-
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_volumeIndicesBuffer);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, (int)volumeIndicies.size() * sizeof(int), volumeIndicies.data(), GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, m_volumeIndicesBuffer);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_indicesBuffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, (int)indices.size() * sizeof(int), indices.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_indicesBuffer);
     
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_materialsBuffer);
     glBufferData(GL_SHADER_STORAGE_BUFFER, (int)materials.size() * sizeof(Material), materials.data(), GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, m_materialsBuffer);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, m_materialsBuffer);
 
     if (m_numMeshesChanged){
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_trianglesBuffer);

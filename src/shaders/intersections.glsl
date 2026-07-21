@@ -397,7 +397,7 @@ bool isInVolume(inout Ray ray, out Mat mat){
     Ray invRay = ray;
     invRay.dir = 1.0 / invRay.dir;
     for(int i = 0; i < numVolumesPrims; i += 1){
-        Primitive prim = primitives[volumeIndicies[i + numVolumesMeshes]];
+        Primitive prim = primitives[indicies[i + numVolumesMeshes + numLights]];
         Hit newHit;
         if (prim.type == PRIM_SPHERE){
             newHit = sphereIntersect(prim, ray);
@@ -417,7 +417,7 @@ bool isInVolume(inout Ray ray, out Mat mat){
         }
     }
     for (int j = 0; j < numVolumesMeshes; j += 1){
-        MeshInfos info = meshInfos[volumeIndicies[j]];
+        MeshInfos info = meshInfos[indicies[j + numLights]];
         Hit bvhHit = bvhIntersect(ray, info, false);
         if (bvhHit.t > 0 && bvhHit.t < hit.t){
             hit = bvhHit;

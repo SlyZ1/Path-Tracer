@@ -57,6 +57,7 @@ Spectrum oren_nayar(Spectrum spectrumValue, vec3 normal, vec3 lightDir, vec3 vie
 void diffuse(inout RaycastData data, bool inVolume){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
+    if (hit.inside) hit.normal *= -1;
     ray.origin += hit.t * ray.dir + 10 * EPS * hit.normal;
     ray.pbsdf = -1;
 
@@ -70,7 +71,7 @@ void diffuse(inout RaycastData data, bool inVolume){
         Mat lightMat;
         int lightIndex = -1;
         if (numLights > 0){
-            lightIndex = lightIndicies[min(int(rand(seed) * numLights), numLights - 1)];
+            lightIndex = indicies[min(int(rand(seed) * numLights), numLights - 1)];
             light = primitives[lightIndex];
             lightMat = matBuffer[light.matIndex];
         }

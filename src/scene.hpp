@@ -122,8 +122,7 @@ private:
 
     GLuint m_sceneBuffer = 0;
     GLuint m_materialsBuffer = 0;
-    GLuint m_lightIndicesBuffer = 0;
-    GLuint m_volumeIndicesBuffer = 0;
+    GLuint m_indicesBuffer = 0;
     GLuint m_meshInfosBuffer = 0;
     GLuint m_trianglesBuffer = 0;
     GLuint m_nodesBuffer = 0;
