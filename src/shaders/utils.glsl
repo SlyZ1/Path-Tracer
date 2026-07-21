@@ -32,6 +32,16 @@ mat3 rotationMatrix(vec3 rotationDegrees){
     return rz * ry * rx;
 }
 
+float dot2(vec2 x){
+    return dot(x, x);
+}
+float dot2(vec3 x){
+    return dot(x, x);
+}
+float dot2(vec4 x){
+    return dot(x, x);
+}
+
 vec2 ratio(vec2 vec){
     return vec2(vec.x * texSize.x / texSize.y, vec.y);
 }

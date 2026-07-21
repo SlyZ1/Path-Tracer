@@ -20,16 +20,10 @@ namespace glm {
 #include "shader_program.hpp"
 #include "mesh.hpp"
 #include "material.hpp"
+#include "intersections.hpp"
 
 using namespace std;
 using json = nlohmann::json;
-
-enum PrimType : int {
-    SPHERE = 0,
-    PLANE = 1,
-    CUBE = 2,
-    MESH_ = 3,
-};
 
 struct PrimitiveObject {
     vec3 pos;
@@ -92,11 +86,6 @@ struct Object {
     }
 };
 
-struct Ray {
-    vec3 origin;
-    vec3 direction; 
-};
-
 struct SceneState {
     float skyIntensity;
     vec3 skyTop;
@@ -118,6 +107,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(PrimType, {
     { PrimType::SPHERE,     "sphere"    },
     { PrimType::PLANE,      "plane"     },
     { PrimType::CUBE,       "cube"      },
+    { PrimType::CYLINDER,   "cylinder"  },
     { PrimType::MESH_,      "mesh"      }
 })
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(CameraProperties, fov, aperture, focalLength)
@@ -153,14 +143,6 @@ private:
     bool m_spectral = false;
     
     function<void()> m_resetFrame = {};
-    
-    mat3 rotationMatrix(vec3 rotationDegrees);
-    float intersectSphere(const Ray& ray, const Object& sphere);
-    float intersectPlane(const Ray& ray, const Object& plane);
-    float intersectCube(const Ray& ray, const Object& cube);
-    float intersectAABB(const Ray& ray, const AABB& aabb, float tMin, float tMax);
-    float intersectTriangle(const Ray& ray, const Triangle& triangle);
-    float intersectMesh(const Ray& ray, const Object& obj);
 
     int addMaterial(vector<Material>& materials, Material mat);
 
@@ -176,7 +158,7 @@ public:
     static void stateToJson(SceneState sceneState, const string& path);
     static shared_ptr<Object> getObjectFromId(SceneState sceneState, unsigned int ID);
 
-    static const char* primLabels[4];
+    static const char* primLabels[5];
 
     float skyIntensity = 0.3f;
     glm::vec3 skyTopColor = vec3(0.32f, 0.55f, 0.78f);

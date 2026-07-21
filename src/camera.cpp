@@ -34,7 +34,7 @@ void Camera::rotate(float mouseX, float mouseY){
     m_lastMouseX = mouseX;
     m_lastMouseY = mouseY;
     m_angles += vec2(-deltaMouseX, -deltaMouseY) * m_lookSensitivity;
-    m_angles.y = std::clamp(m_angles.y, -89.0f, 89.0f);
+    m_angles.y = std::clamp(m_angles.y, -80.0f, 80.0f);
     m_isLooking = length(vec2(-deltaMouseX, -deltaMouseY)) > 0;
 }
 

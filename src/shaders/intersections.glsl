@@ -1,6 +1,7 @@
 #define PRIM_SPHERE 0
 #define PRIM_PLANE 1
 #define PRIM_CUBE 2
+#define PRIM_CYLINDER 3
 
 Hit sphereIntersect(Primitive sphere, Ray ray){
     mat3 rot = rotationMatrix(sphere.rotation);
@@ -72,7 +73,7 @@ Hit triangleIntersect(Triangle tri, Ray ray, bool isSmooth){
     float det = dot(edge1, pvec);
 
     if (abs(det) < PROBA_EPS)
-        return emptyHit; // rayon parallèle
+        return emptyHit;
 
     float invDet = 1.0 / det;
     vec3 tvec = ray.origin - tri.v0;
@@ -98,7 +99,6 @@ Hit triangleIntersect(Triangle tri, Ray ray, bool isSmooth){
         normal = (tri.n0 + tri.n1 + tri.n2) / 3.0;
     }
     bool isInside = dot(geomNormal, ray.dir) > 0;
-    //if (isInside && mat.type != MAT_GLASS) return emptyHit;
     Hit newHit;
     newHit.t = t;
     newHit.normal = normal;
@@ -129,7 +129,7 @@ Hit intersectAABB(Ray invRay, AABB box, float tMin, float tMax)
 Hit intersectCube(Primitive cube, Ray ray)
 {
     Hit hit;
-    hit.t = -1.0f;
+    hit.t = -1.0;
 
     mat3 rot = rotationMatrix(cube.rotation);
     mat3 invRot = transpose(rot);
@@ -169,6 +169,98 @@ Hit intersectCube(Primitive cube, Ray ray)
     hit.t = t;
     hit.normal = normalize(rot * normal);
     hit.inside = inside;
+    return hit;
+}
+
+Hit intersectCylinder(Primitive cylinder, Ray ray){
+    Hit hit;
+    hit.t = -1.0;
+
+    mat3 rot = rotationMatrix(cylinder.rotation);
+
+    float ra = cylinder.scale.x;
+    float rb = cylinder.scale.z;
+    float height = cylinder.scale.y;
+    vec3 pa = cylinder.pos + vec3(0, height * 0.5, 0);
+    vec3 pb = cylinder.pos - vec3(0, height * 0.5, 0);
+
+    vec3 ba = pb - pa;
+    vec3 oa = ray.origin - pa;
+    vec3 ob = ray.origin - pb;
+    float m0 = dot(ba,ba);
+    float m1 = dot(oa,ba);
+    float m2 = dot(ray.dir,ba);
+    float m3 = dot(ray.dir,oa);
+    float m5 = dot(oa,oa);
+    float m9 = dot(ob,ba); 
+    float rr = ra - rb;
+    
+    float y0 = m1;
+    float radialDist2 = m5 - m1*m1/m0;
+    float r0 = ra - rr * y0 / m0;
+    bool inside = (radialDist2 < r0*r0) && (y0 > 0.0) && (y0 < m0);
+    hit.inside = inside;
+
+    // caps
+    if (inside)
+    {
+        if (m2 > 0.0)
+        {
+            float t = (m0 - m1) / m2;
+            vec3 p = oa + ray.dir * t;
+            if (dot2(p - ba * (dot(p,ba) / m0)) < rb * rb)
+            {
+                hit.t = -m1 / m2;
+                hit.normal = -ba * inversesqrt(m0);
+                return hit;
+            }
+        }
+        else if (m2 < 0.0)
+        {
+            float t = -m1 / m2;
+            vec3 p = oa + ray.dir * t;
+            if (dot2(p - ba * (dot(p,ba) / m0)) < ra * ra)
+            {
+                hit.t = -m1 / m2;
+                hit.normal = -ba * inversesqrt(m0);
+                return hit;
+            }
+        }
+    }
+    else{
+
+        if (m1 < 0.0)
+        {
+            if (dot2(oa * m2 - ray.dir * m1) < (ra * ra * m2 * m2)){
+                hit.t = -m1 / m2;
+                hit.normal = -ba * inversesqrt(m0);
+                return hit;
+            }
+        }
+        else if (m9 > 0.0)
+        {
+            float t = -m9 / m2;
+            if (dot2(ob + ray.dir * t) < (rb * rb)){
+                hit.t = t;
+                hit.normal = ba * inversesqrt(m0);
+                return hit;
+            }
+        }
+    }
+    
+    // body
+    float hy = m0 + rr*rr;
+    float k2 = m0*m0 - m2*m2*hy;
+    float k1 = m0*m0*m3 - m1*m2*hy + m0*ra*(rr*m2*1.0);
+    float k0 = m0*m0*m5 - m1*m1*hy + m0*ra*(rr*m1*2.0 - m0*ra);
+    float h = k1*k1 - k2*k0;
+    if (h < 0.0) return hit;
+    float t = inside ? (-k1 + sqrt(h)) / k2 : (-k1 - sqrt(h)) / k2;
+    float y = m1 + t*m2;
+    if (y < 0.0 || y > m0) return hit;
+
+    hit.t = t;
+    hit.normal = normalize(m0*(m0*(oa+t*ray.dir)+rr*ba*ra)-ba*hy*y);
     return hit;
 }
 
@@ -275,6 +367,9 @@ Hit rayIntersection(inout Ray ray, bool isShadow){
         else if (prim.type == PRIM_CUBE){
             newHit = intersectCube(prim, ray);
         }
+        else if (prim.type == PRIM_CYLINDER){
+            newHit = intersectCylinder(prim, ray);
+        }
         if (newHit.t > 0 && newHit.t < hit.t){
             hit = newHit;
             hit.mat = matBuffer[prim.matIndex];
@@ -312,6 +407,9 @@ bool isInVolume(inout Ray ray, out Mat mat){
         }
         else if (prim.type == PRIM_CUBE){
             newHit = intersectCube(prim, ray);
+        }
+        else if (prim.type == PRIM_CYLINDER){
+            newHit = intersectCylinder(prim, ray);
         }
         if (newHit.t > 0 && newHit.t < hit.t){
             hit = newHit;

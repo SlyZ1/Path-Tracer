@@ -297,46 +297,45 @@ void UI::renderPopup(){
             selectedObject->rotation = mod(mod(selectedObject->rotation, 360.0f) + 360.0f, 360.0f);
             m_context.scene->updateSceneNextFrame();
         }
-        else{
-            static bool scaleLocked = true;
-            static vec3 scaleRatio = vec3(1.0f);
+        
+        static bool scaleLocked = true;
+        static vec3 scaleRatio = vec3(1.0f);
 
-            bool previousScaleLocked = scaleLocked;
-            bool disabled = false;
-            if (selectedObject->type == PrimType::SPHERE && selectedObject->mat.type == MatType::EMIT){
-                disabled = true;
-                scaleLocked = true;
-            }
-            Label("Scale", "", [=](){
-                ImGui::BeginDisabled(disabled);
-                ImGui::Checkbox("##ScaleLocker", &scaleLocked);
-                ImGui::EndDisabled();
-            }, 24.0f);
-            
+        bool previousScaleLocked = scaleLocked;
+        bool disabled = false;
+        if (selectedObject->type == PrimType::SPHERE && selectedObject->mat.type == MatType::EMIT){
+            disabled = true;
+            scaleLocked = true;
+        }
+        Label("Scale", "", [=](){
+            ImGui::BeginDisabled(disabled);
+            ImGui::Checkbox("##ScaleLocker", &scaleLocked);
+            ImGui::EndDisabled();
+        }, 24.0f);
+        
+        selectedObject->scale = max(selectedObject->scale, vec3(0.0f));
+
+        if (scaleLocked && !previousScaleLocked){
+            vec3 s = selectedObject->scale;
+            float maxComp = std::max({s.x, s.y, s.z});
+            if (maxComp > 0.0f)
+                scaleRatio = s / maxComp;
+            else
+                scaleRatio = vec3(1.0f);
+        }
+
+        vec3 beforeDrag = selectedObject->scale;
+        if (ImGui::DragFloat3("##Scale", &selectedObject->scale.x, 0.001f)){
             selectedObject->scale = max(selectedObject->scale, vec3(0.0f));
-
-            if (scaleLocked && !previousScaleLocked){
-                vec3 s = selectedObject->scale;
-                float maxComp = std::max({s.x, s.y, s.z});
-                if (maxComp > 0.0f)
-                    scaleRatio = s / maxComp;
-                else
-                    scaleRatio = vec3(1.0f);
-            }
-
-            vec3 beforeDrag = selectedObject->scale;
-            if (ImGui::DragFloat3("##Scale", &selectedObject->scale.x, 0.001f)){
-                selectedObject->scale = max(selectedObject->scale, vec3(0.0f));
+            
+            if (scaleLocked){
+                vec3 delta = abs(selectedObject->scale - beforeDrag);
+                int changedAxis = (delta.x > delta.y && delta.x > delta.z) ? 0 : (delta.y > delta.z ? 1 : 2);
                 
-                if (scaleLocked){
-                    vec3 delta = abs(selectedObject->scale - beforeDrag);
-                    int changedAxis = (delta.x > delta.y && delta.x > delta.z) ? 0 : (delta.y > delta.z ? 1 : 2);
-                    
-                    float newScale = selectedObject->scale[changedAxis];
-                    selectedObject->scale = scaleRatio * (newScale / scaleRatio[changedAxis]);
-                }
-                m_context.scene->updateSceneNextFrame();
+                float newScale = selectedObject->scale[changedAxis];
+                selectedObject->scale = scaleRatio * (newScale / scaleRatio[changedAxis]);
             }
+            m_context.scene->updateSceneNextFrame();
         }
 
         EndTwoColumnLayout();

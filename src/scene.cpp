@@ -6,10 +6,11 @@ using namespace glm;
 glm::vec3 Scene::m_cameraDirection = glm::vec3(0, 0, -1);
 glm::vec3 Scene::m_cameraPosition  = glm::vec3(0, 0, 0);
 
-const char* Scene::primLabels[4] = {
+const char* Scene::primLabels[5] = {
   "Sphere",
   "Plane",
   "Cube",
+  "Cylinder",
   "Mesh",
 };
 
@@ -221,206 +222,6 @@ void Scene::initGPU(){
     glGenBuffers(1, &m_nodesBuffer);
 }
 
-mat3 Scene::rotationMatrix(vec3 rotationDegrees){
-    vec3 r = radians(rotationDegrees);
-    float cx = cos(r.x), sx = sin(r.x);
-    float cy = cos(r.y), sy = sin(r.y);
-    float cz = cos(r.z), sz = sin(r.z);
-
-    mat3 rx = transpose(mat3(
-        1,  0,   0,
-        0,  cx, -sx,
-        0,  sx,  cx
-    ));
-
-    mat3 ry = transpose(mat3(
-        cy,  0, sy,
-        0,   1, 0,
-        -sy, 0, cy
-    ));
-
-    mat3 rz = transpose(mat3(
-        cz, -sz, 0,
-        sz,  cz, 0,
-        0,   0,  1
-    ));
-
-    return rz * ry * rx;
-}
-
-float Scene::intersectSphere(const Ray& ray, const Object& sphere){
-    mat3 rot = rotationMatrix(sphere.rotation);
-    mat3 invRot = transpose(rot);
-
-    vec3 dir = (invRot * ray.direction) / sphere.scale;
-    vec3 oc = (invRot * (ray.origin - sphere.pos)) / sphere.scale;
-
-    float a = dot(dir, dir);
-    float b = dot(oc, dir);
-    float c = dot(oc, oc) - 1.0f;
-
-    float h = b*b - a*c;
-
-    if (h < 0.) return -1.0f;
-
-    float sqrtH = sqrt(h);
-    float t = (-b - sqrtH) / a;
-    if (t <= 0){
-        t = (-b + sqrtH) / a;
-        if (t <= 0) return -1.0f;
-    }
-    return t;
-}
-
-float Scene::intersectPlane(const Ray& ray, const Object& plane){
-    mat3 rot = rotationMatrix(plane.rotation);
-    mat3 invRot = transpose(rot);
-
-    vec3 localOrigin = invRot * (ray.origin - plane.pos);  
-    vec3 localDir = invRot * ray.direction;
-
-    vec3 normal = vec3(0.0f, 1.0f, 0.0f);
-    float t = -localOrigin.y / localDir.y;
-    vec3 localHit = localOrigin + t * localDir;
-    vec3 difference = abs(localHit);
-    
-    vec3 scale = plane.scale;
-    if (t <= 0 || difference.x > scale.x || difference.y > scale.y || difference.z > scale.z)
-        return -1.0f;
-    return t;
-}
-
-float Scene::intersectCube(const Ray& ray, const Object& cube)
-{
-    mat3 rot = rotationMatrix(cube.rotation);
-    mat3 invRot = transpose(rot);
-
-    vec3 localOrigin = invRot * (ray.origin - cube.pos);
-    vec3 localDir = invRot * ray.direction;
-
-    vec3 minP = -cube.scale;
-    vec3 maxP = cube.scale;
-
-    vec3 t0 = (minP - localOrigin) / localDir;
-    vec3 t1 = (maxP - localOrigin) / localDir;
-
-    vec3 tNear = min(t0, t1);
-    vec3 tFar = max(t0, t1);
-
-    float tmin = glm::max(tNear.x, glm::max(tNear.y, tNear.z));
-    float tmax = glm::min(tFar.x,  glm::min(tFar.y,  tFar.z));
-
-    if (tmax < tmin || tmax < 0.0) return -1;
-
-    float t = tmin < 0.0 ? tmax : tmin;
-    return t;
-}
-
-float Scene::intersectAABB(const Ray& invRay, const AABB& aabb, float tMin, float tMax){
-    vec3 t0 = (vec3(aabb.min) - invRay.origin) * invRay.direction;
-    vec3 t1 = (vec3(aabb.max) - invRay.origin) * invRay.direction;
-
-    vec3 tNear = min(t0, t1);
-    vec3 tFar  = max(t0, t1);
-
-    float tmin = glm::max(glm::max(tNear.x, tNear.y), glm::max(tNear.z, tMin));
-    float tmax = glm::min(glm::min(tFar.x,  tFar.y),  glm::min(tFar.z,  tMax));
-
-    if (tmax < tmin) return -1;
-    return tmin;
-}
-
-float Scene::intersectTriangle(const Ray& ray, const Triangle& triangle){
-    vec3 edge1 = triangle.v2 - triangle.v1;
-    vec3 edge2 = triangle.v3 - triangle.v1;
-
-    vec3 pvec = cross(ray.direction, edge2);
-    float det = dot(edge1, pvec);
-
-    if (abs(det) < 1e-5f)
-        return -1; // rayon parallèle
-
-    float invDet = 1.0f / det;
-    vec3 tvec = ray.origin - triangle.v1;
-    float u = dot(tvec, pvec) * invDet;
-    if (u < 0.0f || u > 1.0f)
-        return -1;
-
-    vec3 qvec = cross(tvec, edge1);
-    float v = dot(ray.direction, qvec) * invDet;
-    if (v < 0.0f || u + v > 1.0f)
-        return -1;
-
-    float t = dot(edge2, qvec) * invDet;
-    if (t < 0.001f) return -1;
-    return t;
-}
-
-float Scene::intersectMesh(const Ray& ray, const Object& obj)
-{
-    vec3 pos = obj.pos;
-    vec3 scale = obj.scale;
-    mat3 rot = rotationMatrix(obj.rotation);
-    mat3 invRot = transpose(rot);
-
-    shared_ptr<Mesh> mesh = m_meshes[obj.meshIndex];
-    const vector<linBVHNode>& nodes = mesh->getLinNodes();
-    const vector<Triangle>& triangles = mesh->getTriangles();
-
-    float hitT = 1e6f;
-    Ray newRay = ray;
-    newRay.origin = invRot * (ray.origin - pos);
-    newRay.direction = invRot * ray.direction;
-    Ray invRay = newRay;
-    invRay.direction = 1.0f / invRay.direction;
-
-    float initialT = intersectAABB(invRay, Mesh::scaleAABB(nodes[(int)nodes.size() - 1].bounds, scale), 0.001f, hitT);
-    if (initialT < 0) return -1.0f;
-
-    const int STACK_SIZE = 32;
-
-    int stack[STACK_SIZE];
-    int stackPtr = 0;
-    stack[stackPtr++] = (int)nodes.size() - 1;
-
-    while (stackPtr > 0) {
-        int nodeIndex = stack[--stackPtr];
-        const linBVHNode& node = nodes[nodeIndex];
-
-        float boxT = intersectAABB(invRay, Mesh::scaleAABB(node.bounds, scale), 0.001f, hitT);
-        if (boxT < 0 || boxT > hitT) continue;
-
-        if (node.triangle >= 0) {
-            float triT = intersectTriangle(newRay, Mesh::scaleTri(triangles[node.triangle], scale));
-            if (triT >= 0 && triT < hitT) {
-                hitT = triT;
-            }
-        }
-        else {
-            float leftT = -1.0f;
-            float rightT = -1.0f;
-            if (node.left >= 0)
-                leftT = intersectAABB(invRay, Mesh::scaleAABB(node.leftBounds, scale), 0.001f, hitT);
-            if (node.right >= 0)
-                rightT = intersectAABB(invRay, Mesh::scaleAABB(node.rightBounds, scale), 0.001f, hitT);
-
-            if (leftT >= 0 && rightT >= 0){
-                if (leftT < rightT) {
-                    stack[stackPtr++] = node.right;
-                    stack[stackPtr++] = node.left;
-                } else {
-                    stack[stackPtr++] = node.left;
-                    stack[stackPtr++] = node.right;
-                }
-            } else if (leftT >= 0) stack[stackPtr++] = node.left;
-            else if (rightT >= 0) stack[stackPtr++] = node.right;
-        }
-    }
-
-    return hitT;
-}
-
-
 int Scene::intersectObject(const Ray& ray){
     float distance = FLT_MAX;
     int intersected = -1;
@@ -429,17 +230,23 @@ int Scene::intersectObject(const Ray& ray){
         Object obj = m_objects[i];
         switch(obj.type){
             case PrimType::SPHERE:
-                dist = intersectSphere(ray, obj);
+                dist = Intersections::intersectSphere(ray, obj.pos, obj.scale, obj.rotation);
                 break;
             case PrimType::PLANE:
-                dist = intersectPlane(ray, obj);
+                dist = Intersections::intersectPlane(ray, obj.pos, obj.scale, obj.rotation);
                 break;
             case PrimType::CUBE:
-                dist = intersectCube(ray, obj);
+                dist = Intersections::intersectCube(ray, obj.pos, obj.scale, obj.rotation);
                 break;
-            case PrimType::MESH_:
-                if (obj.meshIndex >= 0 && obj.meshIndex < (int)m_meshes.size()) dist = intersectMesh(ray, obj);
+            case PrimType::CYLINDER:
+                dist = Intersections::intersectCylinder(ray, obj.pos, obj.scale, obj.rotation);
                 break;
+            case PrimType::MESH_: {
+                if (obj.meshIndex < 0 || obj.meshIndex >= (int)m_meshes.size()) break;
+                shared_ptr<Mesh> mesh = m_meshes[obj.meshIndex];
+                dist = Intersections::intersectMesh(ray, mesh, obj.pos, obj.scale, obj.rotation);
+                break;
+            }
             default:
                 break;
         }

@@ -17,9 +17,9 @@ Artist Friendly Metallic Fresnel : https://jcgt.org/published/0003/04/03/paper.p
 
 Analytic model for daylight : https://papers.cumincad.org/data/works/att/74bb.content.pdf
 
-Physically based rendering of atmosphere based on Mie's theory : https://elib.dlr.de/204028/1/v43i2\_15\_15010.pdf
+Physically based rendering of atmosphere based on Mie's theory : https://elib.dlr.de/204028/1/v43i2_15_15010.pdf
 
 
 
-Parctical Fur for Path-Tracing : https://media.disneyanimation.com/uploads/production/publication\_asset/152/asset/eurographics2016Fur\_Smaller.pdf
+Parctical Fur for Path-Tracing : https://media.disneyanimation.com/uploads/production/publication_asset/152/asset/eurographics2016Fur_Smaller.pdf
 
