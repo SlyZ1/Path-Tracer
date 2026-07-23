@@ -22,5 +22,7 @@ Physically based rendering of atmosphere based on Mie's theory : https://elib.dl
 
 Marschner et al., Light Scattering from Human Hair Fibers:  http://www.graphics.stanford.edu/papers/hair/hair-sg03final.pdf
 
+d'Eon et al, An Energy-Conserving Hair Reflectance Model : file:///C:/Users/conta/Downloads/dEonetal.2011-AnEnergy-ConservingHairReflectanceModel.pdf
+
 Parctical Fur for Path-Tracing : https://media.disneyanimation.com/uploads/production/publication_asset/152/asset/eurographics2016Fur_Smaller.pdf
 

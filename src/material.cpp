@@ -49,6 +49,16 @@ Material Material::glossyMaterial(vec3 color, float fuzziness, float metallic){
     return mat;
 }
 
+Material Material::furMaterial(vec3 color, float fuzziness){
+    Material mat;
+    mat.type = MatType::FUR;
+    mat.color = color;
+    mat.color2 = vec3(1.0f);
+    mat.data = vec4(glm::clamp(fuzziness, 0.0f, 1.0f),0,0,0);
+    mat.data2 = vec4(0.0f, 0.0f, 1.0f, 0.0f);
+    return mat;
+}
+
 Material Material::emitMaterial(vec3 color, float intensity){
     Material mat;
     mat.type = MatType::EMIT;

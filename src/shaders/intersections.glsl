@@ -178,9 +178,13 @@ Hit intersectCylinder(vec3 pa, float ra, vec3 pb, float rb, Ray ray){
     hit.t = -1.0;
 
     vec3 ba = pb - pa;
-    vec3 oa = ray.origin - pa;
-    vec3 ob = ray.origin - pb;
     float m0 = dot(ba,ba);
+    float compensation = max(length(ray.origin - (pa + pb) * 0.5) * 0.95 - max(max(ra, rb), sqrt(m0) / 2.0), 0);
+    ray.origin += ray.dir * compensation;
+
+    vec3 oa = (ray.origin - pa);
+    vec3 ob = (ray.origin - pb);
+    if (m0 < 1e-10) return hit;
     float m1 = dot(oa,ba);
     float m2 = dot(ray.dir,ba);
     float m3 = dot(ray.dir,oa);
@@ -191,7 +195,9 @@ Hit intersectCylinder(vec3 pa, float ra, vec3 pb, float rb, Ray ray){
     float y0 = m1;
     float radialDist2 = m5 - m1*m1/m0;
     float r0 = ra - rr * y0 / m0;
-    bool inside = (radialDist2 < r0*r0) && (y0 > 0.0) && (y0 < m0);
+
+    float EPS_INSIDE = 1e-8;
+    bool inside = (radialDist2 < r0*r0 - EPS_INSIDE) && (y0 > EPS_INSIDE) && (y0 < m0 - EPS_INSIDE);
     hit.inside = inside;
 
     // caps
@@ -203,7 +209,7 @@ Hit intersectCylinder(vec3 pa, float ra, vec3 pb, float rb, Ray ray){
             vec3 p = oa + ray.dir * t;
             if (dot2(p - ba * (dot(p,ba) / m0)) < rb * rb)
             {
-                hit.t = -m1 / m2;
+                hit.t = -m1 / m2 + compensation;
                 hit.normal = -ba * inversesqrt(m0);
                 return hit;
             }
@@ -214,7 +220,7 @@ Hit intersectCylinder(vec3 pa, float ra, vec3 pb, float rb, Ray ray){
             vec3 p = oa + ray.dir * t;
             if (dot2(p - ba * (dot(p,ba) / m0)) < ra * ra)
             {
-                hit.t = -m1 / m2;
+                hit.t = -m1 / m2 + compensation;
                 hit.normal = -ba * inversesqrt(m0);
                 return hit;
             }
@@ -225,7 +231,7 @@ Hit intersectCylinder(vec3 pa, float ra, vec3 pb, float rb, Ray ray){
         if (m1 < 0.0)
         {
             if (dot2(oa * m2 - ray.dir * m1) < (ra * ra * m2 * m2)){
-                hit.t = -m1 / m2;
+                hit.t = -m1 / m2 + compensation;
                 hit.normal = -ba * inversesqrt(m0);
                 return hit;
             }
@@ -234,7 +240,7 @@ Hit intersectCylinder(vec3 pa, float ra, vec3 pb, float rb, Ray ray){
         {
             float t = -m9 / m2;
             if (dot2(ob + ray.dir * t) < (rb * rb)){
-                hit.t = t;
+                hit.t = t + compensation;
                 hit.normal = ba * inversesqrt(m0);
                 return hit;
             }
@@ -252,8 +258,9 @@ Hit intersectCylinder(vec3 pa, float ra, vec3 pb, float rb, Ray ray){
     float y = m1 + t*m2;
     if (y < 0.0 || y > m0) return hit;
 
-    hit.t = t;
+    hit.t = t + compensation;
     hit.normal = normalize(m0*(m0*(oa+t*ray.dir)+rr*ba*ra)-ba*hy*y);
+    hit.tangent = normalize(ba);
     return hit;
 }
 

@@ -93,7 +93,8 @@ in vec4 vClipPos;
 #define MAT_METAL 1
 #define MAT_GLASS 2
 #define MAT_GLOSSY 3
-#define MAT_EMIT 4
+#define MAT_FUR 4
+#define MAT_EMIT 5
 
 // -------------------- UTILS
 
@@ -109,6 +110,7 @@ in vec4 vClipPos;
 #pragma include "./materials/metal.glsl"
 #pragma include "./materials/glass.glsl"
 #pragma include "./materials/glossy.glsl"
+#pragma include "./materials/fur.glsl"
 #pragma include "./materials/emit.glsl"
 #pragma include "./materials/volume.glsl"
 
@@ -135,6 +137,9 @@ void computeLighting(inout Hit hit, inout Ray ray, inout uint seed){
             break;
         case MAT_GLASS:
             glass(data, inVolume);
+            break;
+        case MAT_FUR:
+            fur(data, inVolume);
             break;
         case MAT_EMIT:
             emit(data, inVolume);
@@ -258,7 +263,7 @@ void main()
     vec4 color = vec4(0);
     float depth = 0;
     for (int i = 0; i < samples; i++) {
-        vec2 AAjitter = vec2(rand(seed), rand(seed)) * 2 / winSize;
+        vec2 AAjitter = vec2(rand(seed), rand(seed)) * 4 / winSize;
         Ray r = fovRay(pos + AAjitter, ray, seed);
 
         vec4 result = vec4(0);

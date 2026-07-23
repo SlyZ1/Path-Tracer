@@ -112,10 +112,12 @@ void UI::renderGizmos(){
     ImDrawList* draw = ImGui::GetBackgroundDrawList();
 
     // Center point
-    glm::vec2 objectCenter = m_context.scene->worldToScreen(m_context.camera, selectedObject->pos);
-    ImVec2 pos = ImGui::GetIO().DisplaySize * 0.5 + ImVec2(objectCenter.x, objectCenter.y);
-    draw->AddCircleFilled(pos, 5, IM_COL32(0, 0, 0, 255));
-    draw->AddCircleFilled(pos, 3, m_lightBlue32);
+    if (!m_disabled){
+        glm::vec2 objectCenter = m_context.scene->worldToScreen(m_context.camera, selectedObject->pos);
+        ImVec2 pos = ImGui::GetIO().DisplaySize * 0.5 + ImVec2(objectCenter.x, objectCenter.y);
+        draw->AddCircleFilled(pos, 5, IM_COL32(0, 0, 0, 255));
+        draw->AddCircleFilled(pos, 3, m_lightBlue32);
+    }
 
     // // Right arrow
     // draw->AddCircleFilled(pos + ImVec2(13, 0), 3, orange);
@@ -379,6 +381,7 @@ void UI::renderPopup(){
             "Metal", 
             "Dielectric", 
             "Glossy",
+            "Fur",
             "Emit"
         };
         Label("Material type");

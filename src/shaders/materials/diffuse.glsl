@@ -58,7 +58,7 @@ void diffuse(inout RaycastData data, bool inVolume){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
     if (hit.inside) hit.normal *= -1;
-    ray.origin += hit.t * ray.dir + 1 * EPS * hit.normal;
+    ray.origin += hit.t * ray.dir + EPS * hit.normal;
     ray.pbsdf = -1;
 
     Spectrum spectrumValue = getSpectrumValue(hit.mat);

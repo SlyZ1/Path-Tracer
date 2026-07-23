@@ -101,6 +101,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(MatType, {
     { MatType::METAL,       "metal"     },
     { MatType::GLASS,       "glass"     },
     { MatType::GLOSSY,      "glossy"    },
+    { MatType::FUR,         "fur"       },
     { MatType::EMIT,        "emit"      }
 })
 NLOHMANN_JSON_SERIALIZE_ENUM(PrimType, {

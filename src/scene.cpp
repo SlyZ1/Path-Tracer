@@ -23,7 +23,7 @@ shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> ca
     plane.pos = vec3(0.0f, -1.5f, 0.0f);
     plane.scale = vec3(30.0f);
     plane.rotation = vec3(0.0f);
-    plane.mat = Material::diffuseMaterial(vec3(1.0f), 0.0f);
+    plane.mat = Material::glassMaterial(vec3(0.9f, 0.5f, 0.2f), 0.2f, 1.7f, 0, 0.072f, 0, 0);
     scene->addObject(plane);
 
     Object light;
@@ -35,7 +35,7 @@ shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> ca
     scene->addObject(light); 
 
     shared_ptr<Fur> fur = make_shared<Fur>();
-    fur->loadFromBin("src/python/furball_test");
+    fur->loadFromBin("src/python/curly_lock");
     scene->addFur(fur);
 
     // shared_ptr<Mesh> bunnyMesh = make_shared<Mesh>();
@@ -57,7 +57,7 @@ shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> ca
     sphere.scale = vec3(0.5f);
     sphere.rotation = vec3(0.0f);
     sphere.type = PrimType::SPHERE;
-    sphere.mat = Material::diffuseMaterial(vec3(1.0), 0.0f);
+    sphere.mat = Material::diffuseMaterial(vec3(1.0f), 0.0f);
     scene->addObject(sphere);
 
     scene->selectObject(-1);
@@ -411,7 +411,7 @@ void Scene::updateGPU(){
     vector<PrimitiveObject> primitives = {};
     vector<BVHInfos> bvhInfos = {};
     vector<int> volumeIndicies = {};
-    int numVolumeMeshes = 0;
+    int numVolumeMeshes = 0; 
     int numVolumePrims = 0;
     vector<Material> materials = {};
     vector<int> lightIndicies = {};

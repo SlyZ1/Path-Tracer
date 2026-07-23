@@ -88,11 +88,12 @@ struct Ray {
 };
 
 struct Hit {
-    float t;
     vec3 normal;
+    float t;
+    vec3 tangent;
+    int primIndex;
     Mat mat;
     bool inside;
-    int primIndex;
 };
 
 struct RaycastData {

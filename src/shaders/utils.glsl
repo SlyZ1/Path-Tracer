@@ -4,6 +4,7 @@
 #else
     #define CLAMP_VAL 1.3
 #endif
+#define SQRT_PI_OVER_8 0.62665706
 
 int meshBvhInfosIndex(int index){
     return index;
@@ -23,6 +24,35 @@ int volumeMeshIndex(int index){
 
 int volumePrimitiveIndex(int index){
     return numLights + numVolumesMeshes + index;
+}
+
+float gaussian(float std, float x){
+    float inside = x / std;
+    return inversesqrt(2 * PI * std * std) * exp(- 0.5 * inside * inside);
+}
+
+float logitCDF(float x, float s)
+{
+    return 1.0f / (1.0f + exp(-x / s));
+}
+
+float logit(float x, float s, float a, float b){
+    s *= SQRT_PI_OVER_8;
+    float e = exp(-x / s);
+    float Fa = logitCDF(a, s);
+    float Fb = logitCDF(b, s);
+    return e / (s * (1 + e) * (1 + e) * (Fa - Fb));
+}
+
+float sampleLogit(float u, float s, float a, float b)
+{
+    s *= SQRT_PI_OVER_8;
+    float Fa = logit(a, s);
+    float Fb = logit(b, s);
+
+    float y = Fa + u * (Fb - Fa);
+
+    return s * log(y / (1.0f - y));
 }
 
 mat3 rotationMatrix(vec3 rotationDegrees){

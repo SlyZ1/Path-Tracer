@@ -9,7 +9,7 @@ vec3 Camera::lookDir(){
     return normalize(lookDir);
 }
 
-void Camera::move(bool forward, bool backward, bool right, bool left, bool up, bool down, bool sprinting){
+void Camera::move(bool forward, bool backward, bool right, bool left, bool up, bool down, bool sprinting, bool slowing){
     vec3 step = vec3(
         (int)right - (int)left,
         (int)up - (int)down,
@@ -19,8 +19,12 @@ void Camera::move(bool forward, bool backward, bool right, bool left, bool up, b
     vec3 moveUp = vec3(0, step.y, 0);
     vec3 moveRight = step.x * normalize(cross(lookDir(), vec3(0,1,0)));
     m_isMoving = length(step) > 0;
-    if (m_isMoving)
-        m_pos += (sprinting ? 2 : 1) * m_moveSensitivity * normalize(moveForward + moveUp + moveRight);
+    if (m_isMoving){
+        float speedFactor = 1;
+        if (sprinting) speedFactor *= 2;
+        if (slowing) speedFactor /= 6;
+        m_pos += speedFactor * m_moveSensitivity * normalize(moveForward + moveUp + moveRight);
+    }
 }
 
 void Camera::resetMousePos(float mouseX, float mouseY){

@@ -11,7 +11,8 @@ enum MatType : int {
     METAL = 1,
     GLASS = 2,
     GLOSSY = 3,
-    EMIT = 4
+    FUR = 4,
+    EMIT = 5
 };
 
 struct Material {
@@ -37,6 +38,7 @@ struct Material {
         float scatteringFactor = 0.0f,
         float anisotropy = 0.0f);
     static Material glossyMaterial(vec3 color, float fuzziness, float metallic);
+    static Material furMaterial(vec3 color, float fuzziness);
     static Material emitMaterial(vec3 color, float intensity);
     static vec3 rgbToSigmoidCoeffs(vec3 rgb);
 

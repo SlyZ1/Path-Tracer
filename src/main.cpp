@@ -216,7 +216,8 @@ void handleCamera(){
         app->keyPressed(GLFW_KEY_A),
         app->keyPressed(GLFW_KEY_SPACE),
         app->keyPressed(GLFW_KEY_LEFT_CONTROL),
-        app->keyPressed(GLFW_KEY_LEFT_SHIFT)
+        app->keyPressed(GLFW_KEY_LEFT_SHIFT),
+        app->keyPressed(GLFW_KEY_C)
     );
     camera->rotate(app->mouseX(), app->mouseY());
 }
