@@ -268,7 +268,7 @@ Hit intersectCylinder(Primitive cylinder, Ray ray){
     mat3 rot = rotationMatrix(cylinder.rotation);
     float ra = cylinder.scale.x;
     float rb = cylinder.scale.z;
-    vec3 height = rot * cylinder.scale * vec3(0,1,0);
+    vec3 height = rot * vec3(0,cylinder.scale.y,0);
     vec3 pa = cylinder.pos + height * 0.5;
     vec3 pb = cylinder.pos - height * 0.5;
     return intersectCylinder(pa, ra, pb, rb, ray);
@@ -298,12 +298,20 @@ Hit intersectBvh(inout Ray ray, BVHInfos info, int leafType, bool isShadow)
     Hit hit;
     hit.t = -2;
     Ray newRay = ray;
-    newRay.origin = invRot * (ray.origin - pos);
-    newRay.dir = invRot * ray.dir;
+    
+    newRay.origin = invRot * ((ray.origin - pos) / scale);
+    newRay.dir = invRot * (ray.dir / scale);
+    float newRayLen = length(newRay.dir);
+    if (isnan(ray.dir.x)) {
+        Hit hit;
+        hit.t = -1;
+        newRayLen = 1.0;
+        return hit;
+    }
     Ray invRay = newRay;
     invRay.dir = 1 / invRay.dir;
 
-    Hit boxHit = intersectAABB(invRay, scaleAABB(nodes[info.numberOfNodes - 1 + info.nodeOffset].aabb, scale), 0.001, hitT);
+    Hit boxHit = intersectAABB(invRay, nodes[info.numberOfNodes - 1 + info.nodeOffset].aabb, 0.001, hitT);
     if (boxHit.t < 0) return hit;
 
     const int STACK_SIZE = 24;
@@ -311,34 +319,45 @@ Hit intersectBvh(inout Ray ray, BVHInfos info, int leafType, bool isShadow)
     int stack[STACK_SIZE];
     int stackPtr = 0;
 
-    int leafOffset = info.triangleOffset;
+    int leafOffset = info.leafOffset;
     int nodeOffset = info.nodeOffset;
     stack[stackPtr++] = info.numberOfNodes - 1 + info.nodeOffset;
 
     while (stackPtr > 0) {
         int nodeIndex = stack[--stackPtr];
         BVHNode node = nodes[nodeIndex];
-        Hit boxHit = intersectAABB(invRay, scaleAABB(node.aabb, scale), 0.001, hitT);
+        Hit boxHit = intersectAABB(invRay, node.aabb, 0.001, hitT);
         if (boxHit.t < 0 || boxHit.t > hitT) continue;
-        if (debugBVH > 0) ray.throughput *= 0.95;
+        if (debugBVH > 0){
+            if (leafType == PRIM_CYLINDER) ray.throughput *= 0.95;
+            else ray.throughput *= 1.05;
+        }
 
-        if (node.triangle >= 0) {
+        if (node.leaf >= 0) {
             bool isSmooth = isSmooth(info) > 0;
-            Hit triHit;
-            if (leafType == PRIM_TRIANGLE)
-                triHit = intersectTriangle(scaleTri(triangles[node.triangle + leafOffset], scale), newRay, isSmooth);
+            Hit leafHit;
+            if (leafType == PRIM_TRIANGLE){
+                newRay.dir /= newRayLen;
+                leafHit = intersectTriangle(triangles[node.leaf + leafOffset], newRay, isSmooth);
+                leafHit.t /= newRayLen;
+                newRay.dir *= newRayLen;
+            }
             else if (leafType == PRIM_CYLINDER){
-                vec4 pa = hairPoints[node.triangle + leafOffset];
-                vec4 pb = hairPoints[node.triangle + 1 + leafOffset];
-                triHit = intersectCylinder(pa.xyz, pa.w, pb.xyz, pb.w, ray);
+                vec4 pa = hairPoints[node.leaf + leafOffset];
+                vec4 pb = hairPoints[node.leaf + 1 + leafOffset];
+                newRay.dir /= newRayLen;
+                leafHit = intersectCylinder(pa.xyz, pa.w, pb.xyz, pb.w, newRay);
+                //leafHit.normal *= max(pa.w, pb.w);
+                leafHit.t /= newRayLen;
+                newRay.dir *= newRayLen;
             }
             
-            if (triHit.t >= 0) {
-                triHit.normal = normalize(rot * triHit.normal);
-                if (isShadow) return triHit;
-                if (triHit.t < hitT) {
-                    hitT = triHit.t;
-                    hit = triHit;
+            if (leafHit.t >= 0) {
+                leafHit.normal = normalize(rot * leafHit.normal);
+                if (isShadow) return leafHit;
+                if (leafHit.t < hitT) {
+                    hitT = leafHit.t;
+                    hit = leafHit;
                 }
             }
         }
@@ -347,9 +366,9 @@ Hit intersectBvh(inout Ray ray, BVHInfos info, int leafType, bool isShadow)
             Hit leftHit; leftHit.t = -1;
             Hit rightHit; rightHit.t = -1;
             if (node.left >= 0)
-                leftHit = intersectAABB(invRay, scaleAABB(node.leftAabb, scale), 0.001, hitT);
+                leftHit = intersectAABB(invRay, node.leftAabb, 0.001, hitT);
             if (node.right >= 0)
-                rightHit = intersectAABB(invRay, scaleAABB(node.rightAabb, scale), 0.001, hitT);
+                rightHit = intersectAABB(invRay, node.rightAabb, 0.001, hitT);
 
             if (leftHit.t >= 0 && rightHit.t >= 0){
                 if (leftHit.t < rightHit.t) {
@@ -371,8 +390,6 @@ Hit intersectBvh(inout Ray ray, BVHInfos info, int leafType, bool isShadow)
 Hit rayIntersection(inout Ray ray, bool isShadow){
     Hit hit;
     hit.t = 1e6;
-    Ray invRay = ray;
-    invRay.dir = 1.0 / invRay.dir;
     for(int i = 0; i < numPrimitives; i += 1){
         Primitive prim = primitives[i];
         Hit newHit;

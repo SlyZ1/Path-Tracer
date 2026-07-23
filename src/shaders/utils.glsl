@@ -47,8 +47,8 @@ float logit(float x, float s, float a, float b){
 float sampleLogit(float u, float s, float a, float b)
 {
     s *= SQRT_PI_OVER_8;
-    float Fa = logit(a, s);
-    float Fb = logit(b, s);
+    float Fa = logitCDF(a, s);
+    float Fb = logitCDF(b, s);
 
     float y = Fa + u * (Fb - Fa);
 

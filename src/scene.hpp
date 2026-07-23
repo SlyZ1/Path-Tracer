@@ -54,7 +54,7 @@ struct Object {
     Material mat = Material();
     unsigned int ID;
     PrimType type;
-    int meshIndex;
+    int dataIndex;
     bool isSmooth;
 
     Object operator+(const Object& other){
@@ -66,7 +66,7 @@ struct Object {
         newObj.mat = mat + other.mat;
         newObj.ID = ID;
         newObj.type = type;
-        newObj.meshIndex = meshIndex;
+        newObj.dataIndex = dataIndex;
         newObj.isSmooth = isSmooth;
         return newObj;
     }
@@ -80,7 +80,7 @@ struct Object {
         newObj.mat = mat * t;
         newObj.ID = ID;
         newObj.type = type;
-        newObj.meshIndex = meshIndex;
+        newObj.dataIndex = dataIndex;
         newObj.isSmooth = isSmooth;
         return newObj;
     }
@@ -109,11 +109,12 @@ NLOHMANN_JSON_SERIALIZE_ENUM(PrimType, {
     { PrimType::PLANE,      "plane"     },
     { PrimType::CUBE,       "cube"      },
     { PrimType::CYLINDER,   "cylinder"  },
-    { PrimType::MESH_,      "mesh"      }
+    { PrimType::MESH_,      "mesh"      },
+    { PrimType::FUR_,       "fur"       }
 })
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(CameraProperties, fov, aperture, focalLength)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Material, color, color2, type, data, data2)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Object, name, pos, scale, rotation, mat, ID, type, meshIndex, isSmooth)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Object, name, pos, scale, rotation, mat, ID, type, dataIndex, isSmooth)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SceneState, skyIntensity, skyTop, skyMiddle, skyBottom, camProperties, modelPaths, objectStates)
 
 class Scene {
@@ -161,7 +162,7 @@ public:
     static void stateToJson(SceneState sceneState, const string& path);
     static shared_ptr<Object> getObjectFromId(SceneState sceneState, unsigned int ID);
 
-    static const char* primLabels[5];
+    static const char* primLabels[6];
 
     float skyIntensity = 0.3f;
     glm::vec3 skyTopColor = vec3(0.32f, 0.55f, 0.78f);
@@ -189,7 +190,9 @@ public:
     void selectMesh(int index) { m_selectedMesh = index; m_selectedObject = -1; };
     int getSelectedMesh() const { return m_selectedMesh; };
     vector<const char*> getMeshNames() const;
+    vector<const char*> getFurNames() const;
     void updateMeshes();
+    void updateFurs();
     void updateScene();
     void updateSceneNextFrame();
     void updateGPU();

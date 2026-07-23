@@ -99,6 +99,7 @@ void UI::EndCustomHeader() const {
 }
 
 void UI::renderPointer(){
+    if (m_disabled) return;
     ImDrawList* draw = ImGui::GetBackgroundDrawList();
     ImVec2 pos = ImGui::GetIO().DisplaySize * 0.5;
     draw->AddCircleFilled(pos, 4.0f, IM_COL32(255, 255, 255, 255));
@@ -112,12 +113,10 @@ void UI::renderGizmos(){
     ImDrawList* draw = ImGui::GetBackgroundDrawList();
 
     // Center point
-    if (!m_disabled){
-        glm::vec2 objectCenter = m_context.scene->worldToScreen(m_context.camera, selectedObject->pos);
-        ImVec2 pos = ImGui::GetIO().DisplaySize * 0.5 + ImVec2(objectCenter.x, objectCenter.y);
-        draw->AddCircleFilled(pos, 5, IM_COL32(0, 0, 0, 255));
-        draw->AddCircleFilled(pos, 3, m_lightBlue32);
-    }
+    glm::vec2 objectCenter = m_context.scene->worldToScreen(m_context.camera, selectedObject->pos);
+    ImVec2 pos = ImGui::GetIO().DisplaySize * 0.5 + ImVec2(objectCenter.x, objectCenter.y);
+    draw->AddCircleFilled(pos, 5, IM_COL32(0, 0, 0, 255));
+    draw->AddCircleFilled(pos, 3, m_lightBlue32);
 
     // // Right arrow
     // draw->AddCircleFilled(pos + ImVec2(13, 0), 3, orange);
@@ -266,6 +265,20 @@ void UI::renderPopupData(Object* selectedObject){
                 m_context.scene->updateSceneNextFrame();
             }
             break;
+        case MatType::FUR:
+            Label("RoughA", "Roughness on the azimuth in degree angles.");
+            selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 90.0f);
+            if (ImGui::SliderFloat("##RoughA", &selectedObject->mat.data.x, 0.0f, 90.0f)){
+                selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 90.0f);
+                m_context.scene->updateSceneNextFrame();
+            }
+            Label("RoughL", "Roughness on the longitude in degree angles.");
+            selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 0.0f, 90.0f);
+            if (ImGui::SliderFloat("##RoughL", &selectedObject->mat.data.y, 0.0f, 90.0f)){
+                selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 0.0f, 90.0f);
+                m_context.scene->updateSceneNextFrame();
+            }
+            break;
         case MatType::EMIT:
             Label("Intensity");
             selectedObject->mat.data.x = glm::max(selectedObject->mat.data.x, 0.0f);
@@ -305,7 +318,11 @@ void UI::renderPopup(){
 
         bool previousScaleLocked = scaleLocked;
         bool disabled = false;
-        if (selectedObject->type == PrimType::SPHERE && selectedObject->mat.type == MatType::EMIT){
+        if (selectedObject->type == PrimType::SPHERE && selectedObject->mat.type == MatType::EMIT
+            || selectedObject->type == PrimType::FUR_){
+            for (int i = 0; i < 3; i++)
+                selectedObject->scale[i] = std::max({selectedObject->scale[0], selectedObject->scale[1], selectedObject->scale[2]});
+            
             disabled = true;
             scaleLocked = true;
         }
@@ -349,17 +366,19 @@ void UI::renderPopup(){
         Label("Shape Type");
         PrimType previousType = selectedObject->type;
         if (ImGui::Combo("##Shape Type", (int*)(&selectedObject->type), Scene::primLabels, IM_ARRAYSIZE(Scene::primLabels))){
-            if (previousType == PrimType::MESH_ || selectedObject->type == PrimType::MESH_)
+            if (previousType == PrimType::MESH_ || selectedObject->type == PrimType::MESH_){
                 m_context.scene->updateMeshes();
+                m_context.scene->updateFurs();
+            }
             m_context.scene->updateSceneNextFrame();
         }
 
         if (selectedObject->type == PrimType::MESH_){
             Label("Mesh Used");
             vector<const char*> meshes = m_context.scene->getMeshNames();
-            selectedObject->meshIndex = glm::clamp(selectedObject->meshIndex, 0, (int)meshes.size());
-            if (ImGui::Combo("##Model", &selectedObject->meshIndex, meshes.data(), (int)meshes.size())){
-                selectedObject->meshIndex = glm::clamp(selectedObject->meshIndex, 0, (int)meshes.size());
+            selectedObject->dataIndex = glm::clamp(selectedObject->dataIndex, 0, (int)meshes.size());
+            if (ImGui::Combo("##Model Used", &selectedObject->dataIndex, meshes.data(), (int)meshes.size())){
+                selectedObject->dataIndex = glm::clamp(selectedObject->dataIndex, 0, (int)meshes.size());
                 m_context.scene->updateMeshes();
                 m_context.scene->updateSceneNextFrame();
             }
@@ -367,6 +386,17 @@ void UI::renderPopup(){
             Label("Is Smooth");
             if (ImGui::Checkbox("##Is Smooth", &selectedObject->isSmooth))
                 m_context.scene->updateSceneNextFrame();
+        }
+        else if (selectedObject->type == PrimType::FUR_){
+            Label("Fur Used");
+            vector<const char*> furs = m_context.scene->getFurNames();
+            selectedObject->dataIndex = glm::clamp(selectedObject->dataIndex, 0, (int)furs.size());
+            if (ImGui::Combo("##Fur Used", &selectedObject->dataIndex, furs.data(), (int)furs.size())){
+                selectedObject->dataIndex = glm::clamp(selectedObject->dataIndex, 0, (int)furs.size());
+                m_context.scene->updateFurs();
+                m_context.scene->updateSceneNextFrame();
+            }
+
         }
         EndTwoColumnLayout();
         

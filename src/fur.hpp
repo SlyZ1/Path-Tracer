@@ -6,6 +6,9 @@
 #include <fstream>
 #include <cstdint>
 #include "utils.hpp"
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 struct HairPoint {
     vec3 p;
@@ -23,6 +26,9 @@ struct HairSegment {
 
 class Fur {
 public:
+    string furPath = "";
+    string furName = "";
+
     void loadFromBin(string path);
     void setData(vector<HairPoint> points, vector<ivec2> strands);
     const vector<HairPoint> getPoints() const { return m_points; }

@@ -72,6 +72,8 @@ in vec4 vClipPos;
 #define updateData(data) data = RaycastData(hit, ray, seed)
 #define unwrapData(data) ray = data.ray; hit = data.hit; seed = data.seed
 
+#define betaN(m) m.data.x
+#define betaM(m) m.data.y
 #define diffuseRoughness(m) m.data.x
 #define pbrFuzz(m) m.data.x
 #define pbrMetallic(m) m.data.y
@@ -208,35 +210,34 @@ vec3 sky(vec3 lookingAt){
 }
 
 void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out vec4 albedo, out vec4 color, out float depth){
-    Ray tracedRay = ray;
     bool firstHit = true;
     normal = vec4(0);
     albedo = vec4(0);
     color = vec4(0);
     depth = 1e2;
     for (int i = 0; i < maxBounces; i++){
-        Hit hit = rayIntersection(tracedRay, false);
+        Hit hit = rayIntersection(ray, false);
         if (hit.t > 0 && firstHit){
             firstHit = false;
             normal = vec4(normalize(hit.normal), 1);
             albedo = vec4(hit.mat.color, 1);
             depth = hit.t;
         }
-        computeLighting(hit, tracedRay, seed);
+        computeLighting(hit, ray, seed);
 
         if (hit.t < 0){
 #ifdef SPECTRAL
-            if (hit.t > -2) tracedRay.radiance += tracedRay.throughput * sampleSpectrum(tracedRay.lambda, sky(tracedRay.dir)) * skyIntensity;
+            if (hit.t > -2) ray.radiance += ray.throughput * sampleSpectrum(ray.lambda, sky(ray.dir)) * skyIntensity;
 
-            result = vec4(wavelengthToXYZ(tracedRay.lambda.x) * tracedRay.radiance.x, 1);
-            result += vec4(wavelengthToXYZ(tracedRay.lambda.y) * tracedRay.radiance.y, 1);
-            result += vec4(wavelengthToXYZ(tracedRay.lambda.z) * tracedRay.radiance.z, 1);
-            result += vec4(wavelengthToXYZ(tracedRay.lambda.w) * tracedRay.radiance.w, 1);
+            result = vec4(wavelengthToXYZ(ray.lambda.x) * ray.radiance.x, 1);
+            result += vec4(wavelengthToXYZ(ray.lambda.y) * ray.radiance.y, 1);
+            result += vec4(wavelengthToXYZ(ray.lambda.z) * ray.radiance.z, 1);
+            result += vec4(wavelengthToXYZ(ray.lambda.w) * ray.radiance.w, 1);
             result /= 4.0;
 #else
-            if (hit.t > -2) tracedRay.radiance += tracedRay.throughput * sky(tracedRay.dir) * skyIntensity;
-            if (firstHit) albedo = vec4(sky(tracedRay.dir), 1);
-            result = vec4(tracedRay.radiance, 1);
+            if (hit.t > -2) ray.radiance += ray.throughput * sky(ray.dir) * skyIntensity;
+            if (firstHit) albedo = vec4(sky(ray.dir), 1);
+            result = vec4(ray.radiance, 1);
             color = result / (albedo + vec4(EPS));
 #endif
             return;
@@ -263,7 +264,7 @@ void main()
     vec4 color = vec4(0);
     float depth = 0;
     for (int i = 0; i < samples; i++) {
-        vec2 AAjitter = vec2(rand(seed), rand(seed)) * 4 / winSize;
+        vec2 AAjitter = vec2(rand(seed), rand(seed)) * 2 / winSize;
         Ray r = fovRay(pos + AAjitter, ray, seed);
 
         vec4 result = vec4(0);

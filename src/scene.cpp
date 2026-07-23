@@ -6,12 +6,13 @@ using namespace glm;
 glm::vec3 Scene::m_cameraDirection = glm::vec3(0, 0, -1);
 glm::vec3 Scene::m_cameraPosition  = glm::vec3(0, 0, 0);
 
-const char* Scene::primLabels[5] = {
+const char* Scene::primLabels[6] = {
   "Sphere",
   "Plane",
   "Cube",
   "Cylinder",
   "Mesh",
+  "Fur",
 };
 
 shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, function<void()> resetFrame){
@@ -35,7 +36,7 @@ shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> ca
     scene->addObject(light); 
 
     shared_ptr<Fur> fur = make_shared<Fur>();
-    fur->loadFromBin("src/python/curly_lock");
+    fur->loadFromBin("src/python/curly_lock.bin");
     scene->addFur(fur);
 
     // shared_ptr<Mesh> bunnyMesh = make_shared<Mesh>();
@@ -48,17 +49,9 @@ shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> ca
     // meshObject.rotation = vec3(0.0f);
     // meshObject.type = PrimType::MESH_;
     // meshObject.mat = Material::diffuseMaterial(vec3(0.9f, 0.6f, 0.2f), 0.0f);
-    // meshObject.meshIndex = bunnyIndex;
+    // meshObject.dataIndex = bunnyIndex;
     // meshObject.isSmooth = true;
     // scene->addObject(meshObject);
-
-    Object sphere;
-    sphere.pos = vec3(0.0f);
-    sphere.scale = vec3(0.5f);
-    sphere.rotation = vec3(0.0f);
-    sphere.type = PrimType::SPHERE;
-    sphere.mat = Material::diffuseMaterial(vec3(1.0f), 0.0f);
-    scene->addObject(sphere);
 
     scene->selectObject(-1);
 
@@ -106,14 +99,14 @@ void Scene::stateToJson(SceneState sceneState, const string& path){
     vector<int> meshIsUsed = vector<int>(sceneState.modelPaths.size(), -1);
     for (Object& obj : sceneState.objectStates){
         if (obj.type == PrimType::MESH_){
-            int index = obj.meshIndex;
+            int index = obj.dataIndex;
             if (meshIsUsed[index] >= 0){
-                obj.meshIndex = meshIsUsed[index];
+                obj.dataIndex = meshIsUsed[index];
             }
             else{
                 utilizedMeshes.push_back(sceneState.modelPaths[index]);
-                obj.meshIndex = (int)utilizedMeshes.size() - 1;
-                meshIsUsed[index] = obj.meshIndex;
+                obj.dataIndex = (int)utilizedMeshes.size() - 1;
+                meshIsUsed[index] = obj.dataIndex;
             }
         }
     }
@@ -169,7 +162,9 @@ void Scene::loadFromState(const SceneState& sceneState, bool verbose){
     CameraProperties* camProps = m_camera->getCameraProperties();
     *camProps = sceneState.camProperties;
 
-    updateScene();
+    m_numFursChanged = true;
+    m_numMeshesChanged = true;
+    updateSceneNextFrame();
     if (verbose) cout << "Scene loaded." << endl;
 }
 
@@ -193,7 +188,7 @@ shared_ptr<Object> Scene::getObjectFromId(SceneState sceneState, unsigned int ID
     for (const Object& obj : sceneState.objectStates){
         if (obj.ID == ID) return make_shared<Object>(obj);
     }
-    return nullptr;
+    return nullptr; 
 }
 
 
@@ -254,8 +249,8 @@ int Scene::intersectObject(const Ray& ray){
                 dist = Intersections::intersectCylinder(ray, obj.pos, obj.scale, obj.rotation);
                 break;
             case PrimType::MESH_: {
-                if (obj.meshIndex < 0 || obj.meshIndex >= (int)m_meshes.size()) break;
-                shared_ptr<Mesh> mesh = m_meshes[obj.meshIndex];
+                if (obj.dataIndex < 0 || obj.dataIndex >= (int)m_meshes.size()) break;
+                shared_ptr<Mesh> mesh = m_meshes[obj.dataIndex];
                 dist = Intersections::intersectMesh(ray, mesh, obj.pos, obj.scale, obj.rotation);
                 break;
             }
@@ -280,8 +275,8 @@ void Scene::removeMesh(int index){
     if (index < 0 || index > (int)m_meshes.size()) return;
     for (Object& obj : m_objects){
         if (obj.type != PrimType::MESH_) continue;
-        if (obj.meshIndex > index) obj.meshIndex -= 1;
-        if (obj.meshIndex == index) obj.meshIndex = -1;
+        if (obj.dataIndex > index) obj.dataIndex -= 1;
+        if (obj.dataIndex == index) obj.dataIndex = -1;
     }
     m_meshes.erase(m_meshes.begin() + index);
     updateScene();
@@ -296,7 +291,7 @@ int Scene::addFur(shared_ptr<Fur> newFur){
 int Scene::addObject(Object obj){
     obj.ID = m_maxId++;
     if (obj.type == PrimType::MESH_){
-        obj.name = m_meshes[obj.meshIndex]->modelName + string(" ") + to_string(obj.ID);
+        obj.name = m_meshes[obj.dataIndex]->modelName + string(" ") + to_string(obj.ID);
         updateMeshes();
     }
     else{
@@ -342,8 +337,20 @@ vector<const char*> Scene::getMeshNames() const {
     return result;
 }
 
+vector<const char*> Scene::getFurNames() const {
+    vector<const char*> result;
+    for (shared_ptr<Fur> fur : m_furs){
+        result.push_back(fur->furName.c_str());
+    }
+    return result;
+}
+
 void Scene::updateMeshes(){
     m_numMeshesChanged = true;
+}
+
+void Scene::updateFurs(){
+    m_numFursChanged = true;
 }
 
 void Scene::updateScene(){
@@ -385,9 +392,9 @@ void Scene::updateGPU(){
     vector<Triangle> triangles = {};
     vector<int> triangleOffsets = {};
     for (Object& obj : m_objects){
-        if (obj.type != PrimType::MESH_ || obj.meshIndex < 0 || obj.meshIndex > (int)m_meshes.size()) continue;
-        obj.meshIndex = std::min(obj.meshIndex, (int)m_meshes.size() - 1);
-        meshIsUsed[obj.meshIndex] = true; 
+        if (obj.type != PrimType::MESH_ || obj.dataIndex < 0 || obj.dataIndex >= (int)m_meshes.size()) continue;
+        obj.dataIndex = std::min(obj.dataIndex, (int)m_meshes.size() - 1);
+        meshIsUsed[obj.dataIndex] = true; 
     }
     for (int i = 0; i < (int)m_meshes.size(); i++){
         if (!meshIsUsed[i]){
@@ -409,30 +416,51 @@ void Scene::updateGPU(){
         nodes.insert(nodes.end(), meshNodes.begin(), meshNodes.end());
     }
     vector<PrimitiveObject> primitives = {};
-    vector<BVHInfos> bvhInfos = {};
+    vector<BVHInfos> meshInfos = {};
+    vector<BVHInfos> furInfos = {};
     vector<int> volumeIndicies = {};
     int numVolumeMeshes = 0; 
     int numVolumePrims = 0;
     vector<Material> materials = {};
     vector<int> lightIndicies = {};
+    vector<HairPoint> hairPoints = {};
     for (const Object& obj : m_objects){
         int matIndex = addMaterial(materials, obj.mat);
         if (obj.type == PrimType::MESH_){
-            if (obj.meshIndex < 0 || obj.meshIndex > (int)m_meshes.size()) continue;
+            if (obj.dataIndex < 0 || obj.dataIndex >= (int)m_meshes.size()) continue;
             if (obj.mat.type == MatType::GLASS && (obj.mat.data.w > 0)){
-                volumeIndicies.insert(volumeIndicies.begin() + numVolumeMeshes, (int)bvhInfos.size());
+                volumeIndicies.insert(volumeIndicies.begin() + numVolumeMeshes, (int)meshInfos.size());
                 numVolumeMeshes++;
             }
             BVHInfos meshInfo;
-            meshInfo.leafOffset = triangleOffsets[obj.meshIndex];
-            meshInfo.nodeOffset = nodeOffsets[obj.meshIndex];
-            meshInfo.numberOfNodes = numberOfNodes[obj.meshIndex];
+            meshInfo.leafOffset = triangleOffsets[obj.dataIndex];
+            meshInfo.nodeOffset = nodeOffsets[obj.dataIndex];
+            meshInfo.numberOfNodes = numberOfNodes[obj.dataIndex];
             meshInfo.pos = obj.pos;
             meshInfo.scale = obj.scale;
             meshInfo.rotation = obj.rotation;
             meshInfo.matIndex = matIndex;
             meshInfo.data.x = (float)obj.isSmooth;
-            bvhInfos.push_back(meshInfo);
+            meshInfos.push_back(meshInfo);
+        }
+        else if (obj.type == PrimType::FUR_){
+            if (obj.dataIndex < 0 || obj.dataIndex >= (int)m_furs.size()) continue;
+            shared_ptr<Fur> fur = m_furs[obj.dataIndex];
+            const vector<HairPoint>& points = fur->getPoints();
+            const vector<linBVHNode>& furNodes = fur->getLinNodes();
+
+            BVHInfos furInfo;
+            furInfo.leafOffset = (int)hairPoints.size();
+            furInfo.nodeOffset = (int)nodes.size();
+            furInfo.numberOfNodes = (int)furNodes.size();
+            furInfo.pos = obj.pos;
+            furInfo.scale = obj.scale;
+            furInfo.rotation = obj.rotation;
+            furInfo.matIndex = matIndex;
+            furInfos.push_back(furInfo);
+
+            hairPoints.insert(hairPoints.end(), points.begin(), points.end());
+            nodes.insert(nodes.end(), furNodes.begin(), furNodes.end());
         }
         else {
             if (obj.mat.type == MatType::GLASS && (obj.mat.data.w > 0)){
@@ -449,25 +477,11 @@ void Scene::updateGPU(){
             primitives.push_back(prim);
         }
     }
-    int numMeshes = (int)bvhInfos.size();
-    vector<HairPoint> hairPoints = {};
-    for (auto fur : m_furs){
-        const vector<HairPoint>& points = fur->getPoints();
-        const vector<linBVHNode>& furNodes = fur->getLinNodes();
-
-        BVHInfos furInfo;
-        furInfo.leafOffset = (int)hairPoints.size();
-        furInfo.nodeOffset = (int)nodes.size();
-        furInfo.numberOfNodes = (int)furNodes.size();
-        furInfo.pos = vec3(0);
-        furInfo.scale = vec3(1);
-        furInfo.rotation = vec3(0);
-        furInfo.matIndex = 0;
-        bvhInfos.push_back(furInfo);
-
-        hairPoints.insert(hairPoints.end(), points.begin(), points.end());
-        nodes.insert(nodes.end(), furNodes.begin(), furNodes.end());
-    }
+    int numMeshes = (int)meshInfos.size();
+    int numFurs = (int)furInfos.size();
+    vector<BVHInfos>& bvhInfos = meshInfos;
+    bvhInfos.insert(bvhInfos.end(), furInfos.begin(), furInfos.end());
+    cout << numFurs << endl;
 
     vector<int> indices = lightIndicies;
     indices.insert(indices.end(), volumeIndicies.begin(), volumeIndicies.end());
@@ -509,7 +523,7 @@ void Scene::updateGPU(){
     glBufferData(GL_SHADER_STORAGE_BUFFER, (int)bvhInfos.size() * sizeof(BVHInfos), bvhInfos.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_bvhInfosBuffer);
     glUniform1i(ShaderProgram::getVarLoc("numMeshes"), numMeshes);
-    glUniform1i(ShaderProgram::getVarLoc("numHair"), (int)m_furs.size());
+    glUniform1i(ShaderProgram::getVarLoc("numHair"), numFurs);
     
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_materialsBuffer);
     glBufferData(GL_SHADER_STORAGE_BUFFER, (int)materials.size() * sizeof(Material), materials.data(), GL_DYNAMIC_DRAW);

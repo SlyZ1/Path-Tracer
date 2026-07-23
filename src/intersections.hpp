@@ -12,6 +12,7 @@ enum PrimType : int {
     CUBE = 2,
     CYLINDER = 3,
     MESH_ = 4,
+    FUR_ = 5
 };
 
 struct Ray {

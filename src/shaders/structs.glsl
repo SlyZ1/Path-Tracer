@@ -38,7 +38,7 @@ struct AABB {
 struct BVHNode {
     int left;
     int right;
-    int triangle;
+    int leaf;
     int pad;
     AABB aabb;
     AABB leftAabb;
@@ -47,7 +47,7 @@ struct BVHNode {
 
 struct BVHInfos {
     vec3 pos;
-    int triangleOffset;
+    int leafOffset;
     vec3 scale;
     int nodeOffset;
     vec3 rotation;

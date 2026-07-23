@@ -67,6 +67,7 @@ float Intersections::intersectPlane(const Ray& ray, vec3 pos, vec3 scale, vec3 r
     vec3 localHit = localOrigin + t * localDir;
     vec3 difference = abs(localHit);
     
+    scale = scale / 2.0f;
     if (t <= 0 || difference.x > scale.x || difference.y > scale.y || difference.z > scale.z)
         return -1.0f;
     return t;
@@ -150,7 +151,7 @@ float Intersections::intersectAABB(const Ray& invRay, const AABB& aabb, float tM
     vec3 t1 = (vec3(aabb.max) - invRay.origin) * invRay.direction;
 
     vec3 tNear = min(t0, t1);
-    vec3 tFar  = max(t0, t1);
+    vec3 tFar  = max(t0, t1); 
 
     float tmin = glm::max(glm::max(tNear.x, tNear.y), glm::max(tNear.z, tMin));
     float tmax = glm::min(glm::min(tFar.x,  tFar.y),  glm::min(tFar.z,  tMax));
@@ -204,7 +205,7 @@ float Intersections::intersectMesh(const Ray& ray, shared_ptr<Mesh> mesh, vec3 p
 
     const int STACK_SIZE = 32;
 
-    int stack[STACK_SIZE];
+    int stack[STACK_SIZE]; 
     int stackPtr = 0;
     stack[stackPtr++] = (int)nodes.size() - 1;
 

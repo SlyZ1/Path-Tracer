@@ -1,21 +1,3 @@
-// float computeI0(float x){
-//     float term = 1;
-//     float res = 1;
-//     for(int i = 1; i < 10; i+=1){
-//         term *= x * x / (4 * i * i);
-//         res += term;
-//     }
-//     return res;
-// }
-
-// float computeM(float v, float thetaC, float thetaO, float thetaI){
-//     float oneOverV = 1.0 / v;
-//     float t0 = 2 * v * sinh(oneOverV);
-//     float t1 = exp(sin(thetaC) * sin(thetaO) * oneOverV);
-//     float t2 = computeI0(cos(thetaC) * cos(thetaO) * oneOverV);
-//     return t1 * t2 / (t0 * cos(thetaI));
-// }
-
 vec3 computeT(vec3 sigmaA, float h, float eta, float cosThetaT){
     float sinGammaT = h / eta;
     float cosGammaT = sqrt(1 - sinGammaT * sinGammaT);
@@ -42,7 +24,7 @@ float computeEtaPrime(float eta, float cosThetaD){
     return sqrt(eta * eta - sin2ThetaD) / cosThetaD;
 }
 
-#define ALPHA PI * 5.0 / 180.0 // 3° in rad
+#define ALPHA PI * 5.0 / 180.0 // 5° in rad
 float computeThetaCone(float thetaI, float p){
     if (p == 0) return -thetaI + 2 * ALPHA;
     else if (p == 1) return -thetaI - ALPHA;
@@ -117,18 +99,12 @@ void fur(inout RaycastData data, bool inVolume){
     float thetaI, phiI, sinThetaI, cosThetaI;
     computeThetaPhi(wi, hit.tangent, bitangent, normal, thetaI, phiI, sinThetaI, cosThetaI);
 
-    float eta = 1.55;
-    const vec3 sigmaAe = vec3(0.419,0.697,1.37);
-    const vec3 sigmaAp = vec3(0.187,0.4,1.05);
-    float ce = 0.1;
-    float cp = 0.00;
-    vec3 sigmaA = ce * sigmaAe + cp * sigmaAp;
-    sigmaA = vec3(0.06, 0.1, 0.2);
+    const float eta = 1.55;
+    vec3 sigmaA = Spectrum(1.0) - getSpectrumValue(hit.mat);
     float sinThetaT = sinThetaI / eta;
     float cosThetaT = sqrt(1 - sinThetaT * sinThetaT);
     vec3 sigmaAPrime = sigmaA / cosThetaT;
 
-    
     
     //Compute Aspec0 - R
     int p = 0;
@@ -156,7 +132,7 @@ void fur(inout RaycastData data, bool inVolume){
     float wp = pSample.y;
 
     thetaC = computeThetaCone(thetaI, p);
-    float betaR = PI * 30.0 / 180.0;
+    float betaR = PI * betaM(hit.mat) / 180.0;
     float u = sampleSphericalGaussian(seed, computeLobeVariance(betaR * betaR, p));
     float thetaO = sampleThetaOut(seed, u, thetaC);
     float thetaD = (thetaO - thetaI) / 2.0;
@@ -166,20 +142,18 @@ void fur(inout RaycastData data, bool inVolume){
     float gamma_i = asin(h);
     float gamma_t = asin(h / etaPrime);
     float deltaPhi = sampleLogit(rand(seed), 1.0, -PI, PI);
-    float phiO = computePhiOut(p, gamma_i, gamma_t) + deltaPhi * 0.5;
-    //ray.throughput /= logit(deltaPhi, 1.0, -PI, PI);
+    float phiO = computePhiOut(p, gamma_i, gamma_t) + deltaPhi * PI * betaN(hit.mat) / 180.0;
     
     vec3 Ap = computeA(p, h, etaPrime, cosThetaD, cosThetaT, sigmaAPrime);
     vec3 weight = Ap / wp;
 
     ray.throughput *= weight;
     ray.dir = directionFromThetaPhi(thetaO, phiO, hit.tangent, normal, bitangent);
-    //ray.dir = reflect(ray.dir, normal);
     if (dot(ray.dir, hit.normal) > 0){
-        ray.origin += hit.normal * 0.0001;
+        ray.origin += normal * EPS;
     }
     else{
-        ray.origin -= hit.normal * 0.0003;
+        ray.origin -= normal * 0.0007 * 2;
     }
 
     updateData(data);
