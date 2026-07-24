@@ -1,19 +1,19 @@
-vec3 computeT(vec3 sigmaA, float h, float eta, float cosThetaT){
+Spectrum computeT(Spectrum sigmaA, float h, float eta, float cosThetaT){
     float sinGammaT = h / eta;
     float cosGammaT = sqrt(1 - sinGammaT * sinGammaT);
     return exp(-2 * sigmaA * cosGammaT / cosThetaT);
 }
 
-vec3 computeA(float p, float h, float eta, float cosThetaD, float cosThetaT, vec3 sigmaAPrime){
+Spectrum computeA(float p, float h, float eta, float cosThetaD, float cosThetaT, Spectrum sigmaAPrime){
     float n = 1.0 / eta;
     float cos1 = cosThetaD * sqrt(1 - h * h);
     float f = fresnel(cos1, computeCos2(cos1, n), n);
     if (p == 0){
-        return vec3(f);
+        return Spectrum(f);
     }
     else{
-        vec3 T = computeT(sigmaAPrime, h, eta, cosThetaT);
-        vec3 right = T;
+        Spectrum T = computeT(sigmaAPrime, h, eta, cosThetaT);
+        Spectrum right = T;
         if (p == 2) right *= f * T;
         return (1 - f) * (1 - f) * right;
     }
@@ -100,10 +100,10 @@ void fur(inout RaycastData data, bool inVolume){
     computeThetaPhi(wi, hit.tangent, bitangent, normal, thetaI, phiI, sinThetaI, cosThetaI);
 
     const float eta = 1.55;
-    vec3 sigmaA = Spectrum(1.0) - getSpectrumValue(hit.mat);
+    Spectrum sigmaA = (Spectrum(1.0) - getSpectrumValue(hit.mat)) * 0.5;
     float sinThetaT = sinThetaI / eta;
     float cosThetaT = sqrt(1 - sinThetaT * sinThetaT);
-    vec3 sigmaAPrime = sigmaA / cosThetaT;
+    Spectrum sigmaAPrime = sigmaA / cosThetaT;
 
     
     //Compute Aspec0 - R
@@ -111,21 +111,21 @@ void fur(inout RaycastData data, bool inVolume){
     float thetaC = computeThetaCone(thetaI, p);
     float cosThetaD = cos(thetaC - ALPHA); // No roughness, perfect relfection
     float etaPrime = computeEtaPrime(eta, cosThetaD);
-    vec3 Aspec0 = computeA(p, h, etaPrime, cosThetaD, cosThetaT, sigmaAPrime);
+    Spectrum Aspec0 = computeA(p, h, etaPrime, cosThetaD, cosThetaT, sigmaAPrime);
     
     // Compute Aspec1 - TT
     p = 1;
     thetaC = computeThetaCone(thetaI, p);
     cosThetaD = cos(thetaC + ALPHA / 2.0); // No roughness, perfect transmission
     etaPrime = computeEtaPrime(eta, cosThetaD);
-    vec3 Aspec1 = computeA(p, h, etaPrime, cosThetaD, cosThetaT, sigmaAPrime);
+    Spectrum Aspec1 = computeA(p, h, etaPrime, cosThetaD, cosThetaT, sigmaAPrime);
     
     // Compute Aspec2 - TRT
     p = 2;
     thetaC = computeThetaCone(thetaI, p);
     cosThetaD = cos(thetaC + ALPHA * 2.0); // No roughness, perfect relfection
     etaPrime = computeEtaPrime(eta, cosThetaD);
-    vec3 Aspec2 = computeA(p, h, etaPrime, cosThetaD, cosThetaT, sigmaAPrime);
+    Spectrum Aspec2 = computeA(p, h, etaPrime, cosThetaD, cosThetaT, sigmaAPrime);
 
     vec2 pSample = sampleP(seed, luminanceMean(Aspec0), luminanceMean(Aspec1), luminanceMean(Aspec2));
     p = int(pSample.x);
@@ -144,8 +144,8 @@ void fur(inout RaycastData data, bool inVolume){
     float deltaPhi = sampleLogit(rand(seed), 1.0, -PI, PI);
     float phiO = computePhiOut(p, gamma_i, gamma_t) + deltaPhi * PI * betaN(hit.mat) / 180.0;
     
-    vec3 Ap = computeA(p, h, etaPrime, cosThetaD, cosThetaT, sigmaAPrime);
-    vec3 weight = Ap / wp;
+    Spectrum Ap = computeA(p, h, etaPrime, cosThetaD, cosThetaT, sigmaAPrime);
+    Spectrum weight = Ap / wp;
 
     ray.throughput *= weight;
     ray.dir = directionFromThetaPhi(thetaO, phiO, hit.tangent, normal, bitangent);

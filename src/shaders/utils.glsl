@@ -132,6 +132,10 @@ float luminanceMean(vec3 c){
     return dot(c, vec3(0.2126, 0.7152, 0.0722));
 }
 
+float luminanceMean(vec4 c){
+    return dot(c, vec4(0.25));
+}
+
 void stop(inout Hit hit, bool touchedLight){
     hit.t = touchedLight ? -2 : -1;
 }

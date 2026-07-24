@@ -1,49 +1,49 @@
 #include "fur.hpp"
 
-void Fur::loadFromBin(string path){
-    std::ifstream f(path, std::ios::binary);
+void Fur::loadFromBin(string binPath){
+    std::ifstream f(binPath, std::ios::binary);
     if (!f.is_open()){
-        std::cerr << "Cannot open : " << path << std::endl;
+        std::cerr << "Cannot open : " << binPath << std::endl;
         return;
     }
 
     uint32_t pointCount;
     f.read((char*)&pointCount, sizeof(pointCount));
     if (!f){
-        std::cerr << "Error reading point count from : " << path << std::endl;
+        std::cerr << "Error reading point count from : " << binPath << std::endl;
         return;
     }
     m_points.resize(pointCount);
     f.read((char*)m_points.data(), pointCount * sizeof(HairPoint));
     if (!f){
-        std::cerr << "Error reading points data from : " << path << std::endl;
+        std::cerr << "Error reading points data from : " << binPath << std::endl;
         return;
     }
 
     uint32_t strandCount;
     f.read((char*)&strandCount, sizeof(strandCount));
     if (!f){
-        std::cerr << "Error reading strand count from : " << path << std::endl;
+        std::cerr << "Error reading strand count from : " << binPath << std::endl;
         return;
     }
     m_strands.resize(strandCount);
     f.read((char*)m_strands.data(), strandCount * sizeof(ivec2));
     if (!f){
-        std::cerr << "Error reading strands data from : " << path << std::endl;
+        std::cerr << "Error reading strands data from : " << binPath << std::endl;
         return;
-    }
+    } 
 
     vector<BVHLeaf> leaves = computeBVHLeaves();
     int size = (int)leaves.size();
     vector<int> indicies(size);
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++) { 
         indicies[i] = i;
     }
 
     shared_ptr<BVHNode> nodes = BVH::computeSAH(leaves, indicies, 0, size);
     m_linNodes = BVH::lineariseBVH(nodes);
-    furName = fs::path(path).stem().string();
-    furPath = path;
+    name = fs::path(binPath).stem().string();
+    path = binPath;
 }
 
 void Fur::setData(vector<HairPoint> points, vector<ivec2> strands){
@@ -59,9 +59,6 @@ void Fur::setData(vector<HairPoint> points, vector<ivec2> strands){
 
     shared_ptr<BVHNode> nodes = BVH::computeSAH(leaves, indicies, 0, size);
     m_linNodes = BVH::lineariseBVH(nodes);
-    for (linBVHNode node : m_linNodes){
-        cout << Utils::toString(node.bounds.min) << " " << Utils::toString(node.bounds.max) << endl;
-    }
 }
 
 vector<BVHLeaf> Fur::computeBVHLeaves(){

@@ -93,6 +93,7 @@ struct SceneState {
     vec3 skyBottom;
     CameraProperties camProperties;
     vector<string> modelPaths;
+    vector<string> furPaths;
     vector<Object> objectStates;
 };
 
@@ -115,10 +116,19 @@ NLOHMANN_JSON_SERIALIZE_ENUM(PrimType, {
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(CameraProperties, fov, aperture, focalLength)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Material, color, color2, type, data, data2)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Object, name, pos, scale, rotation, mat, ID, type, dataIndex, isSmooth)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SceneState, skyIntensity, skyTop, skyMiddle, skyBottom, camProperties, modelPaths, objectStates)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SceneState, skyIntensity, skyTop, skyMiddle, skyBottom, camProperties, modelPaths, furPaths, objectStates)
 
 class Scene {
 private:
+    template <typename TLeaves>
+    struct CleanedBVHResult {
+        vector<TLeaves> leaves;
+        vector<linBVHNode> nodes;
+        vector<int> leavesOffsets;
+        vector<int> nodeOffsets;
+        vector<int> numberOfNodes;
+    };
+
     shared_ptr<App> m_app = {};
     shared_ptr<Camera> m_camera = {};
 
@@ -136,8 +146,6 @@ private:
     vector<Object> m_objects = {};
     vector<shared_ptr<Mesh>> m_meshes = {};
     vector<shared_ptr<Fur>> m_furs = {};
-    static vec3 m_cameraDirection;
-    static vec3 m_cameraPosition;
 
     int m_copiedObject = -1;
     int m_selectedObject = -1;
@@ -151,46 +159,93 @@ private:
     int addMaterial(vector<Material>& materials, Material mat);
 
     shared_ptr<Mesh> findMesh(const string& path);
+    shared_ptr<Fur> findFur(const string& path);
 
+    template <typename TSource>
+    vector<bool> getSourceUsed(const vector<shared_ptr<TSource>>& source, PrimType shapeType){
+        vector<bool> sourceIsUsed = vector<bool>(source.size(), false);
+        for (Object& obj : m_objects){
+            if (obj.type != shapeType || obj.dataIndex < 0 || obj.dataIndex >= (int)source.size()) continue;
+            obj.dataIndex = std::min(obj.dataIndex, (int)source.size() - 1);
+            sourceIsUsed[obj.dataIndex] = true; 
+        }
+        return sourceIsUsed;
+    }
+
+    template <typename TSource, typename TLeaves>
+    void cleanBVHData(
+        const vector<shared_ptr<TSource>>& sources,
+        const vector<bool>& isUsed,
+        std::function<const vector<TLeaves>&(shared_ptr<TSource>)> getLeaves,
+        std::function<const vector<linBVHNode>&(shared_ptr<TSource>)> getNodes,
+        Scene::CleanedBVHResult<TLeaves>& result)
+    {
+        for (int i = 0; i < (int)sources.size(); i++){
+            if (!isUsed[i]){
+                result.leavesOffsets.push_back(-1);
+                result.nodeOffsets.push_back(-1);
+                result.numberOfNodes.push_back(-1);
+                continue;
+            }
+            shared_ptr<TSource> source = sources[i];
+
+            const vector<TLeaves>& sourceLeaves = getLeaves(source);
+            const vector<linBVHNode>& sourceNodes = getNodes(source);
+
+            result.leavesOffsets.push_back((int)result.leaves.size());
+            result.nodeOffsets.push_back((int)result.nodes.size());
+            result.numberOfNodes.push_back((int)sourceNodes.size());
+
+            result.leaves.insert(result.leaves.end(), sourceLeaves.begin(), sourceLeaves.end());
+            result.nodes.insert(result.nodes.end(), sourceNodes.begin(), sourceNodes.end());
+        }
+    }
+    
 public:
     Scene() = default;
     Scene(shared_ptr<App> app, shared_ptr<Camera> camera, function<void()> resetFrame) 
     : m_app(app), m_camera(camera), m_resetFrame(resetFrame) {}
     static shared_ptr<Scene> defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, function<void()> resetFrame = nullptr);
-    static Ray rayFromClick(shared_ptr<Camera> camera, vec2 screenPos);
+    
     static SceneState stateFromJson(const string& path);
     static void stateToJson(SceneState sceneState, const string& path);
-    static shared_ptr<Object> getObjectFromId(SceneState sceneState, unsigned int ID);
-
+    void loadFromState(const SceneState& sceneState, bool verbose = true);
+    SceneState getState();
+    
     static const char* primLabels[6];
-
+    
     float skyIntensity = 0.3f;
     glm::vec3 skyTopColor = vec3(0.32f, 0.55f, 0.78f);
     glm::vec3 skyMiddleColor = vec3(0.75f, 0.78f, 0.82f);
     glm::vec3 skyBottomColor = vec3(1.00f, 0.65f, 0.30f);
-
+    
+    void initGPU();
+    
     void setSpectral(bool spectral) { m_spectral = spectral; }
     bool getSpectral() const { return m_spectral; }
-    void loadFromState(const SceneState& sceneState, bool verbose = true);
-    vector<const char*> getObjectNames() const;
-    SceneState getState();
-    vec2 worldToScreen(shared_ptr<Camera> camera, vec3 worldPos);
-    void initGPU();
-    int intersectObject(const Ray& ray);
-    int addMesh(shared_ptr<Mesh> newMesh);
-    void removeMesh(int index);
-    int addFur(shared_ptr<Fur> newFur);
+    
+    // OBJECTS
     int addObject(Object prim);
-    Object* getObject(int index);
+    int addMesh(shared_ptr<Mesh> newMesh);
+    int addFur(shared_ptr<Fur> newFur);
     void removeObject(int index);
-    void copyObject(int index);
-    int pasteObject();
-    void selectObject(int index) { m_selectedObject = index; m_selectedMesh = -1; };
-    int getSelectedObject() const { return m_selectedObject; };
-    void selectMesh(int index) { m_selectedMesh = index; m_selectedObject = -1; };
-    int getSelectedMesh() const { return m_selectedMesh; };
+    void removeMesh(int index);
+    void removeFur(int index);
+    vector<const char*> getObjectNames() const;
     vector<const char*> getMeshNames() const;
     vector<const char*> getFurNames() const;
+    void selectObject(int index) { m_selectedObject = index; m_selectedMesh = -1; };
+    void selectMesh(int index) { m_selectedMesh = index; m_selectedObject = -1; };
+    int getSelectedObject() const { return m_selectedObject; };
+    int getSelectedMesh() const { return m_selectedMesh; };
+    
+    static shared_ptr<Object> getObjectFromId(SceneState sceneState, unsigned int ID);
+    int intersectObject(const Ray& ray);
+    Object* getObject(int index);
+    void copyObject(int index);
+    int pasteObject();
+
+    // UPDATE
     void updateMeshes();
     void updateFurs();
     void updateScene();

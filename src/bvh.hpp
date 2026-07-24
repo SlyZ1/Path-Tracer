@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include <algorithm>
+#include <string>
 
 using namespace std;
 using namespace glm;

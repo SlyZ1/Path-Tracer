@@ -26,13 +26,12 @@ struct HairSegment {
 
 class Fur {
 public:
-    string furPath = "";
-    string furName = "";
+    string path = "";
+    string name = "";
 
-    void loadFromBin(string path);
+    void loadFromBin(string binPath);
     void setData(vector<HairPoint> points, vector<ivec2> strands);
-    const vector<HairPoint> getPoints() const { return m_points; }
-    const vector<ivec2>& getStrands() const { return m_strands; }
+    const vector<HairPoint>& getPoints() const { return m_points; }
     const vector<linBVHNode>& getLinNodes() const { return m_linNodes; }
 
 private:

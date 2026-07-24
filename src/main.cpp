@@ -326,7 +326,7 @@ void inputs(){
         screenPos = 2.0f * screenPos - glm::vec2(1.0f);
         screenPos.y *= -1;
         screenPos.x *= texWidth / (float)texHeight;
-        Ray ray = Scene::rayFromClick(camera, screenPos);
+        Ray ray = Intersections::rayFromClick(camera, screenPos);
         int primIndex = scene->intersectObject(ray);
         scene->selectObject(primIndex);
     }

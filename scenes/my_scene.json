@@ -4,6 +4,7 @@
         "focalLength": 1.0,
         "fov": 50.0
     },
+    "furPaths": [],
     "modelPaths": [],
     "objectStates": [
         {

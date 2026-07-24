@@ -21,11 +21,11 @@ Triangle Mesh::scaleTri(Triangle tri, vec3 scale){
     return tri;
 }
 
-void Mesh::loadFromModel(const char* path){
-    if (fs::path(path).extension().string() != ".obj") return;
+void Mesh::loadFromModel(string dataPath){
+    if (fs::path(dataPath).extension().string() != ".obj") return;
 
-    cout << "Loading 3D model and computing BVH... (at " << path << ")" << endl;
-    ifstream ifs(path);
+    cout << "Loading 3D model and computing BVH... (at " << dataPath << ")" << endl;
+    ifstream ifs(dataPath);
     if (!ifs) {
         cerr << "Cannot open OBJ file\n" << endl;
         return;
@@ -106,8 +106,8 @@ void Mesh::loadFromModel(const char* path){
     vector<BVHLeaf> leaves = computeBVHLeaves();
     shared_ptr<BVHNode> nodes = BVH::computeSAH(leaves, indicies, 0, size);
     m_linNodes = BVH::lineariseBVH(nodes);
-    modelName = fs::path(path).stem().string();
-    modelPath = path;
+    name = fs::path(dataPath).stem().string();
+    path = dataPath;
 }
 
 AABB Mesh::triangleBounds(const Triangle& tri) {

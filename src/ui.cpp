@@ -113,7 +113,7 @@ void UI::renderGizmos(){
     ImDrawList* draw = ImGui::GetBackgroundDrawList();
 
     // Center point
-    glm::vec2 objectCenter = m_context.scene->worldToScreen(m_context.camera, selectedObject->pos);
+    glm::vec2 objectCenter = Intersections::worldToScreen(m_context.app, m_context.camera, selectedObject->pos);
     ImVec2 pos = ImGui::GetIO().DisplaySize * 0.5 + ImVec2(objectCenter.x, objectCenter.y);
     draw->AddCircleFilled(pos, 5, IM_COL32(0, 0, 0, 255));
     draw->AddCircleFilled(pos, 3, m_lightBlue32);
@@ -627,11 +627,11 @@ void UI::renderParameters(){
     }
     EndCustomHeader();
 
-    if (BeginCustomHeader("Model Settings")){
+    if (BeginCustomHeader("BVH Settings")){
         BeginTwoColumnLayout();
 
-        Label("Debug BVH");
-        if (ImGui::Checkbox("##Debug BVH", &m_debugBVH))
+        Label("Debug Visualization Mode");
+        if (ImGui::Checkbox("##Debug Visualization Mode", &m_debugBVH))
             m_context.resetFrame();
 
         EndTwoColumnLayout();

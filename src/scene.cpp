@@ -3,9 +3,6 @@
 
 using namespace glm;
 
-glm::vec3 Scene::m_cameraDirection = glm::vec3(0, 0, -1);
-glm::vec3 Scene::m_cameraPosition  = glm::vec3(0, 0, 0);
-
 const char* Scene::primLabels[6] = {
   "Sphere",
   "Plane",
@@ -58,32 +55,6 @@ shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> ca
     return scene;
 }
 
-Ray Scene::rayFromClick(shared_ptr<Camera> camera, glm::vec2 screenPos){
-    vec3 origin = camera->position();
-    vec3 dir = camera->lookDir();
-    float fovDegrees = camera->getCameraProperties()->fov;
-
-    Ray ray;
-    ray.origin = origin;
-    m_cameraDirection = normalize(dir);
-    m_cameraPosition = origin;
-
-    float fov = radians(fovDegrees);
-    vec3 forward = m_cameraDirection;
-
-    vec3 worldUp = abs(forward.y) < 0.999
-                 ? vec3(0,1,0)
-                 : vec3(0,0,1);
-
-    vec3 right = normalize(cross(forward, worldUp));
-    vec3 up = cross(right, forward);
-
-    float tanHalfFov = tan(fov * 0.5f);
-
-    vec3 newDir = forward + (right * screenPos.x + up * screenPos.y) * tanHalfFov;
-    ray.direction = normalize(newDir);
-    return ray;
-}
 
 SceneState Scene::stateFromJson(const string& path){
     if (fs::path(path).extension().string() != ".json") return SceneState();
@@ -95,11 +66,13 @@ SceneState Scene::stateFromJson(const string& path){
 
 void Scene::stateToJson(SceneState sceneState, const string& path){
     // Remove unused meshes and remap mesh indices
-    vector<string> utilizedMeshes;
+    vector<string> utilizedMeshes = {};
+    vector<string> utilizedFurs = {};
     vector<int> meshIsUsed = vector<int>(sceneState.modelPaths.size(), -1);
+    vector<int> furIsUsed = vector<int>(sceneState.furPaths.size(), -1);
     for (Object& obj : sceneState.objectStates){
+        int index = obj.dataIndex;
         if (obj.type == PrimType::MESH_){
-            int index = obj.dataIndex;
             if (meshIsUsed[index] >= 0){
                 obj.dataIndex = meshIsUsed[index];
             }
@@ -109,8 +82,19 @@ void Scene::stateToJson(SceneState sceneState, const string& path){
                 meshIsUsed[index] = obj.dataIndex;
             }
         }
+        else if (obj.type == PrimType::FUR_){
+            if (furIsUsed[index] >= 0){
+                obj.dataIndex = furIsUsed[index];
+            }
+            else{
+                utilizedFurs.push_back(sceneState.furPaths[index]);
+                obj.dataIndex = (int)utilizedFurs.size() - 1;
+                furIsUsed[index] = obj.dataIndex;
+            }
+        }
     }
     sceneState.modelPaths = utilizedMeshes;
+    sceneState.furPaths = utilizedFurs;
 
     json data = json(sceneState);
     ofstream f(path);
@@ -119,25 +103,10 @@ void Scene::stateToJson(SceneState sceneState, const string& path){
     cout << "Scene saved to " << path << "." << endl;
 }
 
-shared_ptr<Mesh> Scene::findMesh(const string& path){
-    for (shared_ptr<Mesh> mesh : m_meshes){
-        if (mesh->modelPath == path) return mesh;
-    }
-    return nullptr;
-}
-
-vector<const char*> Scene::getObjectNames() const {
-    vector<const char*> names = {};
-    for (const Object& obj : m_objects){
-        names.push_back(obj.name.c_str());
-    }
-    return names; 
-}
-
 void Scene::loadFromState(const SceneState& sceneState, bool verbose){
     if ((int)sceneState.objectStates.empty()) return;
 
-    vector<shared_ptr<Mesh>> meshes;
+    vector<shared_ptr<Mesh>> meshes = {};
     for (const string& path: sceneState.modelPaths){
         shared_ptr<Mesh> newMesh = findMesh(path);
         if (newMesh == nullptr){
@@ -146,10 +115,20 @@ void Scene::loadFromState(const SceneState& sceneState, bool verbose){
         }
         meshes.push_back(newMesh);
     }
+    vector<shared_ptr<Fur>> furs = {};
+    for (const string& path: sceneState.furPaths){
+        shared_ptr<Fur> newFur = findFur(path);
+        if (newFur == nullptr){
+            newFur = make_shared<Fur>();
+            newFur->loadFromBin(path.c_str());
+        }
+        furs.push_back(newFur);
+    }
 
     deleteScene();
 
     m_meshes = meshes;
+    m_furs = furs;
     m_objects = sceneState.objectStates;
     m_selectedObject = -1;
     m_copiedObject = -1;
@@ -162,18 +141,23 @@ void Scene::loadFromState(const SceneState& sceneState, bool verbose){
     CameraProperties* camProps = m_camera->getCameraProperties();
     *camProps = sceneState.camProperties;
 
-    m_numFursChanged = true;
-    m_numMeshesChanged = true;
+    updateFurs();
+    updateMeshes();
     updateSceneNextFrame();
     if (verbose) cout << "Scene loaded." << endl;
 }
 
 SceneState Scene::getState(){
     SceneState sceneState;
-    sceneState.modelPaths = {};
     sceneState.objectStates = m_objects;
+
+    sceneState.modelPaths = {};
     for (auto mesh : m_meshes){
-        sceneState.modelPaths.push_back(mesh->modelPath);
+        sceneState.modelPaths.push_back(mesh->path);
+    }
+    sceneState.furPaths = {};
+    for (auto fur : m_furs){
+        sceneState.furPaths.push_back(fur->path);
     }
 
     sceneState.skyBottom = skyBottomColor;
@@ -184,33 +168,6 @@ SceneState Scene::getState(){
     return sceneState;
 }
 
-shared_ptr<Object> Scene::getObjectFromId(SceneState sceneState, unsigned int ID){
-    for (const Object& obj : sceneState.objectStates){
-        if (obj.ID == ID) return make_shared<Object>(obj);
-    }
-    return nullptr; 
-}
-
-
-glm::vec2 Scene::worldToScreen(shared_ptr<Camera> camera, glm::vec3 worldPos){
-    vec3 forward = camera->lookDir();
-
-    vec3 worldUp = abs(forward.y) < 0.999
-                 ? vec3(0,1,0)
-                 : vec3(0,0,1);
-
-    vec3 right = normalize(cross(forward, worldUp));
-    vec3 up = cross(right, forward);
-
-    vec3 dir = normalize(worldPos - camera->position());
-    float normFactor = 1 / dot(forward, dir);
-    dir *= normFactor;
-    float fov = m_camera->getCameraProperties()->fov;
-    float tanHalfFov = tan(radians(fov) * 0.5f);
-    float rightCompo = dot(right, dir) / tanHalfFov;
-    float upCompo = -dot(up, dir) / tanHalfFov;
-    return vec2(rightCompo * m_app->height() / 2.0f, upCompo * m_app->height() / 2.0f);
-}
 
 void Scene::initGPU(){
     glDeleteBuffers(1, &m_sceneBuffer);
@@ -228,6 +185,119 @@ void Scene::initGPU(){
     glDeleteBuffers(1, &m_nodesBuffer);
     glGenBuffers(1, &m_nodesBuffer);
 }
+
+
+int Scene::addObject(Object obj){
+    obj.ID = m_maxId++;
+    if (obj.type == PrimType::MESH_){
+        obj.name = m_meshes[obj.dataIndex]->name + string(" ") + to_string(obj.ID);
+        updateMeshes();
+    }
+    else if (obj.type == PrimType::FUR_){
+        obj.name = m_furs[obj.dataIndex]->name + string(" ") + to_string(obj.ID);
+        updateFurs();
+    }
+    else{
+        obj.name = string("Primitive ") + to_string(obj.ID);
+    }
+    int newIndex = (int)m_objects.size();
+    m_objects.push_back(obj);
+    updateScene();
+    m_selectedObject = newIndex;
+    return newIndex;
+}
+
+int Scene::addMesh(shared_ptr<Mesh> newMesh){
+    m_meshes.push_back(newMesh);
+    updateMeshes();
+    return (int)m_meshes.size() - 1;
+}
+
+int Scene::addFur(shared_ptr<Fur> newFur){
+    m_furs.push_back(newFur);
+    updateFurs();
+    return (int)m_furs.size() - 1;
+}
+
+void Scene::removeObject(int index){
+    if (index < 0 || index >= (int)m_objects.size()) return;
+    if (m_objects[index].type == PrimType::MESH_) updateMeshes();
+    else if (m_objects[index].type == PrimType::FUR_) updateFurs();
+    m_objects.erase(m_objects.begin() + index);
+    updateScene();
+    m_selectedObject = -1;
+}
+
+void Scene::removeMesh(int index){
+    if (index < 0 || index > (int)m_meshes.size()) return;
+    for (Object& obj : m_objects){
+        if (obj.type != PrimType::MESH_) continue;
+        if (obj.dataIndex > index) obj.dataIndex -= 1;
+        if (obj.dataIndex == index) obj.dataIndex = -1;
+    }
+    m_meshes.erase(m_meshes.begin() + index);
+    updateMeshes();
+    updateScene();
+}
+
+void Scene::removeFur(int index){
+    if (index < 0 || index > (int)m_furs.size()) return;
+    for (Object& obj : m_objects){
+        if (obj.type != PrimType::FUR_) continue;
+        if (obj.dataIndex > index) obj.dataIndex -= 1;
+        if (obj.dataIndex == index) obj.dataIndex = -1;
+    }
+    m_furs.erase(m_furs.begin() + index);
+    updateFurs();
+    updateScene();
+}
+
+vector<const char*> Scene::getObjectNames() const {
+    vector<const char*> names = {};
+    for (const Object& obj : m_objects){
+        names.push_back(obj.name.c_str());
+    }
+    return names; 
+}
+
+vector<const char*> Scene::getMeshNames() const {
+    vector<const char*> result;
+    for (shared_ptr<Mesh> mesh : m_meshes){
+        result.push_back(mesh->name.c_str());
+    }
+    return result;
+}
+
+vector<const char*> Scene::getFurNames() const {
+    vector<const char*> result;
+    for (shared_ptr<Fur> fur : m_furs){
+        result.push_back(fur->name.c_str());
+    }
+    return result;
+}
+
+
+shared_ptr<Mesh> Scene::findMesh(const string& path){
+    for (shared_ptr<Mesh> mesh : m_meshes){
+        if (mesh->path == path) return mesh;
+    }
+    return nullptr;
+}
+
+shared_ptr<Fur> Scene::findFur(const string& path){
+    for (shared_ptr<Fur> fur : m_furs){
+        if (fur->path == path) return fur;
+    }
+    return nullptr;
+}
+
+shared_ptr<Object> Scene::getObjectFromId(SceneState sceneState, unsigned int ID){
+    for (const Object& obj : sceneState.objectStates){
+        if (obj.ID == ID) return make_shared<Object>(obj);
+    }
+    return nullptr; 
+}
+
 
 int Scene::intersectObject(const Ray& ray){
     float distance = FLT_MAX;
@@ -254,6 +324,12 @@ int Scene::intersectObject(const Ray& ray){
                 dist = Intersections::intersectMesh(ray, mesh, obj.pos, obj.scale, obj.rotation);
                 break;
             }
+            case PrimType::FUR_: {
+                if (obj.dataIndex < 0 || obj.dataIndex >= (int)m_furs.size()) break;
+                shared_ptr<Fur> fur = m_furs[obj.dataIndex];
+                dist = Intersections::intersectFur(ray, fur, obj.pos, obj.scale, obj.rotation);
+                break;
+            }
             default:
                 break;
         }
@@ -265,58 +341,10 @@ int Scene::intersectObject(const Ray& ray){
     return intersected;
 }
 
-int Scene::addMesh(shared_ptr<Mesh> newMesh){
-    m_meshes.push_back(newMesh);
-    m_numMeshesChanged = true;
-    return (int)m_meshes.size() - 1;
-}
-
-void Scene::removeMesh(int index){
-    if (index < 0 || index > (int)m_meshes.size()) return;
-    for (Object& obj : m_objects){
-        if (obj.type != PrimType::MESH_) continue;
-        if (obj.dataIndex > index) obj.dataIndex -= 1;
-        if (obj.dataIndex == index) obj.dataIndex = -1;
-    }
-    m_meshes.erase(m_meshes.begin() + index);
-    updateScene();
-}
-
-int Scene::addFur(shared_ptr<Fur> newFur){
-    m_furs.push_back(newFur);
-    m_numFursChanged = true;
-    return (int)m_furs.size() - 1;
-}
-
-int Scene::addObject(Object obj){
-    obj.ID = m_maxId++;
-    if (obj.type == PrimType::MESH_){
-        obj.name = m_meshes[obj.dataIndex]->modelName + string(" ") + to_string(obj.ID);
-        updateMeshes();
-    }
-    else{
-        obj.name = string("Primitive ") + to_string(obj.ID);
-    }
-    int newIndex = (int)m_objects.size();
-    m_objects.push_back(obj);
-    updateScene();
-    m_selectedObject = newIndex;
-    return newIndex;
-}
-
 Object* Scene::getObject(int index){
     if (index < 0 || index >= (int)m_objects.size()) return nullptr;
 
     return &m_objects[index];
-}
-
-void Scene::removeObject(int index){
-    if (index < 0 || index >= (int)m_objects.size()) return;
-    cout << m_objects[index].type << endl;
-    if (m_objects[index].type == PrimType::MESH_) updateMeshes();
-    m_objects.erase(m_objects.begin() + index);
-    updateScene();
-    m_selectedObject = -1;
 }
 
 void Scene::copyObject(int index){
@@ -329,21 +357,6 @@ int Scene::pasteObject(){
     return addObject(*newObj);
 }
 
-vector<const char*> Scene::getMeshNames() const {
-    vector<const char*> result;
-    for (shared_ptr<Mesh> mesh : m_meshes){
-        result.push_back(mesh->modelName.c_str());
-    }
-    return result;
-}
-
-vector<const char*> Scene::getFurNames() const {
-    vector<const char*> result;
-    for (shared_ptr<Fur> fur : m_furs){
-        result.push_back(fur->furName.c_str());
-    }
-    return result;
-}
 
 void Scene::updateMeshes(){
     m_numMeshesChanged = true;
@@ -385,36 +398,23 @@ void Scene::updateGPU(){
 
     m_resetFrame();
 
-    vector<linBVHNode> nodes = {};
-    vector<int> nodeOffsets = {};
-    vector<int> numberOfNodes = {};
-    vector<bool> meshIsUsed = vector<bool>(m_meshes.size(), false);
-    vector<Triangle> triangles = {};
-    vector<int> triangleOffsets = {};
-    for (Object& obj : m_objects){
-        if (obj.type != PrimType::MESH_ || obj.dataIndex < 0 || obj.dataIndex >= (int)m_meshes.size()) continue;
-        obj.dataIndex = std::min(obj.dataIndex, (int)m_meshes.size() - 1);
-        meshIsUsed[obj.dataIndex] = true; 
-    }
-    for (int i = 0; i < (int)m_meshes.size(); i++){
-        if (!meshIsUsed[i]){
-            triangleOffsets.push_back(-1);
-            nodeOffsets.push_back(-1);
-            numberOfNodes.push_back(-1);
-            continue;
-        }
-        shared_ptr<Mesh> mesh = m_meshes[i];
+    vector<bool> meshIsUsed = getSourceUsed<Mesh>(m_meshes, PrimType::MESH_);
+    Scene::CleanedBVHResult<Triangle> meshesResult = {};
+    cleanBVHData<Mesh, Triangle>(
+        m_meshes, meshIsUsed,
+        [](shared_ptr<Mesh> m) -> const vector<Triangle>& { return m->getTriangles(); },
+        [](shared_ptr<Mesh> m) -> const vector<linBVHNode>& { return m->getLinNodes(); },
+        meshesResult
+    );
+    vector<bool> furIsUsed = getSourceUsed<Fur>(m_furs, PrimType::FUR_);
+    Scene::CleanedBVHResult<HairPoint> fursResult = {};
+    cleanBVHData<Fur, HairPoint>(
+        m_furs, furIsUsed,
+        [](shared_ptr<Fur> f) -> const vector<HairPoint>& { return f->getPoints(); },
+        [](shared_ptr<Fur> f) -> const vector<linBVHNode>& { return f->getLinNodes(); },
+        fursResult
+    );
 
-        const vector<Triangle>& meshTriangles = mesh->getTriangles();
-        const vector<linBVHNode>& meshNodes = mesh->getLinNodes();
-
-        triangleOffsets.push_back((int)triangles.size());
-        nodeOffsets.push_back((int)nodes.size());
-        numberOfNodes.push_back((int)meshNodes.size());
-
-        triangles.insert(triangles.end(), meshTriangles.begin(), meshTriangles.end());
-        nodes.insert(nodes.end(), meshNodes.begin(), meshNodes.end());
-    }
     vector<PrimitiveObject> primitives = {};
     vector<BVHInfos> meshInfos = {};
     vector<BVHInfos> furInfos = {};
@@ -423,7 +423,6 @@ void Scene::updateGPU(){
     int numVolumePrims = 0;
     vector<Material> materials = {};
     vector<int> lightIndicies = {};
-    vector<HairPoint> hairPoints = {};
     for (const Object& obj : m_objects){
         int matIndex = addMaterial(materials, obj.mat);
         if (obj.type == PrimType::MESH_){
@@ -433,9 +432,9 @@ void Scene::updateGPU(){
                 numVolumeMeshes++;
             }
             BVHInfos meshInfo;
-            meshInfo.leafOffset = triangleOffsets[obj.dataIndex];
-            meshInfo.nodeOffset = nodeOffsets[obj.dataIndex];
-            meshInfo.numberOfNodes = numberOfNodes[obj.dataIndex];
+            meshInfo.leafOffset = meshesResult.leavesOffsets[obj.dataIndex];
+            meshInfo.nodeOffset = meshesResult.nodeOffsets[obj.dataIndex];
+            meshInfo.numberOfNodes = meshesResult.numberOfNodes[obj.dataIndex];
             meshInfo.pos = obj.pos;
             meshInfo.scale = obj.scale;
             meshInfo.rotation = obj.rotation;
@@ -445,22 +444,16 @@ void Scene::updateGPU(){
         }
         else if (obj.type == PrimType::FUR_){
             if (obj.dataIndex < 0 || obj.dataIndex >= (int)m_furs.size()) continue;
-            shared_ptr<Fur> fur = m_furs[obj.dataIndex];
-            const vector<HairPoint>& points = fur->getPoints();
-            const vector<linBVHNode>& furNodes = fur->getLinNodes();
-
+            
             BVHInfos furInfo;
-            furInfo.leafOffset = (int)hairPoints.size();
-            furInfo.nodeOffset = (int)nodes.size();
-            furInfo.numberOfNodes = (int)furNodes.size();
+            furInfo.leafOffset = fursResult.leavesOffsets[obj.dataIndex];
+            furInfo.nodeOffset = meshesResult.nodes.size() + fursResult.nodeOffsets[obj.dataIndex];
+            furInfo.numberOfNodes = fursResult.numberOfNodes[obj.dataIndex];
             furInfo.pos = obj.pos;
             furInfo.scale = obj.scale;
             furInfo.rotation = obj.rotation;
             furInfo.matIndex = matIndex;
             furInfos.push_back(furInfo);
-
-            hairPoints.insert(hairPoints.end(), points.begin(), points.end());
-            nodes.insert(nodes.end(), furNodes.begin(), furNodes.end());
         }
         else {
             if (obj.mat.type == MatType::GLASS && (obj.mat.data.w > 0)){
@@ -479,12 +472,10 @@ void Scene::updateGPU(){
     }
     int numMeshes = (int)meshInfos.size();
     int numFurs = (int)furInfos.size();
-    vector<BVHInfos>& bvhInfos = meshInfos;
-    bvhInfos.insert(bvhInfos.end(), furInfos.begin(), furInfos.end());
-    cout << numFurs << endl;
 
-    vector<int> indices = lightIndicies;
-    indices.insert(indices.end(), volumeIndicies.begin(), volumeIndicies.end());
+    vector<linBVHNode> nodes = Utils::concat<linBVHNode>({meshesResult.nodes, fursResult.nodes});
+    vector<BVHInfos> bvhInfos = Utils::concat<BVHInfos>({meshInfos, furInfos});
+    vector<int> indices = Utils::concat<int>({lightIndicies, volumeIndicies});
 
     glUniform1i(ShaderProgram::getVarLoc("numPrimitives"), (int)primitives.size());
 
@@ -494,12 +485,12 @@ void Scene::updateGPU(){
 
     if (m_numMeshesChanged){
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_trianglesBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, (int)triangles.size() * sizeof(Triangle), triangles.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, (int)meshesResult.leaves.size() * sizeof(Triangle), meshesResult.leaves.data(), GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_trianglesBuffer);
     }
     if (m_numFursChanged){
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_hairStrandBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, (int)hairPoints.size() * sizeof(HairPoint), hairPoints.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, (int)fursResult.leaves.size() * sizeof(HairPoint), fursResult.leaves.data(), GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, m_hairStrandBuffer);
     }
     if (m_numFursChanged || m_numMeshesChanged){
@@ -546,4 +537,5 @@ void Scene::updateGPU(){
 void Scene::deleteScene(){
     m_objects.clear();
     m_meshes.clear();
+    m_furs.clear();
 }

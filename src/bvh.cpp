@@ -51,7 +51,7 @@ shared_ptr<BVHNode> BVH::computeSAH(vector<BVHLeaf>& leaves, vector<int>& indice
     const int MAX_OBJECT_PER_LEAF = 1;
     if (end - begin <= MAX_OBJECT_PER_LEAF) {
         node->leaf = indices[begin];
-        node->leftBounds = {vec4(0), vec4(0)};
+        node->leftBounds = {vec4(0), vec4(0)}; 
         node->rightBounds = {vec4(0), vec4(0)};
         return node;
     }

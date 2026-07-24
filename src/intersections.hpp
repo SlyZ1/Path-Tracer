@@ -3,6 +3,9 @@
 
 #include <glm/glm.hpp>
 #include "mesh.hpp"
+#include "fur.hpp"
+#include "camera.hpp"
+#include "app.hpp"
 
 using namespace glm;
 
@@ -28,10 +31,15 @@ public:
     static float intersectSphere(const Ray& ray, vec3 pos, vec3 scale, vec3 rotation);
     static float intersectPlane(const Ray& ray, vec3 pos, vec3 scale, vec3 rotation);
     static float intersectCube(const Ray& ray, vec3 pos, vec3 scale, vec3 rotation);
+    static float intersectCylinder(vec3 pa, float ra, vec3 pb, float rb, const Ray& ray);
     static float intersectCylinder(const Ray& ray, vec3 pos, vec3 scale, vec3 rotation);
     static float intersectAABB(const Ray& invRay, const AABB& aabb, float tMin, float tMax);
     static float intersectTriangle(const Ray& ray, const Triangle& triangle);
     static float intersectMesh(const Ray& ray, shared_ptr<Mesh> mesh, vec3 pos, vec3 scale, vec3 rotation);
+    static float intersectFur(const Ray& ray, shared_ptr<Fur> fur, vec3 pos, vec3 scale, vec3 rotation);
+
+    static Ray rayFromClick(shared_ptr<Camera> camera, vec2 screenPos);
+    static vec2 worldToScreen(shared_ptr<App> app, shared_ptr<Camera> camera, vec3 worldPos);
 };
 
 #endif

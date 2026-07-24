@@ -98,15 +98,7 @@ float Intersections::intersectCube(const Ray& ray, vec3 pos, vec3 scale, vec3 ro
     return t;
 }
 
-float Intersections::intersectCylinder(const Ray& ray, vec3 pos, vec3 scale, vec3 rotation){
-    mat3 rot = rotationMatrix(rotation);
-
-    float ra = scale.x;
-    float rb = scale.z;
-    float height = scale.y;
-    vec3 pa = pos + vec3(0.0f, height * 0.5f, 0.0f);
-    vec3 pb = pos - vec3(0.0f, height * 0.5f, 0.0f);
-
+float Intersections::intersectCylinder(vec3 pa, float ra, vec3 pb, float rb, const Ray& ray){
     vec3 ba = pb - pa;
     vec3 oa = ray.origin - pa;
     vec3 ob = ray.origin - pb;
@@ -144,6 +136,16 @@ float Intersections::intersectCylinder(const Ray& ray, vec3 pos, vec3 scale, vec
     if (y < 0.0 || y > m0) return -1;
 
     return t;
+}
+
+float Intersections::intersectCylinder(const Ray& ray, vec3 pos, vec3 scale, vec3 rotation){
+    mat3 rot = rotationMatrix(rotation);
+    float ra = scale.x;
+    float rb = scale.z;
+    vec3 height = rot * vec3(0, scale.y, 0);
+    vec3 pa = pos + height * 0.5f;
+    vec3 pb = pos - height * 0.5f;
+    return intersectCylinder(pa, ra, pb, rb, ray);
 }
 
 float Intersections::intersectAABB(const Ray& invRay, const AABB& aabb, float tMin, float tMax) {
@@ -193,10 +195,11 @@ float Intersections::intersectMesh(const Ray& ray, shared_ptr<Mesh> mesh, vec3 p
     const vector<linBVHNode>& nodes = mesh->getLinNodes();
     const vector<Triangle>& triangles = mesh->getTriangles();
 
-    float hitT = 1e6f;
+    float hitT = FLT_MAX;
     Ray newRay = ray;
-    newRay.origin = invRot * (ray.origin - pos);
-    newRay.direction = invRot * ray.direction;
+    newRay.origin = invRot * ((ray.origin - pos) / scale);
+    newRay.direction = invRot * (ray.direction / scale);
+    float newRayLen = length(newRay.direction);
     Ray invRay = newRay;
     invRay.direction = 1.0f / invRay.direction;
 
@@ -217,7 +220,10 @@ float Intersections::intersectMesh(const Ray& ray, shared_ptr<Mesh> mesh, vec3 p
         if (boxT < 0 || boxT > hitT) continue;
 
         if (node.leaf >= 0) {
+            newRay.direction /= newRayLen;
             float triT = intersectTriangle(newRay, Mesh::scaleTri(triangles[node.leaf], scale));
+            triT /= newRayLen;
+            newRay.direction *= newRayLen;
             if (triT >= 0 && triT < hitT) {
                 hitT = triT;
             }
@@ -244,4 +250,117 @@ float Intersections::intersectMesh(const Ray& ray, shared_ptr<Mesh> mesh, vec3 p
     }
 
     return hitT;
+}
+
+float Intersections::intersectFur(const Ray& ray, shared_ptr<Fur> fur, vec3 pos, vec3 scale, vec3 rotation) {
+    mat3 rot = rotationMatrix(rotation);
+    mat3 invRot = transpose(rot);
+
+    const vector<linBVHNode>& nodes = fur->getLinNodes();
+    const vector<HairPoint>& points = fur->getPoints();
+
+    float hitT = FLT_MAX;
+    Ray newRay = ray;
+    newRay.origin = invRot * ((ray.origin - pos) / scale);
+    newRay.direction = invRot * (ray.direction / scale);
+    float newRayLen = length(newRay.direction);
+    Ray invRay = newRay;
+    invRay.direction = 1.0f / invRay.direction;
+
+    float initialT = intersectAABB(invRay, nodes[(int)nodes.size() - 1].bounds, 0.001f, hitT);
+    if (initialT < 0) return -1.0f;
+
+    const int STACK_SIZE = 32;
+
+    int stack[STACK_SIZE]; 
+    int stackPtr = 0;
+    stack[stackPtr++] = (int)nodes.size() - 1;
+
+    while (stackPtr > 0) {
+        int nodeIndex = stack[--stackPtr];
+        const linBVHNode& node = nodes[nodeIndex];
+
+        float boxT = intersectAABB(invRay, node.bounds, 0.001f, hitT);
+        if (boxT < 0 || boxT > hitT) continue;
+
+        if (node.leaf >= 0) {
+            HairPoint pa = points[node.leaf];
+            HairPoint pb = points[node.leaf + 1];
+            newRay.direction /= newRayLen;
+            float leafHitT = intersectCylinder(pa.p, pa.r * 2, pb.p, pb.r * 2, newRay);
+            leafHitT /= newRayLen;
+            newRay.direction *= newRayLen;
+            if (leafHitT >= 0 && leafHitT < hitT) {
+                hitT = leafHitT;
+            }
+        }
+        else {
+            float leftT = -1.0f;
+            float rightT = -1.0f;
+            if (node.left >= 0)
+                leftT = intersectAABB(invRay, node.leftBounds, 0.001f, hitT);
+            if (node.right >= 0)
+                rightT = intersectAABB(invRay, node.rightBounds, 0.001f, hitT);
+
+            if (leftT >= 0 && rightT >= 0){
+                if (leftT < rightT) {
+                    stack[stackPtr++] = node.right;
+                    stack[stackPtr++] = node.left;
+                } else {
+                    stack[stackPtr++] = node.left;
+                    stack[stackPtr++] = node.right;
+                }
+            } else if (leftT >= 0) stack[stackPtr++] = node.left;
+            else if (rightT >= 0) stack[stackPtr++] = node.right;
+        }
+    }
+
+    return hitT;
+}
+
+Ray Intersections::rayFromClick(shared_ptr<Camera> camera, vec2 screenPos){
+    vec3 origin = camera->position();
+    vec3 dir = camera->lookDir();
+    float fovDegrees = camera->getCameraProperties()->fov;
+
+    Ray ray;
+    ray.origin = origin;
+
+    float fov = radians(fovDegrees);
+    vec3 forward = dir;
+
+    vec3 worldUp = abs(forward.y) < 0.999
+                 ? vec3(0,1,0)
+                 : vec3(0,0,1);
+
+    vec3 right = normalize(cross(forward, worldUp));
+    vec3 up = cross(right, forward);
+
+    float tanHalfFov = tan(fov * 0.5f);
+
+    vec3 newDir = forward + (right * screenPos.x + up * screenPos.y) * tanHalfFov;
+    ray.direction = normalize(newDir);
+    return ray;
+}
+
+
+vec2 Intersections::worldToScreen(shared_ptr<App> app, shared_ptr<Camera> camera, vec3 worldPos){
+    float fov = camera->getCameraProperties()->fov;
+    vec3 forward = camera->lookDir();
+    vec3 pos = camera->position();
+
+    vec3 worldUp = abs(forward.y) < 0.999
+                 ? vec3(0,1,0)
+                 : vec3(0,0,1);
+
+    vec3 right = normalize(cross(forward, worldUp));
+    vec3 up = cross(right, forward);
+
+    vec3 dir = normalize(worldPos - pos);
+    float normFactor = 1 / dot(forward, dir);
+    dir *= normFactor;
+    float tanHalfFov = tan(radians(fov) * 0.5f);
+    float rightCompo = dot(right, dir) / tanHalfFov;
+    float upCompo = -dot(up, dir) / tanHalfFov;
+    return vec2(rightCompo * app->height() / 2.0f, upCompo * app->height() / 2.0f);
 }

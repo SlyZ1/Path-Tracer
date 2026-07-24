@@ -35,10 +35,10 @@ public:
     static AABB scaleAABB(AABB box, vec3 scale);
     static Triangle scaleTri(Triangle tri, vec3 scale);
 
-    string modelPath = "";
-    string modelName = "";
+    string path = "";
+    string name = "";
 
-    void loadFromModel(const char* path);
+    void loadFromModel(string dataPath);
     const vector<Triangle>& getTriangles() const { return m_triangles; }
     const vector<linBVHNode>& getLinNodes() const { return m_linNodes; }
     
