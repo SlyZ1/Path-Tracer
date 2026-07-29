@@ -31,17 +31,36 @@ float gaussian(float std, float x){
     return inversesqrt(2 * PI * std * std) * exp(- 0.5 * inside * inside);
 }
 
-float logitCDF(float x, float s)
-{
-    return 1.0f / (1.0f + exp(-x / s));
+float powi(float base, int exponent) {
+    bool negative = exponent < 0;
+    int e = negative ? -exponent : exponent;
+
+    float result = 1.0;
+    float b = base;
+
+    while (e > 0) {
+        if ((e & 1) == 1) result *= b;
+        b *= b;
+        e >>= 1;
+    }
+
+    return negative ? (1.0 / result) : result;
 }
 
-float logit(float x, float s, float a, float b){
-    s *= SQRT_PI_OVER_8;
+float logitCDF(float x, float s)
+{
+    return 1.0f / (1.0f + exp(-x / (s + EPS)));
+}
+
+float logit(float x, float s){
+    x = abs(x);
     float e = exp(-x / s);
-    float Fa = logitCDF(a, s);
-    float Fb = logitCDF(b, s);
-    return e / (s * (1 + e) * (1 + e) * (Fa - Fb));
+    return e / (s * (1 + e) * (1 + e));
+}
+
+float trimmedLogit(float x, float s, float a, float b){
+    s *= SQRT_PI_OVER_8;
+    return logit(x, s) / (logitCDF(b, s) - logitCDF(a, s));
 }
 
 float sampleLogit(float u, float s, float a, float b)
@@ -50,9 +69,10 @@ float sampleLogit(float u, float s, float a, float b)
     float Fa = logitCDF(a, s);
     float Fb = logitCDF(b, s);
 
-    float y = Fa + u * (Fb - Fa);
+    float y = mix(Fa, Fb, u);
+    y = clamp(y, 1e-6, 1.0 - 1e-6);
 
-    return s * log(y / (1.0f - y));
+    return clamp(-s * log(1.0 / y - 1.0), a, b);
 }
 
 mat3 rotationMatrix(vec3 rotationDegrees){

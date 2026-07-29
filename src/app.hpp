@@ -14,6 +14,7 @@
 #include <cuda_gl_interop.h>
 #include <vector>
 #include "win32_titlebar.hpp"
+#include <algorithm>
 
 using namespace std;
 

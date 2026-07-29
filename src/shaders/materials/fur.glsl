@@ -1,65 +1,72 @@
-Spectrum computeT(Spectrum sigmaA, float h, float eta, float cosThetaT){
-    float sinGammaT = h / eta;
+#define ETA 1.55
+
+Spectrum computeT(Spectrum sigmaA, float h, float etaP, float sinThetaI){
+    float sinThetaT = sinThetaI / ETA;
+    float cosThetaT = sqrt(1 - sinThetaT * sinThetaT);
+
+    float sinGammaT = h / etaP;
     float cosGammaT = sqrt(1 - sinGammaT * sinGammaT);
-    return exp(-2 * sigmaA * cosGammaT / cosThetaT);
+    return exp(-2 * sigmaA * (cosGammaT / cosThetaT));
 }
 
-Spectrum computeA(float p, float h, float eta, float cosThetaD, float cosThetaT, Spectrum sigmaAPrime){
-    float n = 1.0 / eta;
-    float cos1 = cosThetaD * sqrt(1 - h * h);
-    float f = fresnel(cos1, computeCos2(cos1, n), n);
-    if (p == 0){
-        return Spectrum(f);
-    }
-    else{
-        Spectrum T = computeT(sigmaAPrime, h, eta, cosThetaT);
-        Spectrum right = T;
-        if (p == 2) right *= f * T;
-        return (1 - f) * (1 - f) * right;
-    }
+Spectrum computeA(int p, float h, float cosThetaI, Spectrum T){
+    float cos1 = cosThetaI * sqrt(1 - h * h);
+    float f = fresnel(cos1, computeCos2(cos1, ETA), ETA);
+    if (p == 0) return Spectrum(f);
+    
+    Spectrum res = (1 - f) * (1 - f) * T;
+    if (p >= 2) res *= f * T;
+    if (p == 3) res *= f * T / (1.0 - f * T);
+    return res;
 }
 
-float computeEtaPrime(float eta, float cosThetaD){
-    float sin2ThetaD = 1 - cosThetaD * cosThetaD;
-    return sqrt(eta * eta - sin2ThetaD) / cosThetaD;
+float computeEtaPrime(float cosThetaI){
+    float sin2ThetaD = 1 - cosThetaI * cosThetaI;
+    return sqrt(ETA * ETA - sin2ThetaD) / cosThetaI;
 }
 
-#define ALPHA PI * 5.0 / 180.0 // 5° in rad
-float computeThetaCone(float thetaI, float p){
+#define ALPHA PI * 0.0 / 180.0 // 5° in rad
+float computeThetaCone(float thetaI, int p){
     if (p == 0) return -thetaI + 2 * ALPHA;
     else if (p == 1) return -thetaI - ALPHA;
     else return -thetaI - 4 * ALPHA;
 }
 
-float computeLobeVariance(float vR, float p){
+float computeLobeVariance(float vR, int p){
     if (p == 0) return vR;
-    if (p == 1) return vR / 4.0; // variance = sigma², 2 -> 4
-    if (p == 2) return vR * 4.0;
+    if (p == 1) return vR * 0.25; // variance = sigma², 2 -> 4
+    return vR * 4.0;
 }
 
-float sampleSphericalGaussian(inout uint seed, float v){
-    float x = rand(seed);
-    float expTerm = exp(-2.0 / v);
-    float val = (1.0 - x) + x * expTerm;
-    float u = 1.0 + v * log(max(val, 1e-12));
-    return clamp(u, -1.0, 1.0);
+float reparamBetaM(float bM){
+    return 0.726 * bM + 0.812 * bM * bM + 3.7 * powi(bM, 20);
 }
 
-float sampleThetaOut(inout uint seed, float u, float thetaCone){
+float reparamBetaN(float bN){
+    return 0.265 * bN + 1.194 * bN * bN + 5.372 * powi(bN, 22);
+}
+
+float sampleThetaOut(inout uint seed, float v, float thetaCone){
+    float x1 = rand(seed);
+    float x2 = rand(seed);
+    float val = max(x1, 1e-5) + (1.0 - x1) * exp(-2.0 / (v + EPS));
+    float u = 1.0 + v * log(val);
     u = clamp(u, -1.0, 1.0);
-    float x = rand(seed);
-    float thetaPrime = PI * 0.5 - thetaCone;
-    return asin(u * cos(thetaPrime) + sqrt(1 - u * u) * cos(2 * PI * x) * sin(thetaPrime));
+    float s = u * sin(thetaCone) + sqrt(1 - u * u) * cos(2 * PI * x2) * cos(thetaCone);
+    return asin(clamp(s, -1.0, 1.0));
 }
 
-vec2 sampleP(inout uint seed, float A0, float A1, float A2){
-    float sum = A0 + A1 + A2 + 1e-6;
-    float w0 = A0 / sum;
-    float w1 = A1 / sum;
+vec2 sampleP(inout uint seed, vec4 Aspec){
+    float sum = Aspec.x + Aspec.y + Aspec.z + Aspec.w + 1e-6;
+    float w0 = Aspec.x / sum;
+    float w1 = Aspec.y / sum;
+    float w2 = Aspec.z / sum;
+    float w3 = Aspec.w / sum;
     float x = rand(seed);
     if (x < w0) return vec2(0, w0);
     else if (x < w0 + w1) return vec2(1, w1);
-    else return vec2(2, A2 / sum);
+    else if (x < w0 + w1 + w2) return vec2(2, w2);
+    else return vec2(3, w3);
 }
 
 void computeThetaPhi(vec3 wi, vec3 tangent, vec3 bitangent, vec3 normal, out float thetaI, out float phiI, out float sinThetaI, out float cosThetaI){
@@ -79,8 +86,25 @@ vec3 directionFromThetaPhi(float theta, float phi, vec3 tangent, vec3 normal, ve
     return sinTheta * tangent + cosTheta * cos(phi) * normal + cosTheta * sin(phi) * bitangent;
 }
 
-float computePhiOut(int p, float gamma_i, float gamma_t){
-    return p * (2 * gamma_t + PI) - 2 * gamma_i;
+float computePhiOut(int p, float gammaI, float gammaT){
+    return p * (2 * gammaT + PI) - 2 * gammaI;
+}
+
+vec4 computeAspec(float cosThetaI, float h, Spectrum T){
+    Spectrum Aspec0 = computeA(0, h, cosThetaI, T);
+    Spectrum Aspec1 = computeA(1, h, cosThetaI, T);
+    Spectrum Aspec2 = computeA(2, h, cosThetaI, T);
+    Spectrum Aspec3 = computeA(3, h, cosThetaI, T);
+
+    return vec4(luminanceMean(Aspec0), luminanceMean(Aspec1), luminanceMean(Aspec2), luminanceMean(Aspec3));
+}
+
+Spectrum computeSigmaA(Spectrum albedo, float betaN){
+    float betaN2 = betaN * betaN;
+    float betaN3 = betaN2 * betaN;
+    float pol = 5.969 - 0.215 * betaN + 2.532 * betaN2 - 10.73 * betaN3 + 5.574 * betaN2 * betaN2 + 0.245 * betaN2 * betaN3;
+    Spectrum res = log(albedo) / pol;
+    return res * res;
 }
 
 void fur(inout RaycastData data, bool inVolume){
@@ -89,8 +113,7 @@ void fur(inout RaycastData data, bool inVolume){
     ray.pbsdf = -1;
     ray.origin += ray.dir * hit.t;
 
-    float h = rand(seed) * 2 - 1;
-
+    // 1
     vec3 wi = -ray.dir;
     vec3 normal = hit.normal;
     normal = normalize(normal + hit.tangent * dot(hit.tangent, normal));
@@ -99,61 +122,49 @@ void fur(inout RaycastData data, bool inVolume){
     float thetaI, phiI, sinThetaI, cosThetaI;
     computeThetaPhi(wi, hit.tangent, bitangent, normal, thetaI, phiI, sinThetaI, cosThetaI);
 
-    const float eta = 1.55;
-    Spectrum sigmaA = (Spectrum(1.0) - getSpectrumValue(hit.mat)) * 0.5;
-    float sinThetaT = sinThetaI / eta;
-    float cosThetaT = sqrt(1 - sinThetaT * sinThetaT);
-    Spectrum sigmaAPrime = sigmaA / cosThetaT;
+    vec3 azimuthalDir = normalize(ray.dir - hit.tangent * dot(hit.tangent, ray.dir));
+    float h = -dot(cross(normal, azimuthalDir), hit.tangent);
 
-    
-    //Compute Aspec0 - R
-    int p = 0;
-    float thetaC = computeThetaCone(thetaI, p);
-    float cosThetaD = cos(thetaC - ALPHA); // No roughness, perfect relfection
-    float etaPrime = computeEtaPrime(eta, cosThetaD);
-    Spectrum Aspec0 = computeA(p, h, etaPrime, cosThetaD, cosThetaT, sigmaAPrime);
-    
-    // Compute Aspec1 - TT
-    p = 1;
-    thetaC = computeThetaCone(thetaI, p);
-    cosThetaD = cos(thetaC + ALPHA / 2.0); // No roughness, perfect transmission
-    etaPrime = computeEtaPrime(eta, cosThetaD);
-    Spectrum Aspec1 = computeA(p, h, etaPrime, cosThetaD, cosThetaT, sigmaAPrime);
-    
-    // Compute Aspec2 - TRT
-    p = 2;
-    thetaC = computeThetaCone(thetaI, p);
-    cosThetaD = cos(thetaC + ALPHA * 2.0); // No roughness, perfect relfection
-    etaPrime = computeEtaPrime(eta, cosThetaD);
-    Spectrum Aspec2 = computeA(p, h, etaPrime, cosThetaD, cosThetaT, sigmaAPrime);
+    // 2
+    Spectrum sigmaA = (1.0 - getSpectrumValue(hit.mat)) * 0.5;
+    float etaPrime = computeEtaPrime(cosThetaI);
+    Spectrum T = computeT(sigmaA, h, etaPrime, sinThetaI);
 
-    vec2 pSample = sampleP(seed, luminanceMean(Aspec0), luminanceMean(Aspec1), luminanceMean(Aspec2));
-    p = int(pSample.x);
+    // 3 - sample p
+    vec4 Aspec = computeAspec(cosThetaI, h, T);
+    vec2 pSample = sampleP(seed, Aspec);
+    int p = int(pSample.x);
     float wp = pSample.y;
-
-    thetaC = computeThetaCone(thetaI, p);
-    float betaR = PI * betaM(hit.mat) / 180.0;
-    float u = sampleSphericalGaussian(seed, computeLobeVariance(betaR * betaR, p));
-    float thetaO = sampleThetaOut(seed, u, thetaC);
-    float thetaD = (thetaO - thetaI) / 2.0;
-    cosThetaD = cos(thetaD);
-    etaPrime = computeEtaPrime(eta, cosThetaD);
     
-    float gamma_i = asin(h);
-    float gamma_t = asin(h / etaPrime);
-    float deltaPhi = sampleLogit(rand(seed), 1.0, -PI, PI);
-    float phiO = computePhiOut(p, gamma_i, gamma_t) + deltaPhi * PI * betaN(hit.mat) / 180.0;
-    
-    Spectrum Ap = computeA(p, h, etaPrime, cosThetaD, cosThetaT, sigmaAPrime);
-    Spectrum weight = Ap / wp;
+    // 4 compute
+    float thetaC = computeThetaCone(thetaI, p);
+    float betaR = reparamBetaM(betaM(hit.mat));
+    float v = computeLobeVariance(betaR * betaR, p);
+    float thetaO = sampleThetaOut(seed, v, thetaC);
 
-    ray.throughput *= weight;
-    ray.dir = directionFromThetaPhi(thetaO, phiO, hit.tangent, normal, bitangent);
-    if (dot(ray.dir, hit.normal) > 0){
-        ray.origin += normal * EPS;
+    Spectrum Ap = computeA(p, h, cosThetaI, T);
+    ray.throughput *= Ap / (wp + EPS);
+    
+    float phiO;
+    if (p < 3){
+        float gammaI = asin(h);
+        float gammaT = asin(h / etaPrime);
+        float repamBetaN = reparamBetaN(betaN(hit.mat));
+        float deltaPhi = sampleLogit(rand(seed), repamBetaN, -PI, PI);
+        phiO = phiI + computePhiOut(p, gammaI, gammaT) + deltaPhi;
+        phiO = mod(phiO + PI, 2.0 * PI) - PI;
     }
     else{
-        ray.origin -= normal * 0.0007 * 2;
+        phiO = -phiI + 2.0 * PI * rand(seed);
+    }
+
+
+    ray.dir = directionFromThetaPhi(thetaO, phiO, hit.tangent, normal, bitangent);
+    if (dot(ray.dir, hit.normal) > 0){
+        ray.origin += hit.normal * 0.0001;
+    }
+    else{
+        ray.origin -= hit.normal * 0.0001;
     }
 
     updateData(data);

@@ -22,8 +22,11 @@ float schlickFresnel(float VdotN, float F0)
     return F0 + (1.0 - F0) * dot5;
 }
 
-float computeCos2(float cos1, float n){
-    return sqrt(1 - n * n * (1 - cos1 * cos1));
+float computeCos2(float cosI, float n){
+    float sin2I = 1 - cosI * cosI;
+    float sin2T = sin2I / (n * n);
+    if (sin2T >= 1) return 1.0;
+    return sqrt(clamp(1 - sin2T, 0.0, 1.0));
 }
 
 Spectrum fresnel(float cos1, Spectrum cos2, Spectrum n){

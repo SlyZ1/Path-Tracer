@@ -50,6 +50,7 @@ uniform vec3 skyTopColor;
 
 uniform vec2 texSize;
 uniform sampler2D screenTex;
+uniform sampler2D envMap;
 uniform int frameCount;
 uniform int samples;
 uniform vec2 winSize;
@@ -209,6 +210,21 @@ vec3 sky(vec3 lookingAt){
     return horizon(lookingAt);
 }
 
+vec2 dirToEquirectUV(vec3 dir) {
+    float phi = atan(dir.z, dir.x);   // longitude, [-π, π]
+    float theta = acos(clamp(dir.y, -1.0, 1.0)); // latitude, [0, π] (0 = pôle haut)
+
+    float u = (phi + PI) / (2.0 * PI);
+    float v = theta / PI;
+    return vec2(u, v);
+}
+
+vec3 sampleEnvironment(vec3 dir) {
+    dir = rotationMatrix(vec3(10, 0, 0)) * dir;
+    vec2 uv = dirToEquirectUV(dir);
+    return texture(envMap, uv).rgb;
+}
+
 void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out vec4 albedo, out vec4 color, out float depth){
     bool firstHit = true;
     normal = vec4(0);
@@ -264,7 +280,7 @@ void main()
     vec4 color = vec4(0);
     float depth = 0;
     for (int i = 0; i < samples; i++) {
-        vec2 AAjitter = vec2(rand(seed), rand(seed)) * 2 / winSize;
+        vec2 AAjitter = vec2(rand(seed), rand(seed)) * 4 / winSize;
         Ray r = fovRay(pos + AAjitter, ray, seed);
 
         vec4 result = vec4(0);

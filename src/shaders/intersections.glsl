@@ -173,18 +173,18 @@ Hit intersectCube(Primitive cube, Ray ray)
     return hit;
 }
 
-Hit intersectCylinder(vec3 pa, float ra, vec3 pb, float rb, Ray ray){
+Hit intersectCylinder(vec3 pa, float ra, vec3 pb, float rb, bool isEmpty, Ray ray){
     Hit hit;
     hit.t = -1.0;
 
     vec3 ba = pb - pa;
     float m0 = dot(ba,ba);
-    float compensation = max(length(ray.origin - (pa + pb) * 0.5) * 0.95 - max(max(ra, rb), sqrt(m0) / 2.0), 0);
+    float compensation = max(length(ray.origin - (pa + pb) * 0.5) * 1.0 - 1.2 * max(max(ra, rb), sqrt(m0) / 2.0), 0);
     ray.origin += ray.dir * compensation;
 
     vec3 oa = (ray.origin - pa);
     vec3 ob = (ray.origin - pb);
-    if (m0 < 1e-10) return hit;
+    //if (m0 < 1e-10) return hit;
     float m1 = dot(oa,ba);
     float m2 = dot(ray.dir,ba);
     float m3 = dot(ray.dir,oa);
@@ -198,56 +198,60 @@ Hit intersectCylinder(vec3 pa, float ra, vec3 pb, float rb, Ray ray){
 
     float EPS_INSIDE = 1e-8;
     bool inside = (radialDist2 < r0*r0 - EPS_INSIDE) && (y0 > EPS_INSIDE) && (y0 < m0 - EPS_INSIDE);
+    if (inside && isEmpty) return hit;
     hit.inside = inside;
 
-    // caps
-    if (inside)
-    {
-        if (m2 > 0.0)
+    //caps
+    if (!isEmpty){
+        if (inside)
         {
-            float t = (m0 - m1) / m2;
-            vec3 p = oa + ray.dir * t;
-            if (dot2(p - ba * (dot(p,ba) / m0)) < rb * rb)
+            if (m2 > 0.0)
             {
-                hit.t = -m1 / m2 + compensation;
-                hit.normal = -ba * inversesqrt(m0);
-                return hit;
+                float t = (m0 - m1) / m2;
+                vec3 p = oa + ray.dir * t;
+                if (dot2(p - ba * (dot(p,ba) / m0)) < rb * rb)
+                {
+                    hit.t = -m1 / m2 + compensation;
+                    hit.normal = -ba * inversesqrt(m0);
+                    return hit;
+                }
+            }
+            else if (m2 < 0.0)
+            {
+                float t = -m1 / m2;
+                vec3 p = oa + ray.dir * t;
+                if (dot2(p - ba * (dot(p,ba) / m0)) < ra * ra)
+                {
+                    hit.t = -m1 / m2 + compensation;
+                    hit.normal = -ba * inversesqrt(m0);
+                    return hit;
+                }
             }
         }
-        else if (m2 < 0.0)
-        {
-            float t = -m1 / m2;
-            vec3 p = oa + ray.dir * t;
-            if (dot2(p - ba * (dot(p,ba) / m0)) < ra * ra)
-            {
-                hit.t = -m1 / m2 + compensation;
-                hit.normal = -ba * inversesqrt(m0);
-                return hit;
-            }
-        }
-    }
-    else{
+        else{
 
-        if (m1 < 0.0)
-        {
-            if (dot2(oa * m2 - ray.dir * m1) < (ra * ra * m2 * m2)){
-                hit.t = -m1 / m2 + compensation;
-                hit.normal = -ba * inversesqrt(m0);
-                return hit;
+            if (m1 < 0.0)
+            {
+                if (dot2(oa * m2 - ray.dir * m1) < (ra * ra * m2 * m2)){
+                    hit.t = -m1 / m2 + compensation;
+                    hit.normal = -ba * inversesqrt(m0);
+                    return hit;
+                }
             }
-        }
-        else if (m9 > 0.0)
-        {
-            float t = -m9 / m2;
-            if (dot2(ob + ray.dir * t) < (rb * rb)){
-                hit.t = t + compensation;
-                hit.normal = ba * inversesqrt(m0);
-                return hit;
+            else if (m9 > 0.0)
+            {
+                float t = -m9 / m2;
+                if (dot2(ob + ray.dir * t) < (rb * rb)){
+                    hit.t = t + compensation;
+                    hit.normal = ba * inversesqrt(m0);
+                    return hit;
+                }
             }
         }
     }
     
     // body
+    
     float hy = m0 + rr*rr;
     float k2 = m0*m0 - m2*m2*hy;
     float k1 = m0*m0*m3 - m1*m2*hy + m0*ra*(rr*m2*1.0);
@@ -271,7 +275,7 @@ Hit intersectCylinder(Primitive cylinder, Ray ray){
     vec3 height = rot * vec3(0,cylinder.scale.y,0);
     vec3 pa = cylinder.pos + height * 0.5;
     vec3 pb = cylinder.pos - height * 0.5;
-    return intersectCylinder(pa, ra, pb, rb, ray);
+    return intersectCylinder(pa, ra, pb, rb, false, ray);
 }
 
 AABB scaleAABB(AABB box, vec3 scale){
@@ -302,14 +306,13 @@ Hit intersectBvh(inout Ray ray, BVHInfos info, int leafType, bool isShadow)
     newRay.origin = invRot * ((ray.origin - pos) / scale);
     newRay.dir = invRot * (ray.dir / scale);
     float newRayLen = length(newRay.dir);
-    if (isnan(ray.dir.x)) {
-        Hit hit;
-        hit.t = -1;
+    Ray invRay = newRay;
+    invRay.dir = 1 / invRay.dir;
+
+    if (isnan(ray.dir.x)){
         newRayLen = 1.0;
         return hit;
     }
-    Ray invRay = newRay;
-    invRay.dir = 1 / invRay.dir;
 
     Hit boxHit = intersectAABB(invRay, nodes[info.numberOfNodes - 1 + info.nodeOffset].aabb, 0.001, hitT);
     if (boxHit.t < 0) return hit;
@@ -346,14 +349,14 @@ Hit intersectBvh(inout Ray ray, BVHInfos info, int leafType, bool isShadow)
                 vec4 pa = hairPoints[node.leaf + leafOffset];
                 vec4 pb = hairPoints[node.leaf + 1 + leafOffset];
                 newRay.dir /= newRayLen;
-                leafHit = intersectCylinder(pa.xyz, pa.w, pb.xyz, pb.w, newRay);
-                //leafHit.normal *= max(pa.w, pb.w);
+                leafHit = intersectCylinder(pa.xyz, pa.w / 2, pb.xyz, pb.w / 2, true, newRay);
                 leafHit.t /= newRayLen;
                 newRay.dir *= newRayLen;
             }
             
             if (leafHit.t >= 0) {
                 leafHit.normal = normalize(rot * leafHit.normal);
+                if (leafType == PRIM_CYLINDER) leafHit.tangent = normalize(rot * leafHit.tangent);
                 if (isShadow) return leafHit;
                 if (leafHit.t < hitT) {
                     hitT = leafHit.t;

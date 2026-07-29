@@ -14,6 +14,8 @@
 #include "cuda_cpp/denoiser.hpp"
 #include "stats.hpp"
 
+#include <tinyexr/tinyexr.h>
+
 using namespace std;
 
 #define SAMPLES 5
@@ -32,6 +34,8 @@ GLuint colorTexture = 0;
 GLuint depthTexture = 0;
 GLuint denoisedTexture = 0;
 GLuint texWidth, texHeight = 0;
+
+GLuint envTexture;
 
 int samples = 1;
 
@@ -137,6 +141,34 @@ void genTextures(unsigned int width, unsigned int height){
     renderer->setRenderingTextures(textures, texturesNames);
 }
 
+void loadEnvironmentMap(const std::string& path, int& outWidth, int& outHeight) {
+    float* imageData = nullptr; // largeur * hauteur * 4 floats (RGBA)
+    const char* err = nullptr;
+
+    int ret = LoadEXR(&imageData, &outWidth, &outHeight, path.c_str(), &err);
+
+    if (ret != TINYEXR_SUCCESS) {
+        if (err) {
+            std::cerr << "Erreur chargement EXR (" << path << "): " << err << std::endl;
+        }
+        return;
+    }
+
+    glGenTextures(1, &envTexture);
+    glBindTexture(GL_TEXTURE_2D, envTexture);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, outWidth, outHeight, 0,
+                 GL_RGBA, GL_FLOAT, imageData);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);       // longitude, doit boucler
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // latitude, pas de boucle aux pôles
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    free(imageData); // tinyexr alloue avec malloc, pas delete[]
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
 void initRayTraceShader(){
     rayTracingShader.use();
     glUniform2f(ShaderProgram::getVarLoc("winSize"), (float)app->width(), (float)app->height());
@@ -144,6 +176,7 @@ void initRayTraceShader(){
 
 void reloadShaders(){
     rayTracingShader.reload(scene->getSpectral());
+    accumulationShader.reload();
     initRayTraceShader();
     scene->updateScene();
     resetFrame();
@@ -199,6 +232,8 @@ void init(bool headless = false){
     ui = make_shared<UI>(UICtx);
     
     // denoiser->init(albedoTexture, colorTexture, normalTexture, denoisedTexture);
+    int w, h;
+    loadEnvironmentMap("scenes/Skydome.exr", w, h);
 
     cout << "Program started." << endl;
 }
@@ -251,6 +286,10 @@ void render(){
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, oldTexture);
     glUniform1i(ShaderProgram::getVarLoc("screenTex"), 0);
+    
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, envTexture);
+    glUniform1i(ShaderProgram::getVarLoc("envMap"), 1);
 
     glUniform1i(ShaderProgram::getVarLoc("frameCount"), frameAccumulator);
     glUniform1i(ShaderProgram::getVarLoc("samples"), samples);

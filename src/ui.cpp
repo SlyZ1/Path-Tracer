@@ -267,15 +267,15 @@ void UI::renderPopupData(Object* selectedObject){
             break;
         case MatType::FUR:
             Label("RoughA", "Roughness on the azimuth in degree angles.");
-            selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 90.0f);
-            if (ImGui::SliderFloat("##RoughA", &selectedObject->mat.data.x, 0.0f, 90.0f)){
-                selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 90.0f);
+            selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 1.0f);
+            if (ImGui::SliderFloat("##RoughA", &selectedObject->mat.data.x, 0.0f, 1.0f)){
+                selectedObject->mat.data.x = glm::clamp(selectedObject->mat.data.x, 0.0f, 1.0f);
                 m_context.scene->updateSceneNextFrame();
             }
             Label("RoughL", "Roughness on the longitude in degree angles.");
-            selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 0.0f, 90.0f);
-            if (ImGui::SliderFloat("##RoughL", &selectedObject->mat.data.y, 0.0f, 90.0f)){
-                selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 0.0f, 90.0f);
+            selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 0.0f, 1.0f);
+            if (ImGui::SliderFloat("##RoughL", &selectedObject->mat.data.y, 0.0f, 1.0f)){
+                selectedObject->mat.data.y = glm::clamp(selectedObject->mat.data.y, 0.0f, 1.0f);
                 m_context.scene->updateSceneNextFrame();
             }
             break;
@@ -607,7 +607,7 @@ void UI::renderParameters(){
         BeginTwoColumnLayout();
 
         Label("Sky Intensity");
-        if (ImGui::SliderFloat("##Sky Intensity", &m_context.scene->skyIntensity, 0.0f, 1.0f))
+        if (ImGui::SliderFloat("##Sky Intensity", &m_context.scene->skyIntensity, 0.0f, 3.0f))
             m_context.scene->updateSceneNextFrame();
         
         Label("Sky Top Color");
