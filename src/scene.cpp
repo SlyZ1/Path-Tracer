@@ -229,25 +229,27 @@ void Scene::removeObject(int index){
 }
 
 void Scene::removeMesh(int index){
-    if (index < 0 || index > (int)m_meshes.size()) return;
+    if (index < 0 || index >= (int)m_meshes.size()) return;
     for (Object& obj : m_objects){
         if (obj.type != PrimType::MESH_) continue;
         if (obj.dataIndex > index) obj.dataIndex -= 1;
         if (obj.dataIndex == index) obj.dataIndex = -1;
     }
     m_meshes.erase(m_meshes.begin() + index);
+    m_selectedMesh = -1;
     updateMeshes();
     updateScene();
 }
 
 void Scene::removeFur(int index){
-    if (index < 0 || index > (int)m_furs.size()) return;
+    if (index < 0 || index >= (int)m_furs.size()) return;
     for (Object& obj : m_objects){
         if (obj.type != PrimType::FUR_) continue;
         if (obj.dataIndex > index) obj.dataIndex -= 1;
         if (obj.dataIndex == index) obj.dataIndex = -1;
     }
     m_furs.erase(m_furs.begin() + index);
+    m_selectedMesh = -1;
     updateFurs();
     updateScene();
 }
@@ -398,22 +400,28 @@ void Scene::updateGPU(){
 
     m_resetFrame();
 
-    vector<bool> meshIsUsed = getSourceUsed<Mesh>(m_meshes, PrimType::MESH_);
-    Scene::CleanedBVHResult<Triangle> meshesResult = {};
-    cleanBVHData<Mesh, Triangle>(
-        m_meshes, meshIsUsed,
-        [](shared_ptr<Mesh> m) -> const vector<Triangle>& { return m->getTriangles(); },
-        [](shared_ptr<Mesh> m) -> const vector<linBVHNode>& { return m->getLinNodes(); },
-        meshesResult
-    );
-    vector<bool> furIsUsed = getSourceUsed<Fur>(m_furs, PrimType::FUR_);
-    Scene::CleanedBVHResult<HairPoint> fursResult = {};
-    cleanBVHData<Fur, HairPoint>(
-        m_furs, furIsUsed,
-        [](shared_ptr<Fur> f) -> const vector<HairPoint>& { return f->getPoints(); },
-        [](shared_ptr<Fur> f) -> const vector<linBVHNode>& { return f->getLinNodes(); },
-        fursResult
-    );
+    if (m_numMeshesChanged){
+        vector<bool> meshIsUsed = getSourceUsed<Mesh>(m_meshes, PrimType::MESH_);
+        m_meshesResult = {};
+        cleanBVHData<Mesh, Triangle>(
+            m_meshes, meshIsUsed,
+            [](shared_ptr<Mesh> m) -> const vector<Triangle>& { return m->getTriangles(); },
+            [](shared_ptr<Mesh> m) -> const vector<linBVHNode>& { return m->getLinNodes(); },
+            m_meshesResult
+        );
+    }
+    if (m_numFursChanged){
+        vector<bool> furIsUsed = getSourceUsed<Fur>(m_furs, PrimType::FUR_);
+        m_fursResult = {};
+        cleanBVHData<Fur, HairPoint>(
+            m_furs, furIsUsed,
+            [](shared_ptr<Fur> f) -> const vector<HairPoint>& { return f->getPoints(); },
+            [](shared_ptr<Fur> f) -> const vector<linBVHNode>& { return f->getLinNodes(); },
+            m_fursResult
+        );
+    }
+    if (m_numFursChanged || m_numMeshesChanged)
+        m_nodes = Utils::concat<linBVHNode>({m_meshesResult.nodes, m_fursResult.nodes});
 
     vector<PrimitiveObject> primitives = {};
     vector<BVHInfos> meshInfos = {};
@@ -432,9 +440,9 @@ void Scene::updateGPU(){
                 numVolumeMeshes++;
             }
             BVHInfos meshInfo;
-            meshInfo.leafOffset = meshesResult.leavesOffsets[obj.dataIndex];
-            meshInfo.nodeOffset = meshesResult.nodeOffsets[obj.dataIndex];
-            meshInfo.numberOfNodes = meshesResult.numberOfNodes[obj.dataIndex];
+            meshInfo.leafOffset = m_meshesResult.leavesOffsets[obj.dataIndex];
+            meshInfo.nodeOffset = m_meshesResult.nodeOffsets[obj.dataIndex];
+            meshInfo.numberOfNodes = m_meshesResult.numberOfNodes[obj.dataIndex];
             meshInfo.pos = obj.pos;
             meshInfo.scale = obj.scale;
             meshInfo.rotation = obj.rotation;
@@ -446,9 +454,9 @@ void Scene::updateGPU(){
             if (obj.dataIndex < 0 || obj.dataIndex >= (int)m_furs.size()) continue;
             
             BVHInfos furInfo;
-            furInfo.leafOffset = fursResult.leavesOffsets[obj.dataIndex];
-            furInfo.nodeOffset = meshesResult.nodes.size() + fursResult.nodeOffsets[obj.dataIndex];
-            furInfo.numberOfNodes = fursResult.numberOfNodes[obj.dataIndex];
+            furInfo.leafOffset = m_fursResult.leavesOffsets[obj.dataIndex];
+            furInfo.nodeOffset = m_meshesResult.nodes.size() + m_fursResult.nodeOffsets[obj.dataIndex];
+            furInfo.numberOfNodes = m_fursResult.numberOfNodes[obj.dataIndex];
             furInfo.pos = obj.pos;
             furInfo.scale = obj.scale;
             furInfo.rotation = obj.rotation;
@@ -472,8 +480,6 @@ void Scene::updateGPU(){
     }
     int numMeshes = (int)meshInfos.size();
     int numFurs = (int)furInfos.size();
-
-    vector<linBVHNode> nodes = Utils::concat<linBVHNode>({meshesResult.nodes, fursResult.nodes});
     vector<BVHInfos> bvhInfos = Utils::concat<BVHInfos>({meshInfos, furInfos});
     vector<int> indices = Utils::concat<int>({lightIndicies, volumeIndicies});
 
@@ -485,19 +491,19 @@ void Scene::updateGPU(){
 
     if (m_numMeshesChanged){
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_trianglesBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, (int)meshesResult.leaves.size() * sizeof(Triangle), meshesResult.leaves.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, (int)m_meshesResult.leaves.size() * sizeof(Triangle), m_meshesResult.leaves.data(), GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_trianglesBuffer);
     }
     if (m_numFursChanged){
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_hairStrandBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, (int)fursResult.leaves.size() * sizeof(HairPoint), fursResult.leaves.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, (int)m_fursResult.leaves.size() * sizeof(HairPoint), m_fursResult.leaves.data(), GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, m_hairStrandBuffer);
     }
     if (m_numFursChanged || m_numMeshesChanged){
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_nodesBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, (int)nodes.size() * sizeof(linBVHNode), nodes.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, (int)m_nodes.size() * sizeof(linBVHNode), m_nodes.data(), GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_nodesBuffer);
-        glUniform1i(ShaderProgram::getVarLoc("numBVHNodes"), (int)nodes.size());
+        glUniform1i(ShaderProgram::getVarLoc("numBVHNodes"), (int)m_nodes.size());
         m_numMeshesChanged = false;
         m_numFursChanged = false;
     }
@@ -538,4 +544,6 @@ void Scene::deleteScene(){
     m_objects.clear();
     m_meshes.clear();
     m_furs.clear();
+
+
 }

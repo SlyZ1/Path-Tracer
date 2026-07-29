@@ -147,6 +147,10 @@ private:
     vector<shared_ptr<Mesh>> m_meshes = {};
     vector<shared_ptr<Fur>> m_furs = {};
 
+    Scene::CleanedBVHResult<Triangle> m_meshesResult = {};
+    Scene::CleanedBVHResult<HairPoint> m_fursResult = {};
+    vector<linBVHNode> m_nodes = {};
+
     int m_copiedObject = -1;
     int m_selectedObject = -1;
     int m_selectedMesh = -1;
@@ -163,6 +167,7 @@ private:
 
     template <typename TSource>
     vector<bool> getSourceUsed(const vector<shared_ptr<TSource>>& source, PrimType shapeType){
+        if (source.size() <= 0) return {};
         vector<bool> sourceIsUsed = vector<bool>(source.size(), false);
         for (Object& obj : m_objects){
             if (obj.type != shapeType || obj.dataIndex < 0 || obj.dataIndex >= (int)source.size()) continue;
