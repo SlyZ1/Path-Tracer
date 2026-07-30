@@ -349,7 +349,7 @@ Hit intersectBvh(inout Ray ray, BVHInfos info, int leafType, bool isShadow)
                 vec4 pa = hairPoints[node.leaf + leafOffset];
                 vec4 pb = hairPoints[node.leaf + 1 + leafOffset];
                 newRay.dir /= newRayLen;
-                leafHit = intersectCylinder(pa.xyz, pa.w / 2, pb.xyz, pb.w / 2, true, newRay);
+                leafHit = intersectCylinder(pa.xyz, pa.w, pb.xyz, pb.w, true, newRay);
                 leafHit.t /= newRayLen;
                 newRay.dir *= newRayLen;
             }

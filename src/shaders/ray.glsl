@@ -220,7 +220,6 @@ vec2 dirToEquirectUV(vec3 dir) {
 }
 
 vec3 sampleEnvironment(vec3 dir) {
-    dir = rotationMatrix(vec3(10, 0, 0)) * dir;
     vec2 uv = dirToEquirectUV(dir);
     return texture(envMap, uv).rgb;
 }

@@ -149,6 +149,7 @@ vec3 refract(vec3 I, vec3 N, float n) {
 }
 
 float luminanceMean(vec3 c){
+    return dot(c, vec3(1.0/3.0));
     return dot(c, vec3(0.2126, 0.7152, 0.0722));
 }
 
