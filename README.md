@@ -2,7 +2,7 @@
 
 ![](outputs/thin_film.png)
 ![](./outputs/triple_dragon.png)
-![](outputs/dispertion_3.png)
+![](outputs/hair/bunny_fur.png)
 ![](outputs/spectral_example.png)
 
 ## Overview

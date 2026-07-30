@@ -485,7 +485,6 @@ void UI::renderScene(){
     ImGui::PushStyleColor(ImGuiCol_Border, m_lightBlueBorder);
 
     float buttonRegionSize = 30.0f;
-    float buttonSize = 24.0f;
     if (ImGui::BeginTabBar("SceneTabs")){
         if (ImGui::BeginTabItem("Scene")){
             ImGui::BeginChild("SceneListContainer", ImVec2(-FLT_MIN -buttonRegionSize, -FLT_MIN), 0, ImGuiWindowFlags_AlwaysVerticalScrollbar);
@@ -524,7 +523,7 @@ void UI::renderScene(){
             ImGui::PopStyleVar(1);
             ImGui::EndTabItem();
         }
-        if (ImGui::BeginTabItem("Imported Models")){
+        if (ImGui::BeginTabItem("Models")){
             ImGui::BeginChild("SceneListContainer", ImVec2(-FLT_MIN -buttonRegionSize, -FLT_MIN), 0, ImGuiWindowFlags_AlwaysVerticalScrollbar);
             ImGui::Dummy(ImVec2(-FLT_MIN, 4.0f));
             static int selectedMeshesIndex = -1;
@@ -551,6 +550,43 @@ void UI::renderScene(){
             ImGui::Separator();
             if (ImGui::Button("-", ImVec2(buttonRegionSize-2, buttonRegionSize-2))){
                 m_context.scene->removeMesh(m_context.scene->getSelectedMesh());
+            }
+            ImGui::Separator();
+            ImGui::PopStyleColor(4);
+            ImGui::PopStyleVar(2);
+
+            ImGui::EndChild();
+            ImGui::PopStyleColor(1);
+            ImGui::PopStyleVar(1);
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Furs")){
+            ImGui::BeginChild("SceneListContainer", ImVec2(-FLT_MIN -buttonRegionSize, -FLT_MIN), 0, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+            ImGui::Dummy(ImVec2(-FLT_MIN, 4.0f));
+            static int selectedFursIndex = -1;
+            selectedFursIndex = m_context.scene->getSelectedFur();
+            vector<const char*> items = m_context.scene->getFurNames();
+            int newSelected = renderListItems(items, &selectedFursIndex);
+            if (newSelected >= 0) m_context.scene->selectFur(newSelected);
+            ImGui::EndChild();
+            if (ImGui::IsItemClicked()) m_context.scene->selectFur(-1);
+            ImGui::SameLine();
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, m_bgColor);
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+            ImGui::BeginChild("SceneButtonsContainer", ImVec2(-FLT_MIN-2, -FLT_MIN), ImGuiChildFlags_AlwaysUseWindowPadding);
+
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(m_mgColor.x, m_mgColor.y, m_mgColor.z, 0.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(m_mgColor.x, m_mgColor.y, m_mgColor.z, 0.3f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(m_mgColor.x, m_mgColor.y, m_mgColor.z, 0.5f));
+            ImGui::PushStyleColor(ImGuiCol_Separator, m_mgColor);
+            if (ImGui::Button("+", ImVec2(buttonRegionSize-2, buttonRegionSize-2))){
+                importFurDialog();
+            }
+            ImGui::Separator();
+            if (ImGui::Button("-", ImVec2(buttonRegionSize-2, buttonRegionSize-2))){
+                m_context.scene->removeFur(m_context.scene->getSelectedFur());
             }
             ImGui::Separator();
             ImGui::PopStyleColor(4);
@@ -784,6 +820,21 @@ void UI::importModelDialog(){
     m_context.scene->addMesh(newMesh);
 }
 
+void UI::importFurDialog(){
+    bool cancel;
+    nfdopendialogu8args_t args = {0};
+    nfdfilteritem_t filters[] = {
+        { "Fur Models", "bin" },
+        { "bin" }
+    };
+    args.filterList = filters;
+    args.filterCount = 1;
+    string path = m_context.app->openFileDialog(cancel, args);
+    shared_ptr<Fur> newFur = make_shared<Fur>();
+    newFur->loadFromBin(path.c_str());
+    m_context.scene->addFur(newFur);
+}
+
 void UI::renderMainMenuBar(){
     ImGui::PushStyleColor(ImGuiCol_MenuBarBg, m_bgColor);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -791,6 +842,9 @@ void UI::renderMainMenuBar(){
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Import Model (.obj)"))  {
                 importModelDialog();
+            }
+            if (ImGui::MenuItem("Import Fur (.bin)"))  {
+                importFurDialog();
             }
             if (ImGui::MenuItem("Save Scene (.json)")) {
                 bool cancel;

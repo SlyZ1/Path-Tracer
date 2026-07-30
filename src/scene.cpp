@@ -249,7 +249,7 @@ void Scene::removeFur(int index){
         if (obj.dataIndex == index) obj.dataIndex = -1;
     }
     m_furs.erase(m_furs.begin() + index);
-    m_selectedMesh = -1;
+    m_selectedFur = -1;
     updateFurs();
     updateScene();
 }
@@ -455,7 +455,7 @@ void Scene::updateGPU(){
             
             BVHInfos furInfo;
             furInfo.leafOffset = m_fursResult.leavesOffsets[obj.dataIndex];
-            furInfo.nodeOffset = m_meshesResult.nodes.size() + m_fursResult.nodeOffsets[obj.dataIndex];
+            furInfo.nodeOffset = (int)m_meshesResult.nodes.size() + m_fursResult.nodeOffsets[obj.dataIndex];
             furInfo.numberOfNodes = m_fursResult.numberOfNodes[obj.dataIndex];
             furInfo.pos = obj.pos;
             furInfo.scale = obj.scale;

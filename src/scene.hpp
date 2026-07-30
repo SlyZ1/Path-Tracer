@@ -154,6 +154,7 @@ private:
     int m_copiedObject = -1;
     int m_selectedObject = -1;
     int m_selectedMesh = -1;
+    int m_selectedFur = -1;
     unsigned int m_maxId = 0;
 
     bool m_spectral = false;
@@ -239,10 +240,12 @@ public:
     vector<const char*> getObjectNames() const;
     vector<const char*> getMeshNames() const;
     vector<const char*> getFurNames() const;
-    void selectObject(int index) { m_selectedObject = index; m_selectedMesh = -1; };
-    void selectMesh(int index) { m_selectedMesh = index; m_selectedObject = -1; };
+    void selectObject(int index) { m_selectedObject = index; m_selectedMesh = -1; m_selectedFur = -1; };
+    void selectMesh(int index) { m_selectedMesh = index; m_selectedObject = -1; m_selectedFur = -1; };
+    void selectFur(int index) { m_selectedFur = index; m_selectedObject = -1; m_selectedMesh = -1; };
     int getSelectedObject() const { return m_selectedObject; };
     int getSelectedMesh() const { return m_selectedMesh; };
+    int getSelectedFur() const { return m_selectedFur; };
     
     static shared_ptr<Object> getObjectFromId(SceneState sceneState, unsigned int ID);
     int intersectObject(const Ray& ray);

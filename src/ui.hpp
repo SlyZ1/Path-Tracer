@@ -64,6 +64,7 @@ class UI {
         float m_windowSplit = 200.0f;
 
         void importModelDialog();
+        void importFurDialog();
         void renderMainMenuBar();
 
         void renderPointer();
