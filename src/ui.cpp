@@ -815,6 +815,8 @@ void UI::importModelDialog(){
     args.filterList = filters;
     args.filterCount = 2;
     string path = m_context.app->openFileDialog(cancel, args);
+    if (cancel) return;
+
     shared_ptr<Mesh> newMesh = make_shared<Mesh>();
     newMesh->loadFromModel(path.c_str());
     m_context.scene->addMesh(newMesh);
@@ -830,6 +832,8 @@ void UI::importFurDialog(){
     args.filterList = filters;
     args.filterCount = 1;
     string path = m_context.app->openFileDialog(cancel, args);
+    if (cancel) return;
+    
     shared_ptr<Fur> newFur = make_shared<Fur>();
     newFur->loadFromBin(path.c_str());
     m_context.scene->addFur(newFur);
