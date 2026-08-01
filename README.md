@@ -25,11 +25,12 @@ Rendering can run in two modes, toggled at runtime: a standard trichromatic RGB 
 - **Rough dielectrics:** VNDF-sampled microfacet refraction/reflection, from mirror-smooth to fully rough glass, with Beer-Lambert absorption and Cauchy dispersion.
 - **Glossy:** stochastic dielectric/metallic layering (metalness workflow) built on the conductor and diffuse BSDFs.
 - **Artistic Fresnel:** conductor IOR/extinction (eta, k) reconstructed from intuitive reflectance + edge-tint colors (Gulbrandsen, *Artist Friendly Metallic Fresnel*) instead of raw complex refractive indices.
-- **Participating media:** homogeneous volumes with free-flight distance sampling, Henyey-Greenstein phase function, and spectral absorption/scattering coefficients.
+- **Hair/fur:** physically based hair scattering BSDF (Chiang et al.), with longitudinal/azimuthal lobe separation (R, TT, TRT, TRRT+).
+- **Participating media:** homogeneous volumes with free-flight distance sampling, Henyey-Greenstein phase function.
 
 ### Spectral rendering
 - Hero-wavelength spectral integrator (4 wavelengths per path), switchable at runtime against a standard trichromatic RGB path.
-- RGB -> reflectance spectrum upsampling using the sigmoid-polynomial method and tabulated coefficients from **pbrt-v4**.
+- RGB -> reflectance spectrum upsampling using the sigmoid-polynomial method and tabulated coefficients from pbrt-v4.
 - CIE 1931 color-matching function approximation for spectral-to-XYZ integration and final linear sRGB conversion, with the D65 illuminant.
 - Physically based dielectric dispersion via Cauchy's equation.
 - Thin-film interference for both conductors and dielectrics, using the Airy function.
@@ -42,6 +43,12 @@ Rendering can run in two modes, toggled at runtime: a standard trichromatic RGB 
 - ImGui-based editor: scene graph, material/light editing, camera controls.
 - Keyframe animation system with interpolated scene state between accumulated frames.
 - Scene serialization to/from JSON, OBJ mesh import, image export to PNG and EXR.
+
+## Hair Scattering
+
+![](outputs/hair/results.png)
+
+Validated against a white-furnace test (energy conservation under uniform illumination) and cross-checked against pbrt-v4's reference hair BSDF on the same parameters. You can see that my image differs slightly from pbrt's, which is an issue I failed to track down.
 
 ## Build & Run
 
@@ -97,6 +104,9 @@ Path-Tracer/
 - ML driven denoising
 - Improved animation system and UI
 - Adaptive sampling (variance-guided)
+- Circular polarization
+- Narrow band filters
+- Iridescence in feather rendering 
 - Bidirectional path tracing
 
 ## References
@@ -108,6 +118,7 @@ Path-Tracer/
 - Walter et al., *Microfacet Models for Refraction through Rough Surfaces*
 - alexsabourindev, *Diary of a Path Tracer – BVH Construction Using SAH*
 - Heitz, *Sampling the GGX Distribution of Visible Normals*
+- Chiang et al., *A Practical and Controllable Hair and Fur Model for Production Path Tracing*
 
 ## Author
 
