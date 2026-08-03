@@ -5,6 +5,7 @@
             "includePath": [
                 "${workspaceFolder}/include",
                 "${workspaceFolder}/include/imgui",
+                "${workspaceFolder}/include/imguizmos",
                 "${workspaceFolder}/include/lodepng",
                 "${workspaceFolder}/include/tinyobjloader",
                 "${workspaceFolder}/include/nativefiledialog",

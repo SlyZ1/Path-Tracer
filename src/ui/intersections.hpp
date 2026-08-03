@@ -2,10 +2,12 @@
 #define INTERSECTION_HPP
 
 #include <glm/glm.hpp>
-#include "mesh.hpp"
-#include "fur.hpp"
-#include "camera.hpp"
-#include "app.hpp"
+#include <glm/gtc/matrix_transform.hpp>
+
+#include "../mesh.hpp"
+#include "../fur.hpp"
+#include "../camera.hpp"
+#include "../app.hpp"
 
 using namespace glm;
 
@@ -23,7 +25,7 @@ struct Ray {
     vec3 direction; 
 };
 
-class Intersections {
+static class Intersections {
 private:
     static float dot2(vec3 x);
 public:
@@ -40,6 +42,8 @@ public:
 
     static Ray rayFromClick(shared_ptr<Camera> camera, vec2 screenPos);
     static vec2 worldToScreen(shared_ptr<App> app, shared_ptr<Camera> camera, vec3 worldPos);
+    
+    static mat4 projectionMatrix(shared_ptr<App> app, shared_ptr<Camera> camera);
 };
 
 #endif

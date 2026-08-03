@@ -59,7 +59,7 @@ void App::init(int width, int height, const char *name, bool headless){
     ImGui_ImplGlfw_InitForOpenGL(m_window, true);
     ImGui_ImplOpenGL3_Init("#version 430");
 
-    if (headless) glfwSwapInterval(0);
+    glfwSwapInterval(0);
 }
 
 string App::saveFileDialog(bool& cancel, const string& defaultName){
@@ -151,13 +151,15 @@ void App::startFrame(unsigned int frameCount){
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+    ImGuizmo::BeginFrame();
+    ImGuizmo::SetRect(0, 0, (float)width(), (float)height());
 }
 
-void App::endFrame(){
+void App::endFrame(bool swapBuffers){
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-    glfwSwapBuffers(m_window);
+    if (swapBuffers) glfwSwapBuffers(m_window);
     glfwPollEvents();
 }
 

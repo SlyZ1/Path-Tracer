@@ -17,3 +17,4 @@ string Utils::toString(const glm::vec4& v, int precision) {
     snprintf(buffer, sizeof(buffer), "(%.*f, %.*f, %.*f, %.*f)", precision, v.x, precision, v.y, precision, v.z, precision, v.w);
     return string(buffer);
 }
+

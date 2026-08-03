@@ -15,42 +15,44 @@ const char* Scene::primLabels[6] = {
 shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, function<void()> resetFrame){
     shared_ptr<Scene> scene = make_shared<Scene>(app, camera, resetFrame);
     scene->initGPU();
+    scene->loadFromState(scene->stateFromJson("scenes/hair_scene.json")); 
+     
     
-    Object plane;
-    plane.type = PrimType::PLANE;
-    plane.pos = vec3(0.0f, -1.5f, 0.0f);
-    plane.scale = vec3(30.0f);
-    plane.rotation = vec3(0.0f);
-    plane.mat = Material::glassMaterial(vec3(0.9f, 0.5f, 0.2f), 0.2f, 1.7f, 0, 0.072f, 0, 0);
-    scene->addObject(plane);
+    // Object plane;
+    // plane.type = PrimType::PLANE;
+    // plane.pos = vec3(0.0f, -1.5f, 0.0f);
+    // plane.scale = vec3(30.0f); 
+    // plane.rotation = vec3(0.0f);
+    // plane.mat = Material::glassMaterial(vec3(0.9f, 0.5f, 0.2f), 0.2f, 1.7f, 0, 0.072f, 0, 0);
+    // scene->addObject(plane);
 
-    Object light;
-    light.type = PrimType::SPHERE;
-    light.pos = vec3(0.0f, 5.0f, 2.0f);
-    light.scale = vec3(1.0f);
-    light.rotation = vec3(0.0f);
-    light.mat = Material::emitMaterial(vec3(1.0f), 20.0f);
-    scene->addObject(light); 
+    // Object light; 
+    // light.type = PrimType::SPHERE;
+    // light.pos = vec3(0.0f, 5.0f, 2.0f);
+    // light.scale = vec3(1.0f);
+    // light.rotation = vec3(0.0f);
+    // light.mat = Material::emitMaterial(vec3(1.0f), 20.0f);
+    // scene->addObject(light); 
 
-    shared_ptr<Fur> fur = make_shared<Fur>();
-    fur->loadFromBin("src/python/curly_lock.bin");
-    scene->addFur(fur);
+    // shared_ptr<Fur> fur = make_shared<Fur>();
+    // fur->loadFromBin("src/python/curly_lock.bin");
+    // scene->addFur(fur);
 
-    // shared_ptr<Mesh> bunnyMesh = make_shared<Mesh>();
-    // bunnyMesh->loadFromModel("models/bunny.obj");
-    // int bunnyIndex = scene->addMesh(bunnyMesh); 
+    // // shared_ptr<Mesh> bunnyMesh = make_shared<Mesh>();
+    // // bunnyMesh->loadFromModel("models/bunny.obj");
+    // // int bunnyIndex = scene->addMesh(bunnyMesh); 
 
-    // Object meshObject;
-    // meshObject.pos = vec3(0.0f, 1.29f, 0.0f);
-    // meshObject.scale = vec3(3.0f);
-    // meshObject.rotation = vec3(0.0f);
-    // meshObject.type = PrimType::MESH_;
-    // meshObject.mat = Material::diffuseMaterial(vec3(0.9f, 0.6f, 0.2f), 0.0f);
-    // meshObject.dataIndex = bunnyIndex;
-    // meshObject.isSmooth = true;
-    // scene->addObject(meshObject);
+    // // Object meshObject;
+    // // meshObject.pos = vec3(0.0f, 1.29f, 0.0f);
+    // // meshObject.scale = vec3(3.0f);
+    // // meshObject.rotation = vec3(0.0f);
+    // // meshObject.type = PrimType::MESH_;
+    // // meshObject.mat = Material::diffuseMaterial(vec3(0.9f, 0.6f, 0.2f), 0.0f);
+    // // meshObject.dataIndex = bunnyIndex;
+    // // meshObject.isSmooth = true;
+    // // scene->addObject(meshObject);
 
-    scene->selectObject(-1);
+    // scene->selectObject(-1);
 
     return scene;
 }

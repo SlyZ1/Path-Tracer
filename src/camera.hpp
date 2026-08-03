@@ -1,7 +1,9 @@
 #ifndef CAMERA
 #define CAMERA
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include "shader_program.hpp"
+#include "utils.hpp"
 
 using namespace glm;
 
@@ -9,6 +11,17 @@ struct CameraProperties {
     float fov;
     float aperture;
     float focalLength;
+};
+
+struct CameraMoveInputs {
+    bool forward;
+    bool backward;
+    bool right;
+    bool left;
+    bool up;
+    bool down;
+    bool sprinting;
+    bool slowing;
 };
 
 class Camera {
@@ -28,7 +41,7 @@ class Camera {
     public:
         Camera(float moveSensitivity, float lookSensitivity) 
             : m_moveSensitivity(moveSensitivity), m_lookSensitivity(lookSensitivity) {}
-        void move(bool forward, bool backward, bool right, bool left, bool up, bool down, bool sprinting, bool slowing);
+        void move(const CameraMoveInputs& inputs, float dt);
         void rotate(float mouseX, float mouseY);
         void resetMousePos(float mouseX, float mouseY);
         vec3 lookDir();
@@ -37,6 +50,7 @@ class Camera {
         void hasStoppedMoving() { m_isMoving = false; m_isLooking = false; }
         void updateGPU();
         CameraProperties* getCameraProperties() { return &m_camProps; }
+        mat4 viewMatrix();
 };
 
 #endif

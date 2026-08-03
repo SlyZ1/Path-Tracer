@@ -364,3 +364,8 @@ vec2 Intersections::worldToScreen(shared_ptr<App> app, shared_ptr<Camera> camera
     float upCompo = -dot(up, dir) / tanHalfFov;
     return vec2(rightCompo * app->height() / 2.0f, upCompo * app->height() / 2.0f);
 }
+
+mat4 Intersections::projectionMatrix(shared_ptr<App> app, shared_ptr<Camera> camera){
+    float fovRad = radians(camera->getCameraProperties()->fov);
+    return glm::perspective(fovRad, (float)app->width() / (float)app->height(), 0.01f, 300.0f);
+}

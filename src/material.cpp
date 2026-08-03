@@ -49,12 +49,12 @@ Material Material::glossyMaterial(vec3 color, float fuzziness, float metallic){
     return mat;
 }
 
-Material Material::furMaterial(vec3 color, float roughA, float roughL){
+Material Material::furMaterial(vec3 color, float roughA, float roughL, float alpha){
     Material mat;
     mat.type = MatType::FUR;
     mat.color = color;
     mat.color2 = vec3(1.0f);
-    mat.data = vec4(glm::clamp(roughA, 0.0f, 90.0f),glm::clamp(roughL, 0.0f, 90.0f),0,0);
+    mat.data = vec4(glm::clamp(roughA, 0.0f, 90.0f),glm::clamp(roughL, 0.0f, 90.0f),glm::clamp(alpha, 0.0f, 5.0f),0);
     mat.data2 = vec4(0.0f, 0.0f, 1.0f, 0.0f);
     return mat;
 }

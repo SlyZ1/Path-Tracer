@@ -2,6 +2,7 @@
 #define SCENE
 
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <vector>
 #include <functional>
 #include <nlohmannjson/json.hpp>
@@ -21,7 +22,7 @@ namespace glm {
 #include "mesh.hpp"
 #include "fur.hpp"
 #include "material.hpp"
-#include "intersections.hpp"
+#include "ui/intersections.hpp"
 
 using namespace std;
 using json = nlohmann::json;

@@ -75,6 +75,7 @@ in vec4 vClipPos;
 
 #define betaN(m) m.data.x
 #define betaM(m) m.data.y
+#define alpha(m) m.data.z
 #define diffuseRoughness(m) m.data.x
 #define pbrFuzz(m) m.data.x
 #define pbrMetallic(m) m.data.y
@@ -88,6 +89,7 @@ in vec4 vClipPos;
 #define filmDepth(m) m.data2.w
 
 #define isSmooth(i) i.data.x
+#define radiusMultiplier(i) i.data.x
 
 #define hairPointRadius(p) p.w
 #define hairPointPos(p) p.xyz

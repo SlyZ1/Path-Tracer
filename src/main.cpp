@@ -8,7 +8,7 @@
 #include "shader_program.hpp"
 #include "camera.hpp"
 #include "mesh.hpp"
-#include "ui.hpp"
+#include "ui/ui.hpp"
 #include "animator.hpp"
 #include "scene.hpp"
 #include "cuda_cpp/denoiser.hpp"
@@ -57,6 +57,7 @@ CPUTimer cpuFrameTimer = CPUTimer(0.2f);
 GPUTimer gpuFrameTimer = {};
 
 bool locked = false;
+bool gpuBlocked = false;
 
 extern "C" {
     __declspec(dllexport) unsigned long NvOptimusEnablement = 1;
@@ -238,13 +239,13 @@ void init(bool headless = false){
     cout << "Program started." << endl;
 }
 
-void handleCamera(){
+void handleCamera(float dt){
     if (!app->cursorIsHidden() || locked){
         camera->hasStoppedMoving();
         return;
     }
 
-    camera->move(
+    CameraMoveInputs inputs = {
         app->keyPressed(GLFW_KEY_W), 
         app->keyPressed(GLFW_KEY_S), 
         app->keyPressed(GLFW_KEY_D), 
@@ -253,7 +254,8 @@ void handleCamera(){
         app->keyPressed(GLFW_KEY_LEFT_CONTROL),
         app->keyPressed(GLFW_KEY_LEFT_SHIFT),
         app->keyPressed(GLFW_KEY_C)
-    );
+    };
+    camera->move(inputs, dt);
     camera->rotate(app->mouseX(), app->mouseY());
 }
 
@@ -298,17 +300,21 @@ void render(){
     gpuFrameTimer.beginFrame();
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     gpuFrameTimer.endFrame();
-
+    
     // glFinish();
-
+    
     // denoiser->infer();
-
+    
     // ShaderProgram::barrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     
     //Update oldTexture
     std::swap(texture, oldTexture);
     
-    //Screen display (accumulation)
+    frameAccumulator += samples;
+    
+    //fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+
+    // Screen display (accumulation)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     accumulationShader.use();
     
@@ -334,9 +340,8 @@ void render(){
             renderTex = finalTexture;
             break;
     }
-    glBindTexture(GL_TEXTURE_2D, renderTex);
+    glBindTexture(GL_TEXTURE_2D, finalTexture);
     glUniform1i(ShaderProgram::getVarLoc("oldTexture"), 0);
-    glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
@@ -349,8 +354,11 @@ void inputs(){
     }
 
     if (app->keyPressedOnce(GLFW_KEY_ESCAPE, frameCount)){
-        animator->cancelAnimation();
-        renderer->cancelRender();
+        if (renderer->isRendering() || animator->running()){
+            animator->cancelAnimation();
+            renderer->cancelRender();
+            return;
+        }
 
         app->setMousePos(app->width() / 2.0f, app->height() / 2.0f);
         ui->toggle();
@@ -443,6 +451,7 @@ void end(){
     app->terminate();
 }
 
+float lastTime = 0.0f;
 int main(int argc, char* argv[]){
     bool headless = false;
     for (int i = 0; i < argc; i++) {
@@ -451,21 +460,26 @@ int main(int argc, char* argv[]){
     init(headless);
     while(!app->shouldClose())
     {
+        float dt = glfwGetTime() - lastTime;
+        lastTime = glfwGetTime();
+
         app->startFrame(frameCount);
         if (!headless){
             cpuFrameTimer.begin();
-            handleCamera();
+            handleCamera(dt);
             ui->render();
-        } 
+        }
+
         render();
+
         if (!headless){
             inputs();
             animator->animationProcess();
             renderer->renderingProcess(frameAccumulator);
         }
-        
-        frameAccumulator += samples;
+
         frameCount++;
+        
         if (!headless){
             cpuFrameTimer.end();
             recordStats();

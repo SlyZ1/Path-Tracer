@@ -34,17 +34,21 @@ OBJ    = $(patsubst src/%.cpp, build/src/%.obj, \
          $(patsubst src/%.c,   build/src/%.obj, $(SRC)))
 CU_OBJ = $(patsubst src/%.cu, build/src/%.obj, $(CU_SRC))
 
-DEP    = $(OBJ:.obj=.d)
+# NOTE: .cu et .cpp/.c ne doivent jamais produire le même nom de .obj
+# dans le même dossier (sinon collision). Si tu as des fichiers homonymes
+# entre .cpp et .cu, adapte le pattern (ex: build/cu/%.obj).
 
-IMGUI_SRC   = $(wildcard include/imgui/*.cpp)
-LODEPNG_SRC = $(wildcard include/lodepng/*.cpp)
-TINYOBJ_SRC = $(wildcard include/tinyobjloader/*.cpp)
-TINYEXR_SRC = $(wildcard include/tinyexr/*.c)
+DEP = $(OBJ:.obj=.d) $(CU_OBJ:.obj=.d)
 
-IMGUI_OBJ   = $(patsubst include/imgui/%.cpp,         	build/imgui/%.obj,   $(IMGUI_SRC))
-LODEPNG_OBJ = $(patsubst include/lodepng/%.cpp,       	build/lodepng/%.obj, $(LODEPNG_SRC))
-TINYOBJ_OBJ = $(patsubst include/tinyobjloader/%.cpp, 	build/tinyobj/%.obj, $(TINYOBJ_SRC))
-TINYEXR_OBJ = $(patsubst include/tinyexr/%.c, 		  	build/tinyexr/%.obj, $(TINYEXR_SRC))
+IMGUI_SRC   	= $(wildcard include/imgui/*.cpp)
+LODEPNG_SRC 	= $(wildcard include/lodepng/*.cpp)
+TINYOBJ_SRC 	= $(wildcard include/tinyobjloader/*.cpp)
+TINYEXR_SRC 	= $(wildcard include/tinyexr/*.c)
+
+IMGUI_OBJ   	= $(patsubst include/imgui/%.cpp,         	build/imgui/%.obj,   	$(IMGUI_SRC))
+LODEPNG_OBJ 	= $(patsubst include/lodepng/%.cpp,       	build/lodepng/%.obj, 	$(LODEPNG_SRC))
+TINYOBJ_OBJ 	= $(patsubst include/tinyobjloader/%.cpp, 	build/tinyobj/%.obj, 	$(TINYOBJ_SRC))
+TINYEXR_OBJ 	= $(patsubst include/tinyexr/%.c, 		  	build/tinyexr/%.obj, 	$(TINYEXR_SRC))
 
 THIRD_PARTY_LIB = build/thirdparty.lib
 TARGET          = myprogram.exe
@@ -66,10 +70,11 @@ build/src/%.obj: src/%.c
 	powershell -NoProfile -ExecutionPolicy Bypass -File tools\gen_deps.ps1 -TmpFile "$(subst /,\,$@).tmp" -ObjFile "$(subst /,\,$@)" -SrcFile "$(subst /,\,$<)" -DepFile "$(subst /,\,$(@:.obj=.d))"
 
 build/src/%.obj: src/%.cu
-	@if not exist "$(subst /,\,$(dir $@))" mkdir "$(subst /,\,$(dir $@))"
-	$(NVCC) $(NVCCFLAGS) $(INCLUDES) -c $< -o $@
+	if not exist "$(subst /,\,$(dir $@))" mkdir "$(subst /,\,$(dir $@))"
+	$(NVCC) $(NVCCFLAGS) $(INCLUDES) -Xcompiler /showIncludes -c $< -o $@ > "$(subst /,\,$@).tmp"
+	powershell -NoProfile -ExecutionPolicy Bypass -File tools\gen_deps.ps1 -TmpFile "$(subst /,\,$@).tmp" -ObjFile "$(subst /,\,$@)" -SrcFile "$(subst /,\,$<)" -DepFile "$(subst /,\,$(@:.obj=.d))"
 
-$(THIRD_PARTY_LIB): $(IMGUI_OBJ) $(LODEPNG_OBJ) $(TINYOBJ_OBJ) $(TINYEXR_OBJ)
+$(THIRD_PARTY_LIB): $(IMGUI_OBJ) $(IMGUIZMOS_OBJ) $(LODEPNG_OBJ) $(TINYOBJ_OBJ) $(TINYEXR_OBJ)
 	$(LIBTOOL) /nologo /OUT:$@ $^
 
 build/imgui/%.obj: include/imgui/%.cpp | build/imgui

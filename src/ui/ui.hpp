@@ -1,12 +1,21 @@
+#ifndef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS
-#include "app.hpp"
-#include "shader_program.hpp"
-#include <glm/glm.hpp>
+#endif
 #include <functional>
-#include "animator.hpp"
-#include "scene.hpp"
-#include "camera.hpp"
-#include "stats.hpp"
+#include <glm/glm.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/matrix_operation.hpp>
+#include <imgui/imgui.h>
+#include <imgui/ImGuizmo.h>
+
+#include "../shader_program.hpp"
+#include "../app.hpp"
+#include "../animator.hpp"
+#include "../scene.hpp"
+#include "../camera.hpp"
+#include "../stats.hpp"
+
+#include "ui_colors.hpp"
 
 using namespace glm;
 
@@ -26,14 +35,6 @@ class UI {
         bool m_show = false;
         bool m_disabled = false;
         UIContext m_context = {};
-        ImGuiStyle m_defaultStyle;
-        const ImVec4 m_bgColor = ImVec4(0.1f, 0.1f, 0.1f, 1.0f);
-        const ImVec4 m_mgColor = ImVec4(0.15f, 0.15f, 0.15f, 1.0f);
-        const ImVec4 m_fgColor = ImVec4(0.2f, 0.2f, 0.2f, 1.0f);
-        const ImU32 m_lightBlue32 = IM_COL32(109, 155, 212, 255);
-        const ImVec4 m_lightBlue = ImVec4(0.42f, 0.6f, 0.83f, 1.0f);
-        const ImVec4 m_blue = ImVec4(0.2f, 0.41f, 0.68f, 1.0f);
-        const ImVec4 m_lightBlueBorder = ImVec4(0.42f, 0.6f, 0.83f, 0.1f);
 
         void Label(
             const char* label, 
@@ -94,7 +95,7 @@ class UI {
         { 
             ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
             ImGui::SetNextWindowSize(ImVec2(300.0f, ImGui::GetIO().DisplaySize.y));
-            ImGui::StyleColorsDark(&m_defaultStyle);
+            ImGui::StyleColorsDark(nullptr);
         };
             
         static bool isInteracting();

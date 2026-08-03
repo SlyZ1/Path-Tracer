@@ -1,5 +1,4 @@
 #define ETA 1.55
-#define ALPHA PI * 2.0 / 180.0 // 5° in rad
 
 Spectrum computeT(Spectrum sigmaA, float h, float etaP, float sinThetaI){
     float sinThetaT = sinThetaI / ETA;
@@ -22,14 +21,14 @@ Spectrum computeA(int p, float h, float cosTheta, float cosThetaI, Spectrum T){
 }
 
 float computeEtaPrime(float cosThetaI){
-    float sin2ThetaD = 1 - cosThetaI * cosThetaI;
-    return sqrt(ETA * ETA - sin2ThetaD) / cosThetaI;
+    float sin2ThetaI = 1 - cosThetaI * cosThetaI;
+    return sqrt(ETA * ETA - sin2ThetaI) / cosThetaI;
 }
 
-float computeThetaCone(float thetaI, int p){
-    if (p == 0) return -thetaI + 2 * ALPHA;
-    else if (p == 1) return -thetaI - ALPHA;
-    else return -thetaI - 4 * ALPHA;
+float computeThetaCone(float thetaI, int p, float alpha){
+    if (p == 0) return -thetaI + 2 * alpha;
+    else if (p == 1) return -thetaI - alpha;
+    else return -thetaI - 4 * alpha;
 }
 
 float computeLobeVariance(float vR, int p){
@@ -129,7 +128,6 @@ void fur(inout RaycastData data, bool inVolume){
 
     // 2
     Spectrum sigmaA = (1.0 - getSpectrumValue(hit.mat)) * 0.5;
-    sigmaA = vec3(0.419, 0.697, 1.37) * 0.5;
     float etaPrime = computeEtaPrime(cosThetaI);
     Spectrum T = computeT(sigmaA, h, etaPrime, sinThetaI);
 
@@ -140,7 +138,7 @@ void fur(inout RaycastData data, bool inVolume){
     float wp = pSample.y;
     
     // 4 compute
-    float thetaC = computeThetaCone(thetaI, p);
+    float thetaC = computeThetaCone(thetaI, p, PI * alpha(hit.mat) / 180.0);
     float betaR = reparamBetaM(betaM(hit.mat));
     float v = computeLobeVariance(betaR * betaR, p);
     float thetaO = sampleThetaOut(seed, v, thetaC);
