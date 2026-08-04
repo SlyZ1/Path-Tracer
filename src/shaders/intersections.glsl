@@ -392,7 +392,7 @@ Hit intersectBvh(inout Ray ray, BVHInfos info, int leafType, bool isShadow)
     return hit;
 }
 
-Hit rayIntersection(inout Ray ray, bool isShadow){
+Hit rayIntersection(inout Ray ray, inout float hitSelected, bool isShadow){
     Hit hit;
     hit.t = 1e6;
     for(int i = 0; i < numPrimitives; i += 1){
@@ -415,6 +415,9 @@ Hit rayIntersection(inout Ray ray, bool isShadow){
             hit.mat = matBuffer[prim.matIndex];
             hit.primIndex = i;
         }
+        if (newHit.t > 0 && selectedObject == i){
+            hitSelected = 1.0;
+        }
     }
     for (int i = 0; i < numMeshes; i += 1){
         BVHInfos info = bvhInfos[i];
@@ -424,14 +427,20 @@ Hit rayIntersection(inout Ray ray, bool isShadow){
             hit.mat = matBuffer[info.matIndex];
             hit.primIndex = -1;
         }
+        if (bvhHit.t > 0 && selectedObject - numPrimitives == i){
+            hitSelected = 1.0;
+        }
     }
-    for (int j = 0; j < numHair; j += 1){
-        BVHInfos info = bvhInfos[j + numMeshes];
+    for (int i = 0; i < numHair; i += 1){
+        BVHInfos info = bvhInfos[i + numMeshes];
         Hit bvhHit = intersectBvh(ray, info, PRIM_CYLINDER, isShadow);
         if (bvhHit.t > 0 && bvhHit.t < hit.t){
             hit = bvhHit;
             hit.mat = matBuffer[info.matIndex];
             hit.primIndex = -1;
+        }
+        if (bvhHit.t > 0 && selectedObject - numPrimitives - numMeshes == i){
+            hitSelected = 1.0;
         }
     }
 

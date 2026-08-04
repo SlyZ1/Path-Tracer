@@ -156,6 +156,10 @@ private:
     int m_selectedObject = -1;
     int m_selectedMesh = -1;
     int m_selectedFur = -1;
+    int m_numFurObjects = 0;
+    int m_numMeshObjects = 0;
+    int m_numPrimObjects = 0;
+    int m_selectedObjectGPUIndex = -1;
     unsigned int m_maxId = 0;
 
     bool m_spectral = false;
@@ -241,9 +245,9 @@ public:
     vector<const char*> getObjectNames() const;
     vector<const char*> getMeshNames() const;
     vector<const char*> getFurNames() const;
-    void selectObject(int index) { m_selectedObject = index; m_selectedMesh = -1; m_selectedFur = -1; };
-    void selectMesh(int index) { m_selectedMesh = index; m_selectedObject = -1; m_selectedFur = -1; };
-    void selectFur(int index) { m_selectedFur = index; m_selectedObject = -1; m_selectedMesh = -1; };
+    void selectObject(int index);
+    void selectMesh(int index);
+    void selectFur(int index);
     int getSelectedObject() const { return m_selectedObject; };
     int getSelectedMesh() const { return m_selectedMesh; };
     int getSelectedFur() const { return m_selectedFur; };

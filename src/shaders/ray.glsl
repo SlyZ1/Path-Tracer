@@ -38,6 +38,8 @@ layout(std430, binding = 5) buffer MaterialBuffer {
     Mat matBuffer[];
 };
 
+uniform int selectedObject;
+
 uniform Camera camera;
 uniform float cameraFov;
 uniform float cameraAperture;
@@ -62,6 +64,7 @@ layout (location = 2) out vec4 NormalOut;
 layout (location = 3) out vec4 AlbedoOut;
 layout (location = 4) out vec4 ColorOut;
 layout (location = 5) out vec4 DepthOut;
+layout (location = 6) out vec4 SelectionOut;
 in vec4 vClipPos;
 
 //#define SAMPLES 1
@@ -226,20 +229,24 @@ vec3 sampleEnvironment(vec3 dir) {
     return texture(envMap, uv).rgb;
 }
 
-void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out vec4 albedo, out vec4 color, out float depth){
+void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out vec4 albedo, out vec4 color, out float depth, out float selected){
     bool firstHit = true;
     normal = vec4(0);
     albedo = vec4(0);
     color = vec4(0);
     depth = 1e2;
     for (int i = 0; i < maxBounces; i++){
-        Hit hit = rayIntersection(ray, false);
+        float hitSelected = 0.0;
+        Hit hit = rayIntersection(ray, hitSelected, false);
+
         if (hit.t > 0 && firstHit){
             firstHit = false;
+            selected = hitSelected;
             normal = vec4(normalize(hit.normal), 1);
             albedo = vec4(hit.mat.color, 1);
             depth = hit.t;
         }
+
         computeLighting(hit, ray, seed);
 
         if (hit.t < 0){
@@ -279,13 +286,14 @@ void main()
     vec4 normal = vec4(0);
     vec4 albedo = vec4(0);
     vec4 color = vec4(0);
-    float depth = 0;
+    float selected = 0.0;
+    float depth = 0.0;
     for (int i = 0; i < samples; i++) {
-        vec2 AAjitter = vec2(rand(seed), rand(seed)) * 4 / winSize;
+        vec2 AAjitter = vec2(rand(seed), rand(seed)) * 0 / winSize;
         Ray r = fovRay(pos + AAjitter, ray, seed);
 
         vec4 result = vec4(0);
-        tracePath(seed, r, result, normal, albedo, color, depth);
+        tracePath(seed, r, result, normal, albedo, color, depth, selected);
         radiance += max(result, vec4(0));
     }
 
@@ -302,4 +310,5 @@ void main()
     ColorOut = color;
     depth = clamp(depth / 1e2, 0.0, 1.0);
     DepthOut = vec4(depth);
+    SelectionOut = vec4(selected);
 }

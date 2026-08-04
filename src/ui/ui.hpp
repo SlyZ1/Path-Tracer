@@ -113,7 +113,8 @@ class UI {
             Albedo = 2,
             Normal = 3,
             Depth = 4,
-            Denoised = 5,
+            Selection = 5,
+            Denoised = 6,
         };
         int textureDisplay = TexType::Result;
         int getResolutionMultiplier() const { return m_resMultiplier; }

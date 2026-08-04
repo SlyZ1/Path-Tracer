@@ -27,6 +27,7 @@ GLuint VBO, VAO, EBO = 0;
 GLuint FBO = 0;
 GLuint texture = 0;
 GLuint oldTexture = 0;
+GLuint selectionTexture = 0;
 GLuint finalTexture = 0;
 GLuint normalTexture = 0;
 GLuint albedoTexture = 0;
@@ -87,6 +88,13 @@ void genTextures(unsigned int width, unsigned int height){
 
     glGenTextures(1, &oldTexture);
     glBindTexture(GL_TEXTURE_2D, oldTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glGenTextures(1, &selectionTexture);
+    glBindTexture(GL_TEXTURE_2D, selectionTexture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -268,6 +276,7 @@ void render(){
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, albedoTexture, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, colorTexture, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT5, GL_TEXTURE_2D, depthTexture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT6, GL_TEXTURE_2D, selectionTexture, 0);
     GLenum drawBuffers[] = {
         GL_COLOR_ATTACHMENT0,
         GL_COLOR_ATTACHMENT1,
@@ -275,8 +284,9 @@ void render(){
         GL_COLOR_ATTACHMENT3,
         GL_COLOR_ATTACHMENT4,
         GL_COLOR_ATTACHMENT5,
+        GL_COLOR_ATTACHMENT6,
     };
-    glDrawBuffers(6, drawBuffers);
+    glDrawBuffers(7, drawBuffers);
     rayTracingShader.use();
     
     ui->updateGPU();
@@ -333,6 +343,9 @@ void render(){
         case UI::TexType::Depth:
             renderTex = depthTexture;
             break;
+        case UI::TexType::Selection:
+            renderTex = selectionTexture;
+            break;
         case UI::TexType::Denoised:
             renderTex = denoisedTexture;
             break;
@@ -340,8 +353,15 @@ void render(){
             renderTex = finalTexture;
             break;
     }
-    glBindTexture(GL_TEXTURE_2D, finalTexture);
-    glUniform1i(ShaderProgram::getVarLoc("oldTexture"), 0);
+    glBindTexture(GL_TEXTURE_2D, renderTex);
+    glUniform1i(ShaderProgram::getVarLoc("screenTexture"), 0);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, selectionTexture);
+    glUniform1i(ShaderProgram::getVarLoc("selectionTexture"), 1);
+    
+    glUniform2f(ShaderProgram::getVarLoc("texSize"), (float)app->width(), (float)app->height());
+
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
@@ -460,8 +480,8 @@ int main(int argc, char* argv[]){
     init(headless);
     while(!app->shouldClose())
     {
-        float dt = glfwGetTime() - lastTime;
-        lastTime = glfwGetTime();
+        float dt = (float)glfwGetTime() - lastTime;
+        lastTime = (float)glfwGetTime();
 
         app->startFrame(frameCount);
         if (!headless){

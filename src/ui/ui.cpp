@@ -824,7 +824,7 @@ void UI::renderParameters(){
         m_resMultiplier = std::max(m_resMultiplier, 1);
 
         Label("Texture Display");
-        static const char* textureTypes[]{"Result", "Color", "Albedo", "Normal", "Depth", "Denoised"};
+        static const char* textureTypes[]{"Result", "Color", "Albedo", "Normal", "Depth", "Selection", "Denoised"};
         ImGui::Combo("##Texture Display", &textureDisplay, textureTypes, IM_ARRAYSIZE(textureTypes));
         
         EndTwoColumnLayout();

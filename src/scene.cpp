@@ -16,7 +16,7 @@ shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> ca
     shared_ptr<Scene> scene = make_shared<Scene>(app, camera, resetFrame);
     scene->initGPU();
     scene->loadFromState(scene->stateFromJson("scenes/hair_scene.json")); 
-     
+
     
     // Object plane;
     // plane.type = PrimType::PLANE;
@@ -280,6 +280,58 @@ vector<const char*> Scene::getFurNames() const {
     return result;
 }
 
+void Scene::selectObject(int index) {
+    int pIndex = 0;
+    int mIndex = 0;
+    int fIndex = 0;
+    m_selectedObjectGPUIndex = -1;
+    for (int i = 0; i < (int)m_objects.size(); i++)
+    {
+        const Object& obj = m_objects[i];
+
+        if (obj.type == PrimType::MESH_){
+            if (i == index){
+                m_selectedObjectGPUIndex = m_numPrimObjects + mIndex;
+                break;
+            }
+            mIndex++;
+        }
+        else if (obj.type == PrimType::FUR_){
+            if (i == index){
+                m_selectedObjectGPUIndex = m_numPrimObjects + m_numMeshObjects + fIndex;
+                break;
+            }
+            fIndex++;
+        }
+        else{
+            if (i == index){
+                m_selectedObjectGPUIndex = pIndex;
+                break;
+            }
+            pIndex++;
+        }
+    }
+    
+    m_selectedObject = index; 
+    m_selectedMesh = -1; 
+    m_selectedFur = -1; 
+}
+
+void Scene::selectMesh(int index) { 
+    m_selectedMesh = index; 
+    m_selectedObject = -1; 
+    m_selectedFur = -1; 
+    m_selectedObjectGPUIndex = -1;
+}
+
+void Scene::selectFur(int index) { 
+    m_selectedFur = index; 
+    m_selectedObject = -1; 
+    m_selectedMesh = -1; 
+    m_selectedObjectGPUIndex = -1;
+}
+
+
 
 shared_ptr<Mesh> Scene::findMesh(const string& path){
     for (shared_ptr<Mesh> mesh : m_meshes){
@@ -392,6 +444,8 @@ int Scene::addMaterial(vector<Material>& materials, Material mat){
 }
 
 void Scene::updateGPU(){
+    glUniform1i(ShaderProgram::getVarLoc("selectedObject"), m_selectedObjectGPUIndex);
+
     bool sceneChanged = m_sceneChanged;
     m_sceneChanged = false;
     if (m_updateNextFrame){
@@ -480,12 +534,13 @@ void Scene::updateGPU(){
             primitives.push_back(prim);
         }
     }
-    int numMeshes = (int)meshInfos.size();
-    int numFurs = (int)furInfos.size();
+    m_numMeshObjects = (int)meshInfos.size();
+    m_numFurObjects = (int)furInfos.size();
+    m_numPrimObjects = (int)primitives.size();
     vector<BVHInfos> bvhInfos = Utils::concat<BVHInfos>({meshInfos, furInfos});
     vector<int> indices = Utils::concat<int>({lightIndicies, volumeIndicies});
 
-    glUniform1i(ShaderProgram::getVarLoc("numPrimitives"), (int)primitives.size());
+    glUniform1i(ShaderProgram::getVarLoc("numPrimitives"), m_numPrimObjects);
 
     glUniform1i(ShaderProgram::getVarLoc("numLights"), (int)lightIndicies.size());
     glUniform1i(ShaderProgram::getVarLoc("numVolumesMeshes"), numVolumeMeshes);
@@ -521,8 +576,8 @@ void Scene::updateGPU(){
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_bvhInfosBuffer);
     glBufferData(GL_SHADER_STORAGE_BUFFER, (int)bvhInfos.size() * sizeof(BVHInfos), bvhInfos.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_bvhInfosBuffer);
-    glUniform1i(ShaderProgram::getVarLoc("numMeshes"), numMeshes);
-    glUniform1i(ShaderProgram::getVarLoc("numHair"), numFurs);
+    glUniform1i(ShaderProgram::getVarLoc("numMeshes"), m_numMeshObjects);
+    glUniform1i(ShaderProgram::getVarLoc("numHair"), m_numFurObjects);
     
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_materialsBuffer);
     glBufferData(GL_SHADER_STORAGE_BUFFER, (int)materials.size() * sizeof(Material), materials.data(), GL_DYNAMIC_DRAW);
