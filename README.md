@@ -93,7 +93,7 @@ Path-Tracer/
 | [GLAD](https://glad.dav1d.de/) | OpenGL 4.3 function loading |
 | [GLM](https://github.com/g-truc/glm) | Vector/matrix math |
 | [Dear ImGui](https://github.com/ocornut/imgui) | Editor UI |
-| [ImGuizmos](https://github.com/cedricguillemet/imguizmo) | UI Gizmos |
+| [ImGuizmo](https://github.com/cedricguillemet/imguizmo) | UI Gizmos |
 | [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader) | OBJ mesh import |
 | [tinyexr](https://github.com/syoyo/tinyexr) | EXR image export |
 | [lodepng](https://github.com/lvandeve/lodepng) | PNG image export |
