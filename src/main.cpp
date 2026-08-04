@@ -361,6 +361,8 @@ void render(){
     glUniform1i(ShaderProgram::getVarLoc("selectionTexture"), 1);
     
     glUniform2f(ShaderProgram::getVarLoc("texSize"), (float)app->width(), (float)app->height());
+    ImVec4 selectionColor = UIColors::selectionColor;
+    glUniform3f(ShaderProgram::getVarLoc("selectionColor"), selectionColor.x, selectionColor.y, selectionColor.z);
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }

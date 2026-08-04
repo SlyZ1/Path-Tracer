@@ -12,6 +12,8 @@ public:
     static ImVec4 lightBlue;
     static ImVec4 blue;
     static ImVec4 lightBlueBorder;
+
+    static ImVec4 selectionColor;
 };
 
 #endif

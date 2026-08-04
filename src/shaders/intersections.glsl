@@ -349,8 +349,7 @@ Hit intersectBvh(inout Ray ray, BVHInfos info, int leafType, bool isShadow)
                 vec4 pa = hairPoints[node.leaf + leafOffset];
                 vec4 pb = hairPoints[node.leaf + 1 + leafOffset];
                 newRay.dir /= newRayLen;
-                float r = radiusMultiplier(info);
-                r = 1.0;
+                float r = pow(2, radiusMultiplier(info));
                 leafHit = intersectCylinder(pa.xyz, pa.w * r, pb.xyz, pb.w * r, true, newRay);
                 leafHit.t /= newRayLen;
                 newRay.dir *= newRayLen;
@@ -413,7 +412,7 @@ Hit rayIntersection(inout Ray ray, inout float hitSelected, bool isShadow){
         if (newHit.t > 0 && newHit.t < hit.t){
             hit = newHit;
             hit.mat = matBuffer[prim.matIndex];
-            hit.primIndex = i;
+            hit.index = i;
         }
         if (newHit.t > 0 && selectedObject == i){
             hitSelected = 1.0;
@@ -425,7 +424,7 @@ Hit rayIntersection(inout Ray ray, inout float hitSelected, bool isShadow){
         if (bvhHit.t > 0 && bvhHit.t < hit.t){
             hit = bvhHit;
             hit.mat = matBuffer[info.matIndex];
-            hit.primIndex = -1;
+            hit.index = i;
         }
         if (bvhHit.t > 0 && selectedObject - numPrimitives == i){
             hitSelected = 1.0;
@@ -437,7 +436,7 @@ Hit rayIntersection(inout Ray ray, inout float hitSelected, bool isShadow){
         if (bvhHit.t > 0 && bvhHit.t < hit.t){
             hit = bvhHit;
             hit.mat = matBuffer[info.matIndex];
-            hit.primIndex = -1;
+            hit.index = i;
         }
         if (bvhHit.t > 0 && selectedObject - numPrimitives - numMeshes == i){
             hitSelected = 1.0;

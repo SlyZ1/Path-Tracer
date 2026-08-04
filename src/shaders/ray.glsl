@@ -91,8 +91,8 @@ in vec4 vClipPos;
 #define filmIOR(m) m.data2.z
 #define filmDepth(m) m.data2.w
 
-#define isSmooth(i) i.data.x
-#define radiusMultiplier(i) i.data.x
+#define isSmooth(b) b.data.x
+#define radiusMultiplier(b) b.data.x
 
 #define hairPointRadius(p) p.w
 #define hairPointPos(p) p.xyz
@@ -158,7 +158,7 @@ void computeLighting(inout Hit hit, inout Ray ray, inout uint seed){
 
 // RAY TRACING --------------------
 
-Ray fovRay(vec2 pos, Ray ray, inout uint seed){
+Ray fovRay(vec2 pos, Ray ray, inout uint seed, bool lensBlur){
     vec3 forward = normalize(camera.lookDir);
     vec3 worldUp = abs(forward.y) < 0.999
                  ? vec3(0,1,0)
@@ -166,8 +166,10 @@ Ray fovRay(vec2 pos, Ray ray, inout uint seed){
     vec3 right = normalize(cross(forward, worldUp));
     vec3 up    = cross(right, forward);
 
-    vec2 lensJitter = randomInDisk(seed) * cameraAperture;
-    ray.origin += lensJitter.x * right + lensJitter.y * up;
+    if (lensBlur){
+        vec2 lensJitter = randomInDisk(seed) * cameraAperture;
+        ray.origin += lensJitter.x * right + lensJitter.y * up;
+    }
 
     float fov = radians(cameraFov);
     float tanHalfFov = tan(fov * 0.5);
@@ -229,19 +231,18 @@ vec3 sampleEnvironment(vec3 dir) {
     return texture(envMap, uv).rgb;
 }
 
-void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out vec4 albedo, out vec4 color, out float depth, out float selected){
+void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out vec4 albedo, out vec4 color, out float depth){
     bool firstHit = true;
     normal = vec4(0);
     albedo = vec4(0);
     color = vec4(0);
     depth = 1e2;
     for (int i = 0; i < maxBounces; i++){
-        float hitSelected = 0.0;
+        float hitSelected;
         Hit hit = rayIntersection(ray, hitSelected, false);
 
         if (hit.t > 0 && firstHit){
             firstHit = false;
-            selected = hitSelected;
             normal = vec4(normalize(hit.normal), 1);
             albedo = vec4(hit.mat.color, 1);
             depth = hit.t;
@@ -286,14 +287,13 @@ void main()
     vec4 normal = vec4(0);
     vec4 albedo = vec4(0);
     vec4 color = vec4(0);
-    float selected = 0.0;
     float depth = 0.0;
     for (int i = 0; i < samples; i++) {
-        vec2 AAjitter = vec2(rand(seed), rand(seed)) * 0 / winSize;
-        Ray r = fovRay(pos + AAjitter, ray, seed);
+        vec2 AAjitter = vec2(rand(seed), rand(seed)) * 2 / winSize;
+        Ray r = fovRay(pos + AAjitter, ray, seed, true);
 
         vec4 result = vec4(0);
-        tracePath(seed, r, result, normal, albedo, color, depth, selected);
+        tracePath(seed, r, result, normal, albedo, color, depth);
         radiance += max(result, vec4(0));
     }
 
@@ -310,5 +310,9 @@ void main()
     ColorOut = color;
     depth = clamp(depth / 1e2, 0.0, 1.0);
     DepthOut = vec4(depth);
-    SelectionOut = vec4(selected);
+
+    float hitSelected = 0.0;
+    Ray untransformedRay = fovRay(pos, ray, seed, false);
+    Hit hit = rayIntersection(untransformedRay, hitSelected, true);
+    SelectionOut = vec4(hitSelected);
 }

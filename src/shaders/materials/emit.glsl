@@ -5,7 +5,7 @@ void emit(inout RaycastData data, bool inVolume){
     float weight = 1;
     if (!inVolume && ray.pbsdf > 0){
         float LdotNl = max(0, dot(-ray.dir, hit.normal));
-        float pdirect = p_direct(primitives[hit.primIndex], hit.t, LdotNl);
+        float pdirect = p_direct(primitives[hit.index], hit.t, LdotNl);
         weight = computeWeight(ray.pbsdf, pdirect);
     }
 

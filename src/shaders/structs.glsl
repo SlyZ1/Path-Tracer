@@ -91,7 +91,7 @@ struct Hit {
     vec3 normal;
     float t;
     vec3 tangent;
-    int primIndex;
+    int index;
     Mat mat;
     bool inside;
 };

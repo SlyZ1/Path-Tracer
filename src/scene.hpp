@@ -56,7 +56,7 @@ struct Object {
     unsigned int ID;
     PrimType type;
     int dataIndex;
-    bool isSmooth;
+    float data;
 
     Object operator+(const Object& other){
         Object newObj;
@@ -68,7 +68,7 @@ struct Object {
         newObj.ID = ID;
         newObj.type = type;
         newObj.dataIndex = dataIndex;
-        newObj.isSmooth = isSmooth;
+        newObj.data = data;
         return newObj;
     }
 
@@ -82,7 +82,7 @@ struct Object {
         newObj.ID = ID;
         newObj.type = type;
         newObj.dataIndex = dataIndex;
-        newObj.isSmooth = isSmooth;
+        newObj.data = data;
         return newObj;
     }
 };
@@ -116,7 +116,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(PrimType, {
 })
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(CameraProperties, fov, aperture, focalLength)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Material, color, color2, type, data, data2)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Object, name, pos, scale, rotation, mat, ID, type, dataIndex, isSmooth)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Object, name, pos, scale, rotation, mat, ID, type, dataIndex, data)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SceneState, skyIntensity, skyTop, skyMiddle, skyBottom, camProperties, modelPaths, furPaths, objectStates)
 
 class Scene {

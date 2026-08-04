@@ -49,7 +49,7 @@ shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> ca
     // // meshObject.type = PrimType::MESH_;
     // // meshObject.mat = Material::diffuseMaterial(vec3(0.9f, 0.6f, 0.2f), 0.0f);
     // // meshObject.dataIndex = bunnyIndex;
-    // // meshObject.isSmooth = true;
+    // // meshObject.data = true;
     // // scene->addObject(meshObject);
 
     // scene->selectObject(-1);
@@ -503,7 +503,7 @@ void Scene::updateGPU(){
             meshInfo.scale = obj.scale;
             meshInfo.rotation = obj.rotation;
             meshInfo.matIndex = matIndex;
-            meshInfo.data.x = (float)obj.isSmooth;
+            meshInfo.data.x = obj.data;
             meshInfos.push_back(meshInfo);
         }
         else if (obj.type == PrimType::FUR_){
@@ -517,6 +517,7 @@ void Scene::updateGPU(){
             furInfo.scale = obj.scale;
             furInfo.rotation = obj.rotation;
             furInfo.matIndex = matIndex;
+            furInfo.data.x = obj.data;
             furInfos.push_back(furInfo);
         }
         else {
@@ -601,6 +602,4 @@ void Scene::deleteScene(){
     m_objects.clear();
     m_meshes.clear();
     m_furs.clear();
-
-
 }

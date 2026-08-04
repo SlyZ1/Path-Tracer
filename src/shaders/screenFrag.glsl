@@ -7,6 +7,8 @@ layout (location = 1) uniform sampler2D screenTexture;
 uniform sampler2D selectionTexture;
 uniform vec2 texSize;
 
+uniform vec3 selectionColor;
+
 vec3 toneMap(vec3 color, float exposure, float gamma) {
     color *= exposure;
     color = color / (color + vec3(1.0));
@@ -19,7 +21,7 @@ void main()
     vec3 color = texture(screenTexture, uv).xyz;
     //color = toneMap(color, 2.0, 2.2);
 
-    int outlineSize = 4;
+    int outlineSize = 5;
     vec4 outlineColor = vec4(0.0);
     float centerSelection = texture(selectionTexture, uv).x;
     if (centerSelection < 0.5){
@@ -27,7 +29,7 @@ void main()
             for(int j = -outlineSize+1; j <= outlineSize-1; j++) {
                 float selection = texture(selectionTexture, uv + vec2(i, j) / texSize).x;
                 if (selection > 0.5) {
-                    outlineColor.rgb = vec3(1.0, 0.68, 0.0);
+                    outlineColor.rgb = selectionColor;
                     outlineColor.a += 1.0 / (outlineSize * outlineSize);
                 }
             }

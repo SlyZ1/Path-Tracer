@@ -315,12 +315,12 @@ void UI::renderPopupData(Object* selectedObject){
                 selectedObject->mat.data.z = glm::clamp(selectedObject->mat.data.z, 0.0f, 5.0f);
                 m_context.scene->updateSceneNextFrame();
             }
-            // Label("Radius Mult", "Radius multiplier of the hair/fur strands.");
-            // selectedObject->mat.data.z = glm::clamp(selectedObject->mat.data.z, 0.0f, 5.0f);
-            // if (ImGui::SliderFloat("##Radius Mult", &selectedObject->mat.data.z, 0.0f, 5.0f)){
-            //     selectedObject->mat.data.z = glm::clamp(selectedObject->mat.data.z, 0.0f, 5.0f);
-            //     m_context.scene->updateSceneNextFrame();
-            // }
+            Label("Radius Control", "Controls the radius of the hair/fur strands, multipling it by 2^x.");
+            selectedObject->data = glm::clamp(selectedObject->data, -2.0f, 2.0f);
+            if (ImGui::SliderFloat("##Radius Control", &selectedObject->data, -2.0f, 2.0f)){
+                selectedObject->data = glm::clamp(selectedObject->data, -2.0f, 2.0f);
+                m_context.scene->updateSceneNextFrame();
+            }
             break;
         case MatType::EMIT:
             Label("Intensity");
@@ -427,8 +427,10 @@ void UI::renderPopup(){
             }
 
             Label("Is Smooth");
-            if (ImGui::Checkbox("##Is Smooth", &selectedObject->isSmooth))
+            bool isSmooth = (bool)selectedObject->data;
+            if (ImGui::Checkbox("##Is Smooth", &isSmooth))
                 m_context.scene->updateSceneNextFrame();
+            selectedObject->data = (float)isSmooth;
         }
         else if (selectedObject->type == PrimType::FUR_){
             Label("Fur Used");

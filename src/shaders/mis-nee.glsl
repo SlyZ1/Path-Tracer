@@ -7,7 +7,7 @@ float computeWeight(float p1, float p2){
 float shadow_hit(Primitive light, Ray ray){
     float hitSelected;
     Hit hit = rayIntersection(ray, hitSelected, true);
-    if (hit.t >= 0 && isEqual(primitives[hit.primIndex], light)) return 1;
+    if (hit.t >= 0 && isEqual(primitives[hit.index], light)) return 1;
     return 0;
 }
 

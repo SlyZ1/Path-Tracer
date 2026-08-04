@@ -152,7 +152,6 @@ void App::startFrame(unsigned int frameCount){
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
     ImGuizmo::BeginFrame();
-    ImGuizmo::SetRect(0, 0, (float)width(), (float)height());
 }
 
 void App::endFrame(bool swapBuffers){
