@@ -1,7 +1,7 @@
 # Path Tracer
 
 ![](outputs/thin_film.png)
-![](./outputs/triple_dragon.png)
+![](outputs/triple_dragon.png)
 ![](outputs/hair/bunny_fur.png)
 ![](outputs/spectral_example.png)
 
@@ -10,6 +10,8 @@
 Progressive, unidirectional path tracer running entirely in a single fragment shader, accumulating frames as the camera and scene remain static. Scene data (triangles, BVH, primitives, materials, lights) is rebuilt on the CPU side and uploaded to SSBOs whenever the scene changes.
 
 Rendering can run in two modes, toggled at runtime: a standard trichromatic RGB path, or a full hero-wavelength spectral path (dispersion, thin-film interference) recompiled on the fly as a shader variant.
+
+![Application showcase](outputs/application_showcase.png)
 
 ## Features
 
@@ -40,7 +42,7 @@ Rendering can run in two modes, toggled at runtime: a standard trichromatic RGB 
 - Flattened GPU-side layout traversed iteratively per ray.
 
 ### Tools
-- ImGui-based editor: scene graph, material/light editing, camera controls.
+- ImGui-based editor: scene editing, camera controls.
 - Keyframe animation system with interpolated scene state between accumulated frames.
 - Scene serialization to/from JSON, OBJ mesh import, image export to PNG and EXR.
 
@@ -91,6 +93,7 @@ Path-Tracer/
 | [GLAD](https://glad.dav1d.de/) | OpenGL 4.3 function loading |
 | [GLM](https://github.com/g-truc/glm) | Vector/matrix math |
 | [Dear ImGui](https://github.com/ocornut/imgui) | Editor UI |
+| [ImGuizmos](https://github.com/cedricguillemet/imguizmo) | UI Gizmos |
 | [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader) | OBJ mesh import |
 | [tinyexr](https://github.com/syoyo/tinyexr) | EXR image export |
 | [lodepng](https://github.com/lvandeve/lodepng) | PNG image export |

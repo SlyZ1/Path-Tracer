@@ -194,7 +194,7 @@ void reloadShaders(){
 
 void init(bool headless = false){
     app = make_shared<App>();
-    app->init(1600, 900, "Basic Raytracer", headless);
+    app->init(1600, 900, "Lambda", headless);
     app->setMousePos(app->width() / 2.0f, app->height() / 2.0f);
     app->toggleCursor(false);
     renderer = make_shared<Renderer>(app);
