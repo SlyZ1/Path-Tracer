@@ -255,20 +255,21 @@ void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out 
 #ifdef SPECTRAL
             if (hit.t > -2) ray.radiance += ray.S0 * sampleSpectrum(ray.lambda, sky(ray.dir)) * skyIntensity;
 
-            result = vec4(wavelengthToXYZ(ray.lambda.x) * ray.radiance.x, 1);
-            result += vec4(wavelengthToXYZ(ray.lambda.y) * ray.radiance.y, 1);
-            result += vec4(wavelengthToXYZ(ray.lambda.z) * ray.radiance.z, 1);
-            result += vec4(wavelengthToXYZ(ray.lambda.w) * ray.radiance.w, 1);
+            result = vec4(wavelengthToXYZ(ray.lambda.x) * ray.radiance.x, 1.0);
+            result += vec4(wavelengthToXYZ(ray.lambda.y) * ray.radiance.y, 1.0);
+            result += vec4(wavelengthToXYZ(ray.lambda.z) * ray.radiance.z, 1.0);
+            result += vec4(wavelengthToXYZ(ray.lambda.w) * ray.radiance.w, 1.0);
             result /= 4.0;
 #else
             if (hit.t > -2) ray.radiance += ray.S0 * sky(ray.dir) * skyIntensity;
-            if (firstHit) albedo = vec4(sky(ray.dir), 1);
-            result = vec4(ray.radiance, 1);
+            if (firstHit) albedo = vec4(sky(ray.dir), 1.0);
+            result = vec4(ray.radiance, 1.0);
             color = result / (albedo + vec4(EPS));
 #endif
             return;
         }
     }
+    result = vec4(ray.radiance, 1.0);
 }
 
 void main()

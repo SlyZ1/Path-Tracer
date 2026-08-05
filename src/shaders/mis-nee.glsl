@@ -15,7 +15,7 @@ float p_direct(Primitive light, float distance, float cosLight){
     float area = 1.0f;
     switch (light.type){
         case PRIM_SPHERE:
-            area = 2.0 * PI * (light.scale.x + light.scale.y + light.scale.z) / 3.0;
+            area = 2.0 * PI * light.scale.x * light.scale.x;
             break;
         case PRIM_PLANE:
             area = light.scale.x * light.scale.z;
@@ -26,7 +26,7 @@ float p_direct(Primitive light, float distance, float cosLight){
 
 PointAndDir sampleSphere(inout uint seed, inout Ray ray, Primitive light){
     vec3 nLight = randomOnUnitHemiphere(seed, ray.origin - light.pos);
-    vec3 lightPoint = light.pos + nLight * (light.scale.x + light.scale.y + light.scale.z) / 3.0;
+    vec3 lightPoint = light.pos + nLight * light.scale.x;
     return PointAndDir(lightPoint, nLight);
 }
 
