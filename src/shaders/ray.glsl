@@ -260,7 +260,9 @@ void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out 
             result += vec4(wavelengthToXYZ(ray.lambda.w) * ray.radiance.w, 1);
             result /= 4.0;
 #else
-            if (hit.t > -2) ray.radiance += ray.throughput * sky(ray.dir) * skyIntensity;
+            if (hit.t > -2){
+                ray.radiance += ray.throughput * sky(ray.dir) * skyIntensity;
+            }
             if (firstHit) albedo = vec4(sky(ray.dir), 1);
             result = vec4(ray.radiance, 1);
             color = result / (albedo + vec4(EPS));
@@ -268,6 +270,7 @@ void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out 
             return;
         }
     }
+    result = vec4(ray.radiance, 1);
 }
 
 void main()

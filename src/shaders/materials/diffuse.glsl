@@ -66,7 +66,7 @@ void diffuse(inout RaycastData data, bool inVolume){
     vec3 viewDir = -ray.dir;
     
     // NEE
-    if (!inVolume){
+    if (true){
         Primitive light;
         Mat lightMat;
         int lightIdx = -1;
@@ -105,8 +105,8 @@ void diffuse(inout RaycastData data, bool inVolume){
     
     ray.throughput *= f_r * NdotL / pbsdf;
     ray.dir = bsdfDir;
-    if (!inVolume) ray.pbsdf = pbsdf;
+    if (true) ray.pbsdf = pbsdf;
 
     updateData(data);
-    russianRoulette(data);
+    //russianRoulette(data);
 }

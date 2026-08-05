@@ -320,8 +320,6 @@ void render(){
     //Update oldTexture
     std::swap(texture, oldTexture);
     
-    frameAccumulator += samples;
-    
     //fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 
     // Screen display (accumulation)
@@ -501,7 +499,8 @@ int main(int argc, char* argv[]){
         }
 
         frameCount++;
-        
+        frameAccumulator += samples;
+    
         if (!headless){
             cpuFrameTimer.end();
             recordStats();

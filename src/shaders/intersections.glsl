@@ -43,16 +43,17 @@ Hit intersectSphere(Primitive sphere, Ray ray){
 Hit intersectPlane(Primitive plane, Ray ray){
     mat3 rot = rotationMatrix(plane.rotation);
     mat3 invRot = transpose(rot);
+    Hit hit;
+    hit.t = -1;
 
     vec3 localOrigin = invRot * (ray.origin - plane.pos);
     vec3 localDir = invRot * ray.dir;
-
     vec3 normal = vec3(0,1,0);
+    //if (dot(normal, localDir) > 0) return hit;
+
     float t = -localOrigin.y / localDir.y;
     vec3 localHit = localOrigin + t * localDir;
     vec3 difference = abs(localHit);
-    Hit hit;
-    hit.t = -1;
     vec3 scale = plane.scale / 2.0;
     if (t <= 0 || difference.x > scale.x || difference.z > scale.z)
         return hit;
