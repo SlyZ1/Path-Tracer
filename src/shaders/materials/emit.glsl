@@ -10,7 +10,7 @@ void emit(inout RaycastData data, bool inVolume){
     }
 
     Spectrum Le = getSpectrumValue(hit.mat) * emitIntensity(hit.mat);
-    ray.radiance += clamp(ray.throughput * weight, 0.0, CLAMP_VAL) * Le;
+    ray.radiance += clamp(ray.S0 * weight, 0.0, CLAMP_VAL) * Le;
     stop(hit, true);
 
     updateData(data);

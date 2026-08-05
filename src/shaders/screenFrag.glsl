@@ -19,7 +19,7 @@ void main()
 {
     vec2 uv = (vClipPos.xy + vec2(1)) * 0.5;
     vec3 color = texture(screenTexture, uv).xyz;
-    //color = toneMap(color, 2.0, 2.2);
+    //color = toneMap(color, 1, 1);
 
     int outlineSize = 5;
     vec4 outlineColor = vec4(0.0);

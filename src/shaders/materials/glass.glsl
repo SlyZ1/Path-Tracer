@@ -83,20 +83,20 @@ bool checkReflection(inout RaycastData data, vec3 H, float cos1, float dispertio
         stochasticReflect.w || totalReflectionAll.w
     );
 
-    if (ray.throughput.y > 0 || ray.throughput.z > 0 || ray.throughput.w > 0){
+    if (ray.S0.y > 0 || ray.S0.z > 0 || ray.S0.w > 0){
         bool pathDiverge = !all(reflectAll) && !all(!reflectAll);
         bool disperse = all(!reflectAll) && dispertionFactor > 0;
         if (pathDiverge || disperse)
         {
-            ray.throughput *= Spectrum(4, 0, 0, 0);
+            ray.S0 *= Spectrum(4, 0, 0, 0);
             ray.lambda = Spectrum(ray.lambda.x);
             params.n = SpectralParam(params.n.x);
         }
     }
     if (reflectAll.x)
-        ray.throughput *= reflectance / reflectance.x;
+        ray.S0 *= reflectance / reflectance.x;
     else
-        ray.throughput *= (SpectralParam(1) - reflectance) / (1 - reflectance.x);
+        ray.S0 *= (SpectralParam(1) - reflectance) / (1 - reflectance.x);
     updateData(data);
     return reflectAll.x;
 }
@@ -154,7 +154,7 @@ void glass(inout RaycastData data, bool inVolume){
     float sigma_a = absorptionFactor(hit.mat);
     if (hit.inside && sigma_s < EPS){
         Spectrum absorption = exp(-(Spectrum(1.0) - spectrumValue) * sigma_a * hit.t); // Beer-Lambert
-        ray.throughput *= absorption;
+        ray.S0 *= absorption;
     }
     
     float fuzz = pbrFuzz(hit.mat);
@@ -178,7 +178,7 @@ void glass(inout RaycastData data, bool inVolume){
 
         // BSDF sampling
         vec3 L = reflect(-V, H);
-        ray.throughput *= weightVNDFReflectDielectric(N, V, L, alpha);
+        ray.S0 *= weightVNDFReflectDielectric(N, V, L, alpha);
         ray.dir = L;
     }
     else{
@@ -191,7 +191,7 @@ void glass(inout RaycastData data, bool inVolume){
         }
 
         vec3 L = refract(ray.dir, H, IOR);
-        ray.throughput *= weightVNDFRefractDielectric(N, H, L, alpha);
+        ray.S0 *= weightVNDFRefractDielectric(N, H, L, alpha);
         ray.dir = L;
     }
     updateData(data);

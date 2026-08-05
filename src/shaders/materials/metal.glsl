@@ -84,7 +84,7 @@ void metal(inout RaycastData data, bool inVolume){
         vec3 newDir = reflect(ray.dir, hit.normal);
         float VdotN = max(dot(-ray.dir, hit.normal), 0.0);
         Spectrum f_r = fresnelTerm(VdotN, fresnelParams);
-        ray.throughput *= f_r;
+        ray.S0 *= f_r;
         ray.dir = newDir;
         updateData(data);
         return;
@@ -122,14 +122,14 @@ void metal(inout RaycastData data, bool inVolume){
             Spectrum f_r = cookTorranceMetals(fresnelParams, N, V, L, alpha);
             Spectrum Le = getSpectrumValue(lightMat) * emitIntensity(lightMat);
 
-            ray.radiance += clamp(ray.throughput * f_r * weight * NdotL / pdirect, 0.0, CLAMP_VAL) * Le;
+            ray.radiance += clamp(ray.S0 * f_r * weight * NdotL / pdirect, 0.0, CLAMP_VAL) * Le;
         }
     }
 
     // BSDF sampling
     vec3 H = randomGGX_VNDFHemisphere(seed, V, N, alpha);
     vec3 L = reflect(-V, H);
-    ray.throughput *= weight_VNDF_reflect(fresnelParams, N, V, L, alpha);
+    ray.S0 *= weight_VNDF_reflect(fresnelParams, N, V, L, alpha);
     ray.dir = L;
     if (!inVolume) ray.pbsdf = p_VNDF_reflect(N, L, V, alpha);
 

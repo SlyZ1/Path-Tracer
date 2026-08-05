@@ -67,14 +67,14 @@ void russianRoulette(inout RaycastData data){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
 #ifdef SPECTRAL
-    float prob = max(max(ray.throughput.x, ray.throughput.y), max(ray.throughput.z, ray.throughput.w));
+    float prob = max(max(ray.S0.x, ray.S0.y), max(ray.S0.z, ray.S0.w));
 #else
-    float prob = max(max(ray.throughput.x, ray.throughput.y), ray.throughput.z);
+    float prob = max(max(ray.S0.x, ray.S0.y), ray.S0.z);
 #endif
     if (rand(seed) > prob) {
         stop(hit, true);
     }  
-    else { ray.throughput /= max(min(prob, 1), EPS); }
+    else { ray.S0 /= max(min(prob, 1), EPS); }
 
     updateData(data);
 }

@@ -79,7 +79,10 @@ struct BVHInfos {
 struct Ray {
     vec3 origin;
     vec3 dir;
-    Spectrum throughput;
+    Spectrum S0;
+    Spectrum S1;
+    Spectrum S2;
+    Spectrum S3;
     Spectrum radiance;
     float pbsdf;
 #ifdef SPECTRAL

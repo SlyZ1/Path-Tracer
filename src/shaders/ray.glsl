@@ -111,6 +111,7 @@ in vec4 vClipPos;
 #pragma include "./reflections.glsl"
 #pragma include "./intersections.glsl"
 #pragma include "./mis-nee.glsl"
+#pragma include "./polarization.glsl"
 
 // -------------------- MATERIALS
 
@@ -252,7 +253,7 @@ void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out 
 
         if (hit.t < 0){
 #ifdef SPECTRAL
-            if (hit.t > -2) ray.radiance += ray.throughput * sampleSpectrum(ray.lambda, sky(ray.dir)) * skyIntensity;
+            if (hit.t > -2) ray.radiance += ray.S0 * sampleSpectrum(ray.lambda, sky(ray.dir)) * skyIntensity;
 
             result = vec4(wavelengthToXYZ(ray.lambda.x) * ray.radiance.x, 1);
             result += vec4(wavelengthToXYZ(ray.lambda.y) * ray.radiance.y, 1);
@@ -260,7 +261,7 @@ void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out 
             result += vec4(wavelengthToXYZ(ray.lambda.w) * ray.radiance.w, 1);
             result /= 4.0;
 #else
-            if (hit.t > -2) ray.radiance += ray.throughput * sky(ray.dir) * skyIntensity;
+            if (hit.t > -2) ray.radiance += ray.S0 * sky(ray.dir) * skyIntensity;
             if (firstHit) albedo = vec4(sky(ray.dir), 1);
             result = vec4(ray.radiance, 1);
             color = result / (albedo + vec4(EPS));

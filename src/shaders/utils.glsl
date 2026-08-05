@@ -128,16 +128,19 @@ bool isEqual(Primitive prim1, Primitive prim2){
 }
 
 Ray makeRay(vec3 origin, vec3 dir){
-    return Ray(
-        origin, 
-        dir, 
-        Spectrum(1),
-        Spectrum(0),
-        -1
+    Ray ray;
+    ray.origin = origin;
+    ray.dir = dir;
+    ray.S0 = Spectrum(1.0);
+    ray.S1 = Spectrum(0.0);
+    ray.S2 = Spectrum(0.0);
+    ray.S3 = Spectrum(0.0);
+    ray.radiance = Spectrum(0.0);
+    ray.pbsdf = -1;
 #ifdef SPECTRAL
-        ,Spectrum(0)
+    ray.lambda = Spectrum(0.0);
 #endif
-    );
+    return ray;
 }
 
 vec3 refract(vec3 I, vec3 N, float n) {

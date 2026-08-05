@@ -17,7 +17,7 @@ void volume(inout RaycastData data, inout Mat volumeMat){
             ray.origin += ray.dir * scatterDistance;
             ray.dir = sampleHG(seed, ray.dir, g);
             Spectrum absorption = exp(-(Spectrum(1) - spectrumValue) * sigma_a * scatterDistance);
-            ray.throughput *= absorption;
+            ray.S0 *= absorption;
             volumeMat.data = vec4(SCATTERED);
             updateData(data);
             russianRoulette(data);
@@ -26,7 +26,7 @@ void volume(inout RaycastData data, inout Mat volumeMat){
     }
 
     Spectrum absorption = exp(-(Spectrum(1) - spectrumValue) * sigma_a * hit.t);
-    ray.throughput *= absorption;
+    ray.S0 *= absorption;
 
     updateData(data);
 }

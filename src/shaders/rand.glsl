@@ -159,6 +159,6 @@ void sampleLambda(inout Ray ray, inout uint seed){
     ray.lambda.y = mix(380.0, 780.0, rand(seed));
     ray.lambda.z = mix(380.0, 780.0, rand(seed));
     ray.lambda.w = mix(380.0, 780.0, rand(seed));
-    ray.throughput *= 780.0 - 380.0;   
+    ray.S0 *= 780.0 - 380.0;   
 }
 #endif

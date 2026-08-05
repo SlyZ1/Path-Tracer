@@ -144,7 +144,7 @@ void fur(inout RaycastData data, bool inVolume){
     float thetaO = sampleThetaOut(seed, v, thetaC);
 
     Spectrum Ap = computeA(p, h, dot(wi, normal), cosThetaI, T);
-    ray.throughput *= Ap / (wp);
+    ray.S0 *= Ap / (wp);
     
     float phiO;
     if (p < 3){
