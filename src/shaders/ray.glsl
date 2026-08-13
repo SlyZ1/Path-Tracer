@@ -76,6 +76,10 @@ in vec4 vClipPos;
 #define updateData(data) data = RaycastData(hit, ray, seed)
 #define unwrapData(data) ray = data.ray; hit = data.hit; seed = data.seed
 
+#define rayStopped(h) (h.t < 0)
+#define hitLight(h) (h.t == -2)
+#define hitObject(h) (h.t > 0)
+
 #define betaN(m) m.data.x
 #define betaM(m) m.data.y
 #define alpha(m) m.data.z
@@ -106,12 +110,12 @@ in vec4 vClipPos;
 
 // -------------------- UTILS
 
+#pragma include "./polarization.glsl"
 #pragma include "./rand.glsl"
 #pragma include "./utils.glsl"
 #pragma include "./reflections.glsl"
 #pragma include "./intersections.glsl"
 #pragma include "./mis-nee.glsl"
-#pragma include "./polarization.glsl"
 
 // -------------------- MATERIALS
 
@@ -232,44 +236,61 @@ vec3 sampleEnvironment(vec3 dir) {
     return texture(envMap, uv).rgb;
 }
 
-void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out vec4 albedo, out vec4 color, out float depth){
+vec4 storeResult(inout Ray ray){
+    vec4 result = vec4(0.0);
+#ifdef SPECTRAL
+    result = vec4(wavelengthToXYZ(ray.lambda.x) * ray.radiance.x, 1.0);
+    result += vec4(wavelengthToXYZ(ray.lambda.y) * ray.radiance.y, 1.0);
+    result += vec4(wavelengthToXYZ(ray.lambda.z) * ray.radiance.z, 1.0);
+    result += vec4(wavelengthToXYZ(ray.lambda.w) * ray.radiance.w, 1.0);
+    result /= 4.0;
+#else
+    result = vec4(ray.radiance, 1.0);
+#endif
+    return result;
+}
+
+void tracePath(inout uint seed, inout Ray ray, out vec4 result, out vec4 normal, out vec4 albedo, out vec4 color, out float depth){
     bool firstHit = true;
     normal = vec4(0);
     albedo = vec4(0);
     color = vec4(0);
     depth = 1e2;
+
+    vec3 originalDir = ray.dir;
+    vec3 originalBasis = computeDefaultDirBasis(originalDir);
+    ray.basis = originalBasis;
+
     for (int i = 0; i < maxBounces; i++){
         float hitSelected;
         Hit hit = rayIntersection(ray, hitSelected, false);
 
-        if (hit.t > 0 && firstHit){
+        if (hitObject(hit) && firstHit){
             firstHit = false;
             normal = vec4(normalize(hit.normal), 1);
             albedo = vec4(hit.mat.color, 1);
             depth = hit.t;
         }
 
+        vec3 currentRayDir = ray.dir;
+        applyMuellerMatrix(ray, rotateBasis(ray.basis, hit.normal, currentRayDir));
         computeLighting(hit, ray, seed);
+        ray.basis = computeTargetBasis(ray.basis, hit.normal, ray.dir);
 
-        if (hit.t < 0){
-#ifdef SPECTRAL
-            if (hit.t > -2) ray.radiance += ray.S0 * sampleSpectrum(ray.lambda, sky(ray.dir)) * skyIntensity;
+        if (rayStopped(hit)){
+            if (!hitLight(hit)){
+                ray.radiance += getMuellerCoeff(ray, 0, 0) * getSpectrumValueFromColor(sky(ray.dir)) * skyIntensity;
+            } 
+            result = storeResult(ray);
 
-            result = vec4(wavelengthToXYZ(ray.lambda.x) * ray.radiance.x, 1.0);
-            result += vec4(wavelengthToXYZ(ray.lambda.y) * ray.radiance.y, 1.0);
-            result += vec4(wavelengthToXYZ(ray.lambda.z) * ray.radiance.z, 1.0);
-            result += vec4(wavelengthToXYZ(ray.lambda.w) * ray.radiance.w, 1.0);
-            result /= 4.0;
-#else
-            if (hit.t > -2) ray.radiance += ray.S0 * sky(ray.dir) * skyIntensity;
+#ifndef SPECTRAL
             if (firstHit) albedo = vec4(sky(ray.dir), 1.0);
-            result = vec4(ray.radiance, 1.0);
             color = result / (albedo + vec4(EPS));
 #endif
             return;
         }
     }
-    result = vec4(ray.radiance, 1.0);
+    result = storeResult(ray);
 }
 
 void main()
@@ -279,7 +300,6 @@ void main()
     vec2 pos = ratio(vClipPos.xy) * resolutionFactor + ratio(vec2(1)) * (resolutionFactor - 1);
     vec2 offset = resolutionFactor * vec2(rand(seed), rand(seed)) / winSize;
     vec2 uv = (vClipPos.xy + vec2(1)) * 0.5;
-
     Ray ray = makeRay(camera.pos, camera.lookDir);
 #ifdef SPECTRAL
     sampleLambda(ray, seed);

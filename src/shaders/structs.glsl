@@ -58,10 +58,12 @@ struct BVHInfos {
 
 #ifdef SPECTRAL
     #define Spectrum vec4
+    #define SPECTRUM_DIM 4
     #define SpectralParam vec4
     #define paramToFloat(s) s.x
 #else
     #define Spectrum vec3
+    #define SPECTRUM_DIM 3
     #define SpectralParam float
     #define paramToFloat(s) s
 #endif
@@ -79,10 +81,8 @@ struct BVHInfos {
 struct Ray {
     vec3 origin;
     vec3 dir;
-    Spectrum S0;
-    Spectrum S1;
-    Spectrum S2;
-    Spectrum S3;
+    mat4 mueller[SPECTRUM_DIM];
+    vec3 basis;
     Spectrum radiance;
     float pbsdf;
 #ifdef SPECTRAL

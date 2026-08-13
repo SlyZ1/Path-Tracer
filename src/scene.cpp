@@ -15,7 +15,7 @@ const char* Scene::primLabels[6] = {
 shared_ptr<Scene> Scene::defaultScene(shared_ptr<App> app, shared_ptr<Camera> camera, function<void()> resetFrame){
     shared_ptr<Scene> scene = make_shared<Scene>(app, camera, resetFrame);
     scene->initGPU();
-    scene->loadFromState(scene->stateFromJson("scenes/hair_scene.json")); 
+    scene->loadFromState(scene->stateFromJson("scenes/cornell_box.json")); 
 
     
     // Object plane;

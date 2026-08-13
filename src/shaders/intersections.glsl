@@ -333,8 +333,8 @@ Hit intersectBvh(inout Ray ray, BVHInfos info, int leafType, bool isShadow)
         Hit boxHit = intersectAABB(invRay, node.aabb, 0.001, hitT);
         if (boxHit.t < 0 || boxHit.t > hitT) continue;
         if (debugBVH > 0){
-            if (leafType == PRIM_CYLINDER) ray.S0 *= 0.95;
-            else ray.S0 *= 1.05;
+            if (leafType == PRIM_CYLINDER) applyMultiplier(ray, 0.95);
+            else applyMultiplier(ray, 1.05);
         }
 
         if (node.leaf >= 0) {

@@ -131,10 +131,9 @@ Ray makeRay(vec3 origin, vec3 dir){
     Ray ray;
     ray.origin = origin;
     ray.dir = dir;
-    ray.S0 = Spectrum(1.0);
-    ray.S1 = Spectrum(0.0);
-    ray.S2 = Spectrum(0.0);
-    ray.S3 = Spectrum(0.0);
+    for(int i = 0; i < SPECTRUM_DIM; i++) {
+        ray.mueller[i] = depolarizer(1);
+    }
     ray.radiance = Spectrum(0.0);
     ray.pbsdf = -1;
 #ifdef SPECTRAL

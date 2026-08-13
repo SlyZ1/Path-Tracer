@@ -66,15 +66,17 @@ vec4 sampleLight(inout RaycastData data, Primitive light){
 void russianRoulette(inout RaycastData data){
     Ray ray; Hit hit; uint seed;
     unwrapData(data);
+    Spectrum S0 = getMuellerCoeff(ray, 0, 0);
+    float prob = max(max(S0.x, S0.y), S0.z);
 #ifdef SPECTRAL
-    float prob = max(max(ray.S0.x, ray.S0.y), max(ray.S0.z, ray.S0.w));
-#else
-    float prob = max(max(ray.S0.x, ray.S0.y), ray.S0.z);
+    prob = max(prob, S0.w);
 #endif
     if (rand(seed) > prob) {
         stop(hit, true);
-    }  
-    else { ray.S0 /= max(min(prob, 1), EPS); }
+    }
+    else { 
+        applyMultiplier(ray, 1.0 / clamp(prob, EPS, 1.0)); 
+    }
 
     updateData(data);
 }

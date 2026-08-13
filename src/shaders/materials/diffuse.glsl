@@ -93,7 +93,7 @@ void diffuse(inout RaycastData data, bool inVolume){
             Spectrum f_r = oren_nayar(spectrumValue, hit.normal, lightDir, viewDir, orenNayarRoughness);
             Spectrum Le = lightSpectrumValue * emitIntensity(lightMat);
 
-            ray.radiance += clamp(ray.S0 * f_r * weight * NdotL / pdirect, 0.0, CLAMP_VAL) * Le;
+            ray.radiance += clamp(getMuellerCoeff(ray, 0, 0) * f_r * weight * NdotL / pdirect, 0.0, CLAMP_VAL) * Le;
         }
     }
 
@@ -103,7 +103,7 @@ void diffuse(inout RaycastData data, bool inVolume){
     float NdotL = max(0, dot(bsdfDir, hit.normal));
     Spectrum f_r = oren_nayar(spectrumValue, hit.normal, bsdfDir, viewDir, orenNayarRoughness);
     
-    ray.S0 *= f_r * NdotL / pbsdf;
+    applyDepolarizer(ray, f_r * NdotL / pbsdf);
     ray.dir = bsdfDir;
     if (!inVolume) ray.pbsdf = pbsdf;
 
