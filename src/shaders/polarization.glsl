@@ -11,7 +11,7 @@ mat4 muellerRotator(float cosTheta, float sinTheta){
         1, 0, 0, 0,
         0, c, s, 0,
         0, -s, c, 0,
-        0, 0, 0, 0
+        0, 0, 0, 1
     ));
 }
 
@@ -83,6 +83,29 @@ void applyDepolarizer(inout Ray ray, in Spectrum spectrum){
 void applyDepolarizer(inout Ray ray, float spectrum){
     for(int i = 0; i < SPECTRUM_DIM; i++) {
         ray.mueller[i] = ray.mueller[i] * depolarizer(spectrum);
+    }
+}
+
+mat4 linearPolarizer(float x, float angle){
+    float cos2A = cos(2 * angle);
+    float sin2A = sin(2 * angle);
+    return x * 0.5 * mat4(
+        1,     cos2A,        sin2A,        0,
+        cos2A, cos2A*cos2A,  cos2A*sin2A,  0,
+        sin2A, cos2A*sin2A, sin2A*sin2A, 0,
+        0,   0,           0,           0
+    );
+}
+
+void applyLinearPolarizer(inout Ray ray, float angle, in Spectrum spectrum){
+    for(int i = 0; i < SPECTRUM_DIM; i++) {
+        ray.mueller[i] = ray.mueller[i] * linearPolarizer(spectrum[i], angle);
+    }
+}
+
+void applyLinearPolarizer(inout Ray ray, float angle, float spectrum){
+    for(int i = 0; i < SPECTRUM_DIM; i++) {
+        ray.mueller[i] = ray.mueller[i] * linearPolarizer(spectrum, angle);
     }
 }
 

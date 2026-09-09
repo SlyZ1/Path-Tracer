@@ -261,6 +261,8 @@ void tracePath(inout uint seed, inout Ray ray, out vec4 result, out vec4 normal,
     vec3 originalBasis = computeDefaultDirBasis(originalDir);
     ray.basis = originalBasis;
 
+    applyLinearPolarizer(ray, PI * 0.5, 1);
+
     for (int i = 0; i < maxBounces; i++){
         float hitSelected;
         Hit hit = rayIntersection(ray, hitSelected, false);
@@ -273,8 +275,8 @@ void tracePath(inout uint seed, inout Ray ray, out vec4 result, out vec4 normal,
         }
 
         vec3 currentRayDir = ray.dir;
-        applyMuellerMatrix(ray, rotateBasis(ray.basis, hit.normal, currentRayDir));
-        computeLighting(hit, ray, seed);
+        applyMuellerMatrix(ray, transpose(rotateBasis(ray.basis, hit.normal, currentRayDir))); // transpose(R(k+1 -> k))
+        computeLighting(hit, ray, seed); // Mn * R(n -> n-1) * .... * Mk+1 * R(k -> k+1) *Mk
         ray.basis = computeTargetBasis(ray.basis, hit.normal, ray.dir);
 
         if (rayStopped(hit)){

@@ -84,7 +84,7 @@ void metal(inout RaycastData data, bool inVolume){
         vec3 newDir = reflect(ray.dir, hit.normal);
         float VdotN = max(dot(-ray.dir, hit.normal), 0.0);
         Spectrum f_r = fresnelTerm(VdotN, fresnelParams);
-        applyDepolarizer(ray, f_r);
+        applyLinearPolarizer(ray, 0, f_r);
         ray.dir = newDir;
         updateData(data);
         return;
