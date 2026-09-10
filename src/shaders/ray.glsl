@@ -113,7 +113,6 @@ in vec4 vClipPos;
 #pragma include "./mis-nee.glsl"
 
 // -------------------- MATERIALS
-
 #pragma include "./materials/diffuse.glsl"
 #pragma include "./materials/metal.glsl"
 #pragma include "./materials/glass.glsl"
@@ -231,6 +230,20 @@ vec3 sampleEnvironment(vec3 dir) {
     return texture(envMap, uv).rgb;
 }
 
+vec4 storeResult(inout Ray ray){
+    vec4 result = vec4(0.0);
+#ifdef SPECTRAL
+    result = vec4(wavelengthToXYZ(ray.lambda.x) * ray.radiance.x, 1.0);
+    result += vec4(wavelengthToXYZ(ray.lambda.y) * ray.radiance.y, 1.0);
+    result += vec4(wavelengthToXYZ(ray.lambda.z) * ray.radiance.z, 1.0);
+    result += vec4(wavelengthToXYZ(ray.lambda.w) * ray.radiance.w, 1.0);
+    result /= 4.0;
+#else
+    result = vec4(ray.radiance, 1.0);
+#endif
+    return result;
+}
+
 void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out vec4 albedo, out vec4 color, out float depth){
     bool firstHit = true;
     normal = vec4(0);
@@ -251,26 +264,19 @@ void tracePath(in out uint seed, Ray ray, out vec4 result, out vec4 normal, out 
         computeLighting(hit, ray, seed);
 
         if (hit.t < 0){
-#ifdef SPECTRAL
-            if (hit.t > -2) ray.radiance += ray.throughput * sampleSpectrum(ray.lambda, sky(ray.dir)) * skyIntensity;
-
-            result = vec4(wavelengthToXYZ(ray.lambda.x) * ray.radiance.x, 1);
-            result += vec4(wavelengthToXYZ(ray.lambda.y) * ray.radiance.y, 1);
-            result += vec4(wavelengthToXYZ(ray.lambda.z) * ray.radiance.z, 1);
-            result += vec4(wavelengthToXYZ(ray.lambda.w) * ray.radiance.w, 1);
-            result /= 4.0;
-#else
             if (hit.t > -2){
-                ray.radiance += ray.throughput * sky(ray.dir) * skyIntensity;
+                ray.radiance += ray.throughput * getSpectrumValueFromColor(sky(ray.dir)) * skyIntensity;
             }
+            result = storeResult(ray);
+
+#ifndef SPECTRAL
             if (firstHit) albedo = vec4(sky(ray.dir), 1);
-            result = vec4(ray.radiance, 1);
             color = result / (albedo + vec4(EPS));
 #endif
             return;
         }
     }
-    result = vec4(ray.radiance, 1);
+    result = storeResult(ray);
 }
 
 void main()

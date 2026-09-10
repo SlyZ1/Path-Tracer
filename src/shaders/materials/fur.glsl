@@ -25,10 +25,10 @@ float computeEtaPrime(float cosThetaI){
     return sqrt(ETA * ETA - sin2ThetaI) / cosThetaI;
 }
 
-float computeThetaCone(float thetaI, int p, float alpha){
-    if (p == 0) return -thetaI + 2 * alpha;
-    else if (p == 1) return -thetaI - alpha;
-    else return -thetaI - 4 * alpha;
+float computeThetaCone(float thetaI, int p, float a){
+    if (p == 0) return -thetaI + 2 * a;
+    else if (p == 1) return -thetaI - a;
+    else return -thetaI - 4 * a;
 }
 
 float computeLobeVariance(float vR, int p){
