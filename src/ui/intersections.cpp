@@ -62,7 +62,6 @@ float Intersections::intersectPlane(const Ray& ray, vec3 pos, vec3 scale, vec3 r
     vec3 localOrigin = invRot * (ray.origin - pos);  
     vec3 localDir = invRot * ray.direction;
 
-    vec3 normal = vec3(0.0f, 1.0f, 0.0f);
     float t = -localOrigin.y / localDir.y;
     vec3 localHit = localOrigin + t * localDir;
     vec3 difference = abs(localHit);

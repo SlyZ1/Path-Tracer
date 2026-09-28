@@ -1,4 +1,5 @@
 #include "mesh.hpp"
+#define TINYOBJLOADER_IMPLEMENTATION
 #include <tinyobjloader/tiny_obj_loader.h>
 #include <iostream>
 #include <fstream>
@@ -75,7 +76,6 @@ void Mesh::loadFromModel(string dataPath){
         const auto &mesh = shape.mesh;
         int numVertex = 3;
         int size = (int)mesh.num_face_vertices.size();
-        int index_offset = 0;
         for (int i = 0; i < size; i++)
         {
             int fv = mesh.num_face_vertices[i];
@@ -94,7 +94,6 @@ void Mesh::loadFromModel(string dataPath){
                 
                 m_triangles.push_back(newTriangle);   
             }
-            index_offset += fv;
         }
     }
 

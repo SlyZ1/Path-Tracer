@@ -13,6 +13,23 @@ Rendering can run in two modes, toggled at runtime: a standard trichromatic RGB 
 
 ![Application showcase](outputs/application_showcase.png)
 
+## Build & Run
+
+### Requirements
+
+- CMake 3.30+
+- A C++17 compiler (MSVC, GCC, or Clang)
+- A GPU and driver supporting OpenGL 4.3+ (compute shaders)
+- OpenMP support
+
+### Build & Run
+
+```bash
+cmake -B build
+cmake --build build
+./myprogram
+```
+
 ## Features
 
 ### Integrator
@@ -52,22 +69,6 @@ Rendering can run in two modes, toggled at runtime: a standard trichromatic RGB 
 
 Validated against a white-furnace test (energy conservation under uniform illumination) and cross-checked against pbrt-v4's reference hair BSDF on the same parameters. You can see that my image differs slightly from pbrt's, which is an issue I failed to track down.
 
-## Build & Run
-
-### Requirements
-
-- Windows
-- MSVC (Visual Studio 2022 Build Tools, C++17)
-- CUDA Toolkit + TensorRT (for a potential future denoiser)
-- OpenGL 4.3+
-- GNU Make (mingw32-make)
-
-### Build & Run
-
-```bash
-make run
-```
-
 ## Project Structure
 
 ```text
@@ -96,7 +97,7 @@ Path-Tracer/
 | [ImGuizmo](https://github.com/cedricguillemet/imguizmo) | UI Gizmos |
 | [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader) | OBJ mesh import |
 | [tinyexr](https://github.com/syoyo/tinyexr) | EXR image export |
-| [lodepng](https://github.com/lvandeve/lodepng) | PNG image export |
+| [stb_image_write.h](https://github.com/nothings/stb/blob/master/stb_image_write.h) | PNG image export |
 | [nlohmann/json](https://github.com/nlohmann/json) | Scene serialization |
 | [Native File Dialog](https://github.com/mlabbe/nativefiledialog) | Native open/save dialogs |
 | [CUDA](https://developer.nvidia.com/cuda-toolkit) | GPU interop for the denoiser |

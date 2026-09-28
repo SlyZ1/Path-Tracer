@@ -2,6 +2,9 @@
 #define TINYEXR_IMPLEMENTATION
 #include <tinyexr/tinyexr.h> 
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb/stb_image_write.h>
+
 using namespace std; 
 
 GLFWwindow* App::Window = {};
@@ -64,7 +67,7 @@ void App::init(int width, int height, const char *name, bool headless){
 
 string App::saveFileDialog(bool& cancel, const string& defaultName){
     char* path;
-    nfdsavedialogu8args_t args = {0};
+    nfdsavedialogu8args_t args = {};
     args.defaultName = defaultName.c_str();
     const nfdresult_t res = NFD_SaveDialogU8_With(&path, &args);
     switch (res) {
@@ -114,7 +117,7 @@ string App::openFileDialog(bool& cancel, nfdopendialogu8args_t args){
 
 string App::pickFolderDialog(bool& cancel){
     char* path;
-    nfdpickfolderu8args_t args = {0};
+    nfdpickfolderu8args_t args = {};
     const nfdresult_t res = NFD_PickFolderU8_With(&path, &args);
     switch (res) {
         case NFD_OKAY: {
@@ -270,22 +273,12 @@ void App::exportImage(const string& path){
         float c = std::clamp(pixelsF[i], 0.0f, 1.0f);
         pixels[i] = (unsigned char)(c * 255.0f + 0.5f);
     }
-    unsigned char* data = pixels.data();
 
-    //flip vertical
-    int stride = width() * 3;
-    vector<unsigned char> row(stride);
+    int ok = stbi_write_png(path.c_str(), width(), height(), 3, pixels.data(), width() * 3);
 
-    for (unsigned int y = 0; y < height() / 2; y++) {
-        unsigned char* row1 = data + y * stride;
-        unsigned char* row2 = data + (height() - y - 1) * stride;
-
-        memcpy(row.data(), row1, stride);
-        memcpy(row1, row2, stride);
-        memcpy(row2, row.data(), stride);
+    if (!ok) {
+        cerr << "Error writing image." << endl;
     }
-
-    lodepng::encode(path.c_str(), pixels, width(), height(), LCT_RGB);
 }
 
 void App::exportTextureToExr(GLuint tex, const string& path){
@@ -335,9 +328,9 @@ void App::exportTextureToExr(GLuint tex, const string& path){
     header.num_channels = 3;
     header.channels = (EXRChannelInfo *)malloc(sizeof(EXRChannelInfo) * header.num_channels); 
     // Must be (A)BGR order, since most of EXR viewers expect this channel order.
-    strncpy_s(header.channels[0].name, "B", 255); header.channels[0].name[strlen("B")] = '\0';
-    strncpy_s(header.channels[1].name, "G", 255); header.channels[1].name[strlen("G")] = '\0';
-    strncpy_s(header.channels[2].name, "R", 255); header.channels[2].name[strlen("R")] = '\0';
+    snprintf(header.channels[0].name, sizeof(header.channels[0].name), "B");
+    snprintf(header.channels[1].name, sizeof(header.channels[1].name), "G");
+    snprintf(header.channels[2].name, sizeof(header.channels[2].name), "R");
 
     header.pixel_types = (int *)malloc(sizeof(int) * header.num_channels); 
     header.requested_pixel_types = (int *)malloc(sizeof(int) * header.num_channels);

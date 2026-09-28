@@ -9,9 +9,9 @@
 #include "camera.hpp"
 #include "mesh.hpp"
 #include "ui/ui.hpp"
+#include "ui/colorsUI.hpp"
 #include "animator.hpp"
 #include "scene.hpp"
-#include "cuda_cpp/denoiser.hpp"
 #include "stats.hpp"
 
 #include <tinyexr/tinyexr.h>
@@ -49,7 +49,6 @@ shared_ptr<Renderer> renderer;
 shared_ptr<Animator> animator;
 shared_ptr<UI> ui;
 shared_ptr<Scene> scene;
-shared_ptr<Denoiser> denoiser;
 
 shared_ptr<Stats> stats;
 FPSCounter fpsCounter = {};
@@ -60,10 +59,12 @@ GPUTimer gpuFrameTimer = {};
 bool locked = false;
 bool gpuBlocked = false;
 
+#ifdef _WIN32
 extern "C" {
     __declspec(dllexport) unsigned long NvOptimusEnablement = 1;
     __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 }
+#endif
 
 void resetFrame(){
     frameAccumulator = 0;
@@ -359,7 +360,7 @@ void render(){
     glUniform1i(ShaderProgram::getVarLoc("selectionTexture"), 1);
     
     glUniform2f(ShaderProgram::getVarLoc("texSize"), (float)app->width(), (float)app->height());
-    ImVec4 selectionColor = UIColors::selectionColor;
+    ImVec4 selectionColor = ColorsUI::selectionColor;
     glUniform3f(ShaderProgram::getVarLoc("selectionColor"), selectionColor.x, selectionColor.y, selectionColor.z);
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);

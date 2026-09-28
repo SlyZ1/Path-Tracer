@@ -1,6 +1,8 @@
 #include "camera.hpp"
 #include <iostream>
 
+#include <algorithm>
+
 using namespace std;
 
 vec3 Camera::lookDir(){

@@ -1,8 +1,9 @@
+#include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
+#ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #define GLFW_EXPOSE_NATIVE_WIN32
-#include <GLFW/glfw3.h>
-#include <GLFW/glfw3native.h>
 #include <dwmapi.h>
 #pragma comment(lib, "dwmapi.lib")
 
@@ -11,3 +12,6 @@ void setDarkTitleBar(GLFWwindow* window){
     COLORREF titleBarColor = RGB(12, 12, 12);
     DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, &titleBarColor, sizeof(titleBarColor));
 }
+#else
+void setDarkTitleBar(GLFWwindow* window){}
+#endif

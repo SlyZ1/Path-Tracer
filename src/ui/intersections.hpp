@@ -25,7 +25,7 @@ struct Ray {
     vec3 direction; 
 };
 
-static class Intersections {
+class Intersections {
 private:
     static float dot2(vec3 x);
 public:

@@ -2,7 +2,6 @@
 #define APP_HPP
 
 #include <iostream>
-#include <lodepng/lodepng.h>
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_opengl3.h>
 #include <imgui/imgui_impl_glfw.h>
@@ -11,7 +10,7 @@
 #define GLFW_NATIVE_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
-#include <nativefiledialog/nfd.h>
+#include <nfd.h>
 #include <cuda_gl_interop.h>
 #include <vector>
 #include "win32_titlebar.hpp"

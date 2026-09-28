@@ -1,5 +1,7 @@
 #include "ui.hpp"
 
+#include "colorsUI.hpp"
+
 void UI::toggle(){
     m_show = !m_show;
     if (!m_show) m_context.scene->selectObject(-1);
@@ -80,8 +82,7 @@ void UI::EndTwoColumnLayout() const
 }
 
 bool UI::BeginCustomHeader(const string& name) const {
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, UIColors::fgColor);
-    ImVec2 padding = ImGui::GetStyle().WindowPadding;
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ColorsUI::fgColor);
     ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
     ImGui::BeginChild((name + "_group").c_str(), ImVec2(-FLT_MIN, 0), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysUseWindowPadding);
     bool open = ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_SpanAvailWidth);
@@ -341,7 +342,7 @@ void UI::renderPopup(){
     
     ImGui::SetNextWindowSizeConstraints(ImVec2(300, 0), ImVec2(FLT_MAX, FLT_MAX));
     if (ImGui::Begin("Properties", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::PushStyleColor(ImGuiCol_Border, UIColors::lightBlueBorder);
+        ImGui::PushStyleColor(ImGuiCol_Border, ColorsUI::lightBlueBorder);
         
         ImGui::SeparatorText("Object");
         BeginTwoColumnLayout();
@@ -361,8 +362,7 @@ void UI::renderPopup(){
 
         bool previousScaleLocked = scaleLocked;
         bool disabled = false;
-        if (selectedObject->type == PrimType::SPHERE && selectedObject->mat.type == MatType::EMIT
-            || selectedObject->type == PrimType::FUR_){
+        if ((selectedObject->type == PrimType::SPHERE && selectedObject->mat.type == MatType::EMIT) || selectedObject->type == PrimType::FUR_){
             for (int i = 0; i < 3; i++)
                 selectedObject->scale[i] = std::max({selectedObject->scale[0], selectedObject->scale[1], selectedObject->scale[2]});
             
@@ -496,9 +496,9 @@ void UI::renderPopup(){
 }
 
 int UI::renderListItems(const vector<const char*>& items, int* selectedIndex){
-    ImGui::PushStyleColor(ImGuiCol_Header, UIColors::fgColor);
-    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(UIColors::fgColor.x, UIColors::fgColor.y, UIColors::fgColor.z, 0.5f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderActive, UIColors::fgColor);
+    ImGui::PushStyleColor(ImGuiCol_Header, ColorsUI::fgColor);
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(ColorsUI::fgColor.x, ColorsUI::fgColor.y, ColorsUI::fgColor.z, 0.5f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ColorsUI::fgColor);
     ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.04f, 0.5f));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
     float itemHeight = ImGui::GetTextLineHeight() + 8.0f;
@@ -518,16 +518,16 @@ int UI::renderListItems(const vector<const char*>& items, int* selectedIndex){
 
 void UI::renderScene(){
     ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, UIColors::bgColor);
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ColorsUI::bgColor);
     ImGui::SetNextWindowSizeConstraints(ImVec2(-FLT_MIN, 250.0f), ImVec2(-FLT_MIN, ImGui::GetIO().DisplaySize.y - 250.0f));
     ImGui::BeginChild("SceneContainer", ImVec2(-FLT_MIN, 200.0f), ImGuiChildFlags_ResizeY | ImGuiChildFlags_AlwaysUseWindowPadding);
     ImGui::PopStyleVar(1);
     ImGui::PopStyleColor(1);
 
-    ImGui::BeginChild("Scene", ImVec2(-FLT_MIN, -FLT_MIN - 2), ImGuiChildFlags_Borders), ImGuiWindowFlags_AlwaysVerticalScrollbar;
+    ImGui::BeginChild("Scene", ImVec2(-FLT_MIN, -FLT_MIN - 2), ImGuiChildFlags_Borders);
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 4.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_TabRounding, 7.0f);
-    ImGui::PushStyleColor(ImGuiCol_Border, UIColors::lightBlueBorder);
+    ImGui::PushStyleColor(ImGuiCol_Border, ColorsUI::lightBlueBorder);
 
     float buttonRegionSize = 30.0f;
     if (ImGui::BeginTabBar("SceneTabs")){
@@ -542,16 +542,16 @@ void UI::renderScene(){
             ImGui::EndChild();
             if (ImGui::IsItemClicked()) m_context.scene->selectObject(-1);
             ImGui::SameLine();
-            ImGui::PushStyleColor(ImGuiCol_ChildBg, UIColors::bgColor);
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, ColorsUI::bgColor);
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
             ImGui::BeginChild("SceneButtonsContainer", ImVec2(-FLT_MIN-2, -FLT_MIN), ImGuiChildFlags_AlwaysUseWindowPadding);
 
             ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(UIColors::mgColor.x, UIColors::mgColor.y, UIColors::mgColor.z, 0.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(UIColors::mgColor.x, UIColors::mgColor.y, UIColors::mgColor.z, 0.3f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(UIColors::mgColor.x, UIColors::mgColor.y, UIColors::mgColor.z, 0.5f));
-            ImGui::PushStyleColor(ImGuiCol_Separator, UIColors::mgColor);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(ColorsUI::mgColor.x, ColorsUI::mgColor.y, ColorsUI::mgColor.z, 0.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(ColorsUI::mgColor.x, ColorsUI::mgColor.y, ColorsUI::mgColor.z, 0.3f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(ColorsUI::mgColor.x, ColorsUI::mgColor.y, ColorsUI::mgColor.z, 0.5f));
+            ImGui::PushStyleColor(ImGuiCol_Separator, ColorsUI::mgColor);
             if (ImGui::Button("+", ImVec2(buttonRegionSize-2, buttonRegionSize-2))){
                 m_context.scene->addObject(Object());
             }
@@ -579,16 +579,16 @@ void UI::renderScene(){
             ImGui::EndChild();
             if (ImGui::IsItemClicked()) m_context.scene->selectMesh(-1);
             ImGui::SameLine();
-            ImGui::PushStyleColor(ImGuiCol_ChildBg, UIColors::bgColor);
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, ColorsUI::bgColor);
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
             ImGui::BeginChild("SceneButtonsContainer", ImVec2(-FLT_MIN-2, -FLT_MIN), ImGuiChildFlags_AlwaysUseWindowPadding);
 
             ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(UIColors::mgColor.x, UIColors::mgColor.y, UIColors::mgColor.z, 0.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(UIColors::mgColor.x, UIColors::mgColor.y, UIColors::mgColor.z, 0.3f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(UIColors::mgColor.x, UIColors::mgColor.y, UIColors::mgColor.z, 0.5f));
-            ImGui::PushStyleColor(ImGuiCol_Separator, UIColors::mgColor);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(ColorsUI::mgColor.x, ColorsUI::mgColor.y, ColorsUI::mgColor.z, 0.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(ColorsUI::mgColor.x, ColorsUI::mgColor.y, ColorsUI::mgColor.z, 0.3f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(ColorsUI::mgColor.x, ColorsUI::mgColor.y, ColorsUI::mgColor.z, 0.5f));
+            ImGui::PushStyleColor(ImGuiCol_Separator, ColorsUI::mgColor);
             if (ImGui::Button("+", ImVec2(buttonRegionSize-2, buttonRegionSize-2))){
                 importModelDialog();
             }
@@ -616,16 +616,16 @@ void UI::renderScene(){
             ImGui::EndChild();
             if (ImGui::IsItemClicked()) m_context.scene->selectFur(-1);
             ImGui::SameLine();
-            ImGui::PushStyleColor(ImGuiCol_ChildBg, UIColors::bgColor);
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, ColorsUI::bgColor);
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
             ImGui::BeginChild("SceneButtonsContainer", ImVec2(-FLT_MIN-2, -FLT_MIN), ImGuiChildFlags_AlwaysUseWindowPadding);
 
             ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(UIColors::mgColor.x, UIColors::mgColor.y, UIColors::mgColor.z, 0.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(UIColors::mgColor.x, UIColors::mgColor.y, UIColors::mgColor.z, 0.3f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(UIColors::mgColor.x, UIColors::mgColor.y, UIColors::mgColor.z, 0.5f));
-            ImGui::PushStyleColor(ImGuiCol_Separator, UIColors::mgColor);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(ColorsUI::mgColor.x, ColorsUI::mgColor.y, ColorsUI::mgColor.z, 0.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(ColorsUI::mgColor.x, ColorsUI::mgColor.y, ColorsUI::mgColor.z, 0.3f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(ColorsUI::mgColor.x, ColorsUI::mgColor.y, ColorsUI::mgColor.z, 0.5f));
+            ImGui::PushStyleColor(ImGuiCol_Separator, ColorsUI::mgColor);
             if (ImGui::Button("+", ImVec2(buttonRegionSize-2, buttonRegionSize-2))){
                 importFurDialog();
             }
@@ -654,7 +654,7 @@ void UI::renderScene(){
 void UI::renderParameters(){
     ImGui::BeginChild("Parameters", ImVec2(-FLT_MIN, -FLT_MIN), ImGuiChildFlags_Borders);
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 4.0f));
-    ImGui::PushStyleColor(ImGuiCol_Border, UIColors::lightBlueBorder);
+    ImGui::PushStyleColor(ImGuiCol_Border, ColorsUI::lightBlueBorder);
 
     float padding = ImGui::GetStyle().WindowPadding.y;
     float buttonHeight = 40;
@@ -852,7 +852,7 @@ void UI::renderParameters(){
 
 void UI::importModelDialog(){
     bool cancel;
-    nfdopendialogu8args_t args = {0};
+    nfdopendialogu8args_t args = {};
     nfdfilteritem_t filters[] = {
         { "3D Models", "obj" },
         { "OBJ", "obj" }
@@ -869,7 +869,7 @@ void UI::importModelDialog(){
 
 void UI::importFurDialog(){
     bool cancel;
-    nfdopendialogu8args_t args = {0};
+    nfdopendialogu8args_t args = {};
     nfdfilteritem_t filters[] = {
         { "Fur Models", "bin" },
         { "bin" }
@@ -885,7 +885,7 @@ void UI::importFurDialog(){
 }
 
 void UI::renderMainMenuBar(){
-    ImGui::PushStyleColor(ImGuiCol_MenuBarBg, UIColors::bgColor);
+    ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ColorsUI::bgColor);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
@@ -902,7 +902,7 @@ void UI::renderMainMenuBar(){
             }
             if (ImGui::MenuItem("Load Scene (.json)"))  {
                 bool cancel;
-                nfdopendialogu8args_t args = {0};
+                nfdopendialogu8args_t args = {};
                 nfdfilteritem_t filters[] = {
                     { "JSON", "json" },
                     { "json" }
@@ -931,16 +931,16 @@ void UI::render() {
     float menuBarHeight = ImGui::GetMainViewport()->WorkPos.y;
     float workingFrameHeight = ImGui::GetMainViewport()->WorkSize.y;
 
-    ImGui::PushStyleColor(ImGuiCol_Header, UIColors::mgColor);
-    ImGui::PushStyleColor(ImGuiCol_TitleBg, UIColors::mgColor);
-    ImGui::PushStyleColor(ImGuiCol_TitleBgActive, UIColors::mgColor);
-    ImGui::PushStyleColor(ImGuiCol_PopupBg, UIColors::mgColor);
+    ImGui::PushStyleColor(ImGuiCol_Header, ColorsUI::mgColor);
+    ImGui::PushStyleColor(ImGuiCol_TitleBg, ColorsUI::mgColor);
+    ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ColorsUI::mgColor);
+    ImGui::PushStyleColor(ImGuiCol_PopupBg, ColorsUI::mgColor);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, 3.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 0.0f);
     
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, UIColors::fgColor);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ColorsUI::fgColor);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 6.0f);
         
             renderStats();
@@ -961,8 +961,8 @@ void UI::render() {
 
         
         
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, UIColors::bgColor);
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, UIColors::mgColor);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ColorsUI::bgColor);
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ColorsUI::mgColor);
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.1f, 0.1f, 0.1f, 0.0f));
         ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.1f, 0.1f, 0.1f, 0.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 6.0f);

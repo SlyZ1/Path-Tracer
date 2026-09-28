@@ -15,8 +15,6 @@
 #include "../camera.hpp"
 #include "../stats.hpp"
 
-#include "ui_colors.hpp"
-
 using namespace glm;
 
 struct UIContext {
